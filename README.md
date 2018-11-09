@@ -1,2 +1,2 @@
 # VRising
-Experimental C++ Raymarcher
+Experimental C++ Pathtracer for Signed Distance Fields
