@@ -1,2 +1,2 @@
 # VRising
-Experimental C++ Pathtracer for Signed Distance Fields
+Experimental CPU C++ Pathtracer for Signed Distance Fields
