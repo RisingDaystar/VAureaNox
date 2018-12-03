@@ -37,6 +37,6 @@ For this purpose i use a double distance system (dist and vdist) [TODO: explain]
 
 //Images
 
-[!4096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096.jpg)
+![4096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096.jpg)
 
 
