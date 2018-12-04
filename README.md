@@ -3,7 +3,7 @@ Experimental CPU C++ Pathtracer for Signed Distance Fields
 
 Started as an university project for the Computer Graphics course @ "Sapienza University of Rome" held by professor/researcher [***Fabio Pellacini***](https://github.com/xelatihy), i kept working on it , adding and improving features as i kept learning more about rendering and about (signed) distance fields.
 
-It uses [***Yocto/GL***](https://github.com/xelatihy/yocto-gl) library written by [***Fabio Pellacini***](https://github.com/xelatihy) for utility functions (3d transforms, mathematic utilities , matrices etc..) 
+It uses [***Yocto/GL***](https://github.com/xelatihy/yocto-gl) library, written by [***Fabio Pellacini***](https://github.com/xelatihy) , for utility functions (3d transforms, mathematic utilities , matrices etc..) 
 
 
 VAureaNox is structured in 2 parts:
