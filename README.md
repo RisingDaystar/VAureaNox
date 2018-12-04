@@ -39,4 +39,7 @@ For this purpose i use a double distance system (dist and vdist) [TODO: explain]
 
 ![4096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096.jpg)
 
+When it still was a raytracer (Final image for the course)
+
+![1spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VRising_spider_1920x1080.png)
 
