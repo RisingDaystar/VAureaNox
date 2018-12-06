@@ -16,6 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+
 #ifndef _VRE_Pathtracer_
 #define _VRE_Pathtracer_
 
@@ -284,7 +285,7 @@ namespace vnx {
                 //TODO : controllare meccanismo del poll_volume
                 auto poll = poll_volume(scn, rng, rr);
                 VResult hit = scn.INTERSECT_ALGO( rr, n_max_march_iterations, i);
-                if(poll.is_inside() && !poll.emat.is_transmissive()) {break;}
+                //if(poll.is_inside() && !poll.emat.is_transmissive()) {if(status.bDebugMode){std::cout<<"Blocked Direct Lighting!: "<<poll.emat.id<<"--> dist : "<<poll.eres.dist<<"; --> vdist :"<<poll.eres.vdist<<"\n";}break;}
 				if (!hit.found() || !hit.valid()) { return zero3f; }
 
                 if(poll.is_inside_transmissive()){
@@ -293,7 +294,7 @@ namespace vnx {
                 if(w == zero3f){return zero3f;}
 
                 VMaterial hmat = *hit.mat;
-                n = scn.eval_v_normals(hit, f_normal_eps);
+                n = scn.eval_normals(hit, f_normal_eps);
 				hmat.eval_mutator(rng, hit, n, hmat);
 
 				if (hmat.is_emissive()) {
@@ -372,12 +373,13 @@ namespace vnx {
                 auto type_refl = s_specular;
 
 
+
                 //TODO : fix del meccanismo del poll_ray / poll_volume
                 //auto poll_ray = offsetted_ray(hit.wor_pos,wi,wi.d,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
                 //auto poll = poll_volume(scn,rng,poll_ray);
                 //auto ior = poll_ray.ior;
 
-                auto ior = hit.vmat->eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
+                auto ior = hit.mat->eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
 
                 auto F = eval_fresnel_dielectric(wi.d,wh,wi.ior,ior);
 
@@ -426,9 +428,7 @@ namespace vnx {
                 }
             }else{
                 if(material.is_transmissive()){
-                    auto rn = ygl::get_random_vec2f(rng);
-                    auto wh = sample_ggx(rn,wo.d,n,material.rs);
-                    sample_transmissive(scn,rng,hit,material,wo,n,wh,samples);
+                    sample_transmissive(scn,rng,hit,material,wo,n,n,samples);
                 }else if(material.is_dielectric()){
                     auto ior = material.eval_ior(wo.ior,f_min_wl,f_max_wl,b_do_spectral);
                     auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,ior);
@@ -468,9 +468,12 @@ namespace vnx {
                 auto ndh = dot(h,n);
 
                 if(material.is_transmissive()){
-                    //TODO rough transmissive
+                    auto ir = (dot(n, wo.d) >= 0) ? ygl::reflect(-wi.d, n) : ygl::reflect(-wi.d, -n);
+                    auto hv = normalize(ir + wo.d);
+                    auto d = (brdf_ggx_pdf(material.rs,dot(n,ir),ndo,dot(hv,n)));
+                    pdf +=  d / (4*abs(dot(wo.d,hv)));
                 }else{
-                    if(ndo*ndi<=ygl::epsf) return 0.0f;
+                    //if(ndo*ndi<=ygl::epsf) return 0.0f;
                     if(material.is_conductor()){
                         if(ndh<=ygl::epsf) return 0.0f;
                         weights = {0,1};
@@ -505,9 +508,14 @@ namespace vnx {
                 }
 		    }else{
                 if(material.is_transmissive()){
-                    //TODO rough transmissive
+                    auto ir = (ndo >= 0) ? ygl::reflect(-wi.d, n) : ygl::reflect(-wi.d, -n);
+                    auto hv = normalize(ir + wo.d);
+                    auto irdn = dot(ir,n);
+                    auto F = toVec3f(eval_fresnel_dielectric(-wo.d,hv,wo.ior,material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral)));
+                    if(ndo*ndi<=ygl::epsf) li+= ((one3f-F)*(brdf_ggx_DG(material.rs,irdn,ndo,dot(n,hv))) / (4*abs(irdn)*abs(ndo)))*abs(ndi);
+                    else li+= (F*(brdf_ggx_DG(material.rs,irdn,ndo,dot(n,hv))) / (4*abs(irdn)*abs(ndo)))*abs(ndi);
                 }else{
-                    if(ndo*ndi<=0) return zero3f;
+                    //if(ndo*ndi<=ygl::epsf) return zero3f;
                     auto h = normalize(wi.d+wo.d);
                     auto ndh = dot(n,h);
                     vec3f F = zero3f;
@@ -543,15 +551,16 @@ namespace vnx {
 		inline VVolumePoll poll_volume(const VScene& scn, ygl::rng_state& rng, VRay& ray){
 		    VResult ev;
 			scn.eval(ray.o,ev);
-            auto evmat = *ev.vmat;
-            ygl::vec3f evnorm = scn.eval_v_normals(ev,f_normal_eps);
-            evmat.eval_mutator(rng, ev, evnorm, evmat);
+
 			if (ev.vdist < ygl::epsf) {
+                VMaterial evmat = *ev.vmat;
+                ygl::vec3f evnorm = scn.eval_v_normals(ev,f_normal_eps);
+                evmat.eval_mutator(rng, ev, evnorm, evmat);
 			    update_ray_physics(ray,evmat.eval_ior(ray.wl,f_min_wl,f_max_wl,b_do_spectral));
                 return {ev,evmat};
 			}
 			update_ray_physics(ray,1.0f);
-            return {ev,evmat};
+            return {ev,{}};
 		}
 
 		inline float eval_le(const VRay& ray,float pwr,float t){
@@ -691,8 +700,8 @@ namespace vnx {
                     int n_iters = 0;
                     //TODO, controllare meccanismo del poll volume
                     auto poll = poll_volume(scn, rng, sample.ray);
-                    if(poll.is_inside() && !poll.emat.is_transmissive()) {break;}
                     VResult hit = scn.INTERSECT_ALGO( sample.ray, n_max_march_iterations, n_iters);
+                    //if(poll.is_inside() && !poll.emat.is_transmissive()) {if(status.bDebugMode){std::cout<<"Blocked!: "<<poll.emat.id<<"--> dist : "<<poll.eres.dist<<"; --> vdist :"<<poll.eres.vdist<<"\n";}break;}
                     if (!hit.found() || !hit.valid()) { break; }
 
                     if (b_debug_iterations) {
@@ -709,6 +718,7 @@ namespace vnx {
 
                     auto material = *hit.mat;
                     auto n = scn.eval_normals(hit, f_normal_eps);
+
                     material.eval_mutator(rng, hit, n, material);
                     if(n==zero3f){if(status.bDebugMode){std::cout<<"<!>Normal is zero...\n";}break;}
 

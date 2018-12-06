@@ -16,7 +16,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-
 #ifndef _VSC_CORNELL_
 #define _VSC_CORNELL_
 
@@ -38,7 +37,7 @@ namespace vscndef {
 
 		auto material_emissive = scn.add_material("material_emissive");
 		material_emissive->e_temp = 6500.0f;
-		material_emissive->e_power = 100.0f;
+		material_emissive->e_power = 500.0f;
 
 		auto diff_red = scn.add_material("diff_red");
 		diff_red->kr = { 0.4f,0.0f,0.0f };
@@ -72,7 +71,7 @@ namespace vscndef {
         borosilicate_glass_material->ior = 1.17f;
         borosilicate_glass_material->k_sca = 0.0f;
         */
-
+        borosilicate_glass_material->ka = vec3f{1.01f,1.01f,1.01f};
 		borosilicate_glass_material->sm_b1 = 1.03961212;
 		borosilicate_glass_material->sm_b2 = 0.231792344;
 		borosilicate_glass_material->sm_b3 = 1.01046945;
@@ -80,7 +79,7 @@ namespace vscndef {
 		borosilicate_glass_material->sm_c2 = 2.00179144e-2;
 		borosilicate_glass_material->sm_c3 = 1.03560653e2;
 		borosilicate_glass_material->k_sca = 0.0f;
-
+        //borosilicate_glass_material->rs = 0.05f;
 
 
         auto no_refr_media = scn.add_material("no_refr_media");
@@ -177,11 +176,11 @@ namespace vscndef {
 		*/
 
         auto ftor = [](const vec3f& p){
-            const float f = 1.0f;
-            const float fd = f*3;
+            const float f = 8.0f;
+            const float fd = f*8;
             return (sin(f*p.x)*sin(f*p.y)*sin(f*p.z))/fd; //18= 1/20 + 1/20 + 1/20 ///limiti della funzione sin (e cos...)
         };
-        scn.set_displacement("el_tw",ftor);
+        //scn.set_displacement("glass",ftor);
 
 
 	}

@@ -1,4 +1,3 @@
-
 /*
 VAureaNox : Distance Fields Pathtracer
 Copyright (C) 2017-2018  Alessandro Berti

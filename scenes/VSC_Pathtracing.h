@@ -16,7 +16,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-
 #ifndef _VSC_PATHTRACING_
 #define _VSC_PATHTRACING_
 
@@ -86,18 +85,12 @@ namespace vscndef {
 		glass->ka = {0.01f,0.01f,0.01f};
 
 
-		auto gas = scn.add_material("gas");
-		gas->k_sca = 0.2f;
-		gas->ka = {0.0f,0.9f,0.9f};
-
-
         auto room = new vop_invert("room",new vvo_sd_box("box",diffuse,60.0f));
         auto light = new vvo_sd_sphere("light",emissive,10.0f);
 
         auto box = new vvo_sd_box("box",diffuse2,{0.5f,2.0f,0.5f});
         auto sphere = new vvo_sd_sphere("sphere",metal,1.0f);
         auto sphere2 = new vvo_sd_sphere("sphere2",glass,1.0f);
-        auto sphere3 = new vvo_sd_sphere("sphere3",gas,1.0f);
         auto light2 = new vvo_sd_sphere("light2",emissive_dim,0.5f);
         auto slab = new vvo_sd_box("slab",mirror,{1.5f,0.1f,1.5f});
         auto ring = new vop_subtraction("ring",{
@@ -112,7 +105,6 @@ namespace vscndef {
             box,
             sphere,
             sphere2,
-            sphere3,
             slab,
             new vop_union("ring_group",{ring,ring_pedestal,light2}),
             room,
@@ -128,7 +120,6 @@ namespace vscndef {
 		scn.set_rotation_degs("box",{0,45,0});
 		scn.set_translation("sphere",{2.0f,1.0f,0});
 		scn.set_translation("sphere2",{-2.0f,1.5f,0});
-		scn.set_translation("sphere3",{4.0f,1.5f,0});
         scn.set_translation("slab",{-2.0f,0,5.0f});
         scn.set_rotation_degs("slab",{0,25,0});
 

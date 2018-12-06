@@ -1,4 +1,3 @@
-
 /*
 VAureaNox : Distance Fields Pathtracer
 Copyright (C) 2017-2018  Alessandro Berti
@@ -48,13 +47,9 @@ struct vop_union : public VOperator {
 			for (int i = 1; i < childs.size(); i++) {
 				childs[i]->eval(ep,vre);
 
-				if (std::abs(vre.dist) < std::abs(res.dist)) { res = vre; }
-				if(vre.vdist<vdist) {
-                    vdist = vre.vdist;
-                    ///DIFFERENZIAZIONE DEL MATERIALE VOLUMETRICO : DA TESTARE -> + TODO per gli altri operatori
-                    if(vdist>res.dist){vmat = vre.vmat;vsur = vre.vsur;}
-                    else{vmat = res.mat;vsur = res.sur;}
-                }
+				if (abs(vre.dist) < abs(res.dist)) { res = vre; }
+				if (vre.vdist<vdist) {vdist = vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
+
 			}
 		}
 		else {
@@ -65,17 +60,19 @@ struct vop_union : public VOperator {
 				sdist = smin(sdist, vre.dist, blend_factor);
 				vsdist = smin(vsdist,vre.vdist, blend_factor);
 
-
 				if (std::abs(vre.dist) < std::abs(res.dist)) { res = vre; }
-				if(vre.vdist<vdist) {vdist = vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
+				if (vre.vdist<vdist) {vdist = vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
 			}
             res.dist = sdist;
             vdist = vsdist;
 		}
+
 		res.vdist = vdist;
 		res.vmat = vmat;
+		res.vsur = vsur;
 		res.wor_pos = p;
 
+        if(vdist<ygl::epsf && res.dist>ygl::epsf){res.dist = -res.dist;}
 
 		auto dspm = eval_displacement(ep);
 		auto sfct = min_element(scale);
@@ -137,6 +134,7 @@ struct vop_intersection : public VOperator {
             vdist = vsdist;
 		}
         res.vdist = vdist;
+        res.vsur = vsur;
 		res.wor_pos = p;
 
 		auto dspm = eval_displacement(ep);
@@ -202,6 +200,7 @@ struct vop_subtraction : public VOperator {
 		}
 		res.vdist = vdist;
 		res.wor_pos = p;
+		res.vsur = vsur;
 		auto dspm = eval_displacement(ep);
 		auto sfct = min_element(scale);
 		res.dist += dspm;

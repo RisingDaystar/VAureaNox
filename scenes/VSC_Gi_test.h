@@ -55,7 +55,7 @@ namespace vscndef {
         carbon_diamond_material->k_sca = 0.0f;
 
 		auto partecipating_test = scn.add_material("partecipating_test");
-        partecipating_test->ka = {0.05f,0.05f,0.01f};
+        partecipating_test->ka = {0.01f,0.01f,0.01f};
         //partecipating_test->rs = 0.3f;
         partecipating_test->k_sca = 0.0f;
 		partecipating_test->sm_b1 = 1.03961212;
@@ -89,8 +89,10 @@ namespace vscndef {
 		};
 		diffuse_mat->mutator = mtor;
 
+		auto diffuse_pure = scn.add_material("diffuse_pure");
+		diffuse_pure->kr = {0,1.0f,0};
 
-		auto diffuse_sand = scn.add_material("diffuse sand");
+		auto diffuse_sand = scn.add_material("diffuse_sand");
 		diffuse_sand->kr = {0.7f,0.6f,0.4f};
 		diffuse_sand->ior_type = non_wl_dependant;
 		diffuse_sand->ior = 1.7f;
@@ -127,8 +129,8 @@ namespace vscndef {
             }),
 
            new vop_union("sph2_group",0.0f,{
-              new vvo_sd_sphere("coat",carbon_diamond_material,1.8f),
-              new vvo_sd_box("sph2",steel,0.3f),
+              new vvo_sd_sphere("coat",partecipating_test,1.8f),
+              new vvo_sd_box("sph2",diffuse_pure,0.5f),
            }),
            new vvo_sd_sphere("light",emissive,80.5f),
         });

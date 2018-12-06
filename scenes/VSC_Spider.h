@@ -1,4 +1,3 @@
-
 /*
 VAureaNox : Distance Fields Pathtracer
 Copyright (C) 2017-2018  Alessandro Berti
@@ -16,7 +15,6 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
 
 #ifndef _VSC_SPIDER_
 #define _VSC_SPIDER_

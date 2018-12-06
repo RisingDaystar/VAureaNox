@@ -1,4 +1,3 @@
-
 /*
 VAureaNox : Distance Fields Pathtracer
 Copyright (C) 2017-2018  Alessandro Berti
@@ -601,7 +600,7 @@ namespace vnx {
 		inline bool is_transmissive() const { return k_sca>=-ygl::epsf;}
 		inline bool is_refractive() const { return is_transmissive() && (sm_b1>ygl::epsf || sm_b2>ygl::epsf || sm_b3>ygl::epsf || sm_c1>ygl::epsf || sm_c2>ygl::epsf || sm_c3>ygl::epsf);}
 
-		inline bool is_delta() const{return ((is_conductor() && rs<=ygl::epsf) || (is_transmissive() && rs<=ygl::epsf && k_sca<=ygl::epsf) || (is_dielectric() && cmpf(kr,zero3f)));}
+		inline bool is_delta() const{return ((is_conductor() && rs<=ygl::epsf) || (is_transmissive() && rs<=ygl::epsf && k_sca<=ygl::epsf) || (is_dielectric() && !is_transmissive() && cmpf(kr,zero3f)));}
 
 
 		inline bool has_kr(){return kr!=zero3f;}
@@ -909,7 +908,7 @@ namespace vnx {
 		}
 
 		inline virtual ygl::vec3f eval_normals(const VResult& vre,float eps) const {
-            if(vre.norm!=zero3f){return vre.norm;}
+            if(!cmpf(vre.norm,zero3f)){return vre.norm;}
 			const auto p = vre.wor_pos;
 
 			VResult res;
@@ -924,8 +923,24 @@ namespace vnx {
 			return normalize(n);
 		}
 
+		inline virtual ygl::vec3f eval_a_normals(const VResult& vre,float eps) const {
+            if(!cmpf(vre.norm,zero3f)){return vre.norm;}
+			const auto p = vre.wor_pos;
+
+			VResult res;
+			root->eval(p + nv1*eps,res);
+			auto n = nv1*abs(res.dist);
+			root->eval(p + nv2*eps,res);
+			n += nv2*abs(res.dist);
+			root->eval(p + nv3*eps,res);
+			n += nv3*abs(res.dist);
+			root->eval(p + nv4*eps,res);
+			n += nv4*abs(res.dist);
+			return normalize(n);
+		}
+
 		inline virtual ygl::vec3f eval_v_normals(const VResult& vre,float eps) const {
-            if(vre.norm!=zero3f){return vre.norm;}
+            //if(!cmpf(vre.norm,zero3f)){return vre.norm;}
 			const auto p = vre.wor_pos;
 
 			VResult res;
@@ -980,12 +995,11 @@ namespace vnx {
                 auto d = vre.dist;
                 auto absd = abs(d);
 
-                if(i==0){s = nz_sign(vre.vdist);pd = maxf_m1;}
-                if(s==-1.0f){ //started inside
+                if(i==0){s = nz_sign(vre.vdist);if(nz_sign(vre.dist)<0){s=-1.0f;}pd = maxf_m1;}
+                if(s<0){ //started inside
                     if(absd<ray.tmin){vre._found = true; return vre;}
                     t+=absd;
                     pd = d;
-
                 }else{  //started outside
                     if(abs(d)>=abs(os)){
                         if(absd<ray.tmin){vre._found = true; return vre;}
@@ -994,7 +1008,7 @@ namespace vnx {
                         pd=d;
                     }else{
                         t-=abs(os); // os
-                        pd=maxf_m1; //hmaxf
+                        pd=nz_sign(pd)*maxf_m1; //hmaxf
                         os=0.0;
                     }
                 }
