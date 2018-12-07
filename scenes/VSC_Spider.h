@@ -371,7 +371,7 @@ namespace vscndef {
 
 		auto emissive_dim = scn.add_material("emissive_dim");
 		emissive_dim->e_temp = 18500;
-		emissive_dim->e_power = 400;
+		emissive_dim->e_power = 100;
 
 		auto main_light = new vvo_sd_sphere("main_light", emissive, 8.3f);
 

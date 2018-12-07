@@ -52,6 +52,8 @@ namespace vnx {
             VResult eres;
             VMaterial emat;
 
+            bool inline is_abs_inside(){return eres.dist<=ygl::epsf;}
+
             bool inline is_inside(){return eres.vdist<=ygl::epsf;}
             bool inline is_on_surface(const VRay& ray){return eres.vdist>-ray.tmin && eres.vdist<ray.tmin;}
 
@@ -285,7 +287,7 @@ namespace vnx {
                 //TODO : controllare meccanismo del poll_volume
                 auto poll = poll_volume(scn, rng, rr);
                 VResult hit = scn.INTERSECT_ALGO( rr, n_max_march_iterations, i);
-                //if(poll.is_inside() && !poll.emat.is_transmissive()) {if(status.bDebugMode){std::cout<<"Blocked Direct Lighting!: "<<poll.emat.id<<"--> dist : "<<poll.eres.dist<<"; --> vdist :"<<poll.eres.vdist<<"\n";}break;}
+                if(poll.is_inside() && !poll.emat.is_transmissive()) {/*std::cout<<"Blocked Direct Lighting!: "<<poll.emat.id<<"--> dist : "<<poll.eres.dist<<"; --> vdist :"<<poll.eres.vdist<<"\n";*/break;}
 				if (!hit.found() || !hit.valid()) { return zero3f; }
 
                 if(poll.is_inside_transmissive()){
@@ -294,7 +296,7 @@ namespace vnx {
                 if(w == zero3f){return zero3f;}
 
                 VMaterial hmat = *hit.mat;
-                n = scn.eval_normals(hit, f_normal_eps);
+                n = scn.NORMALS_ALGO(hit, f_normal_eps);
 				hmat.eval_mutator(rng, hit, n, hmat);
 
 				if (hmat.is_emissive()) {
@@ -552,15 +554,18 @@ namespace vnx {
 		    VResult ev;
 			scn.eval(ray.o,ev);
 
-			if (ev.vdist < ygl::epsf) {
-                VMaterial evmat = *ev.vmat;
-                ygl::vec3f evnorm = scn.eval_v_normals(ev,f_normal_eps);
-                evmat.eval_mutator(rng, ev, evnorm, evmat);
+            //if(abs(ev.dist)<ray.tmin){return {ev,*ev.mat};};
+            VMaterial evmat = *ev.vmat;
+            ygl::vec3f evnorm = scn.NORMALS_ALGO(ev,f_normal_eps);
+            evmat.eval_mutator(rng, ev, evnorm, evmat);
+			if (ev.vdist < ygl::epsf && evmat.is_transmissive() && abs(ev.dist)<ray.tmin) { // perchè funge con ev.dist>ygl::epsf ??
+
 			    update_ray_physics(ray,evmat.eval_ior(ray.wl,f_min_wl,f_max_wl,b_do_spectral));
                 return {ev,evmat};
 			}
+
 			update_ray_physics(ray,1.0f);
-            return {ev,{}};
+            return {ev,evmat};
 		}
 
 		inline float eval_le(const VRay& ray,float pwr,float t){
@@ -701,15 +706,15 @@ namespace vnx {
                     //TODO, controllare meccanismo del poll volume
                     auto poll = poll_volume(scn, rng, sample.ray);
                     VResult hit = scn.INTERSECT_ALGO( sample.ray, n_max_march_iterations, n_iters);
-                    //if(poll.is_inside() && !poll.emat.is_transmissive()) {if(status.bDebugMode){std::cout<<"Blocked!: "<<poll.emat.id<<"--> dist : "<<poll.eres.dist<<"; --> vdist :"<<poll.eres.vdist<<"\n";}break;}
-                    if (!hit.found() || !hit.valid()) { break; }
+                    if(poll.is_inside() && !poll.emat.is_transmissive()) {/*std::cout<<"Blocked!: "<<poll.emat.id<<"--> dist : "<<poll.eres.dist<<"; --> vdist :"<<poll.eres.vdist<<"\n";*/break;}
+                    if (!hit.found() || !hit.valid()) {break; }
 
                     if (b_debug_iterations) {
                         return one3f*((float)n_iters)/((float)n_max_march_iterations);
                     }
 
                     if (b_debug_normals) {
-                        return scn.eval_normals(hit,f_normal_eps);
+                        return scn.NORMALS_ALGO(hit,f_normal_eps);
                     }
 
                     if(poll.is_inside_transmissive()){
@@ -717,7 +722,7 @@ namespace vnx {
                     }
 
                     auto material = *hit.mat;
-                    auto n = scn.eval_normals(hit, f_normal_eps);
+                    auto n = scn.NORMALS_ALGO(hit, f_normal_eps);
 
                     material.eval_mutator(rng, hit, n, material);
                     if(n==zero3f){if(status.bDebugMode){std::cout<<"<!>Normal is zero...\n";}break;}

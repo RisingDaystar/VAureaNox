@@ -125,11 +125,14 @@ namespace vscndef {
                     ),
                 }),
                 ring,
-                new vvo_sd_sphere("sph",partecipating_test,1.5f),
+                new vop_union("sph_group",0.0f,{
+                    new vvo_sd_sphere("coat",partecipating_test,1.5f),
+                    new vvo_sd_box("sph",diffuse_pure,0.5f),
+                }),
             }),
 
            new vop_union("sph2_group",0.0f,{
-              new vvo_sd_sphere("coat",partecipating_test,1.8f),
+              new vvo_sd_sphere("coat2",partecipating_test,1.8f),
               new vvo_sd_box("sph2",diffuse_pure,0.5f),
            }),
            new vvo_sd_sphere("light",emissive,80.5f),

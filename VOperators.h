@@ -47,7 +47,8 @@ struct vop_union : public VOperator {
 			for (int i = 1; i < childs.size(); i++) {
 				childs[i]->eval(ep,vre);
 
-				if (abs(vre.dist) < abs(res.dist)) { res = vre; }
+
+                if(abs(vre.dist)<abs(res.dist)){res = vre;} //per abilitare i nested : usare std::abs nel confronto
 				if (vre.vdist<vdist) {vdist = vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
 
 			}
@@ -60,8 +61,9 @@ struct vop_union : public VOperator {
 				sdist = smin(sdist, vre.dist, blend_factor);
 				vsdist = smin(vsdist,vre.vdist, blend_factor);
 
-				if (std::abs(vre.dist) < std::abs(res.dist)) { res = vre; }
+				if (vre.dist < res.dist) { res = vre; } ////per abilitare i nested : usare std::abs nel confronto
 				if (vre.vdist<vdist) {vdist = vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
+
 			}
             res.dist = sdist;
             vdist = vsdist;
@@ -72,12 +74,11 @@ struct vop_union : public VOperator {
 		res.vsur = vsur;
 		res.wor_pos = p;
 
-        if(vdist<ygl::epsf && res.dist>ygl::epsf){res.dist = -res.dist;}
-
 		auto dspm = eval_displacement(ep);
 		auto sfct = min_element(scale);
 		res.dist += dspm;
 		res.dist *= sfct;
+
 
 		res.vdist += dspm;
 		res.vdist *= sfct;
@@ -181,7 +182,7 @@ struct vop_subtraction : public VOperator {
 				childs[i]->eval(ep,vre);
 
 				if (-vre.dist > res.dist) { res = vre;res.dist = -vre.dist; }
-				if(-vre.dist>vdist) {vdist = -vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
+				if(-vre.vdist>vdist) {vdist = -vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
 			}
 		}
 		else {

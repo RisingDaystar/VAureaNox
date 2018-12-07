@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "scenes\VSC_Pathtracing.h"
 #include "scenes\VSC_Cornell.h"
 #include "scenes\VSC_Gi_test.h"
+#include "scenes\VSC_Nested.h"
 #include "renderers\VRE_Pathtracer.h"
 
 #define MONITOR_THREAD_SUPPORT
@@ -50,6 +51,7 @@ namespace vnx {
 		else if (stricmp(render_scene,"spider")) { vscndef::init_spider_scene(scn); }
 		else if (stricmp(render_scene,"pathtracing")) { vscndef::init_pathtracing_scene(scn); }
 		else if (stricmp(render_scene,"gi_test")) { vscndef::init_gi_test_scene(scn); }
+		else if (stricmp(render_scene,"nested")){vscndef::init_nested_scene(scn);}
 		else{ throw VException("Invalid Scene."); }
 
 		if (stricmp(renderer_type,"pathtracer")) {

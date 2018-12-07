@@ -60,7 +60,7 @@ namespace vscndef {
         //carbon_diamond_material->rs = 0.01f;
 
         auto water_material = scn.add_material("water_material");
-        water_material->ka = vec3f{0.61f,0.61f,0.01f};
+        water_material->ka = vec3f{8.61f,8.61f,0.01f};
         water_material->ior_type = non_wl_dependant;
         water_material->ior = 1.370f;
         water_material->k_sca = 0.0f;
@@ -131,18 +131,23 @@ namespace vscndef {
                 new vvo_sd_box("light",material_emissive,{ 1.0f,0.1f,1.0f }),
                 //new vvo_sd_sphere("light",material_emissive,0.3f),
                 new vop_union("glass",{
-                    new vop_subtraction("glass_sub",0.1f,{
+                    new vop_subtraction("glass_sub",0.0f,{
                         new vvo_sd_cylinder("outer",borosilicate_glass_material,{1.3f,2.3f}),
-                        new vvo_sd_cylinder("inner",borosilicate_glass_material,{1.00f,2.2f})
+                        new vvo_sd_cylinder("inner",borosilicate_glass_material,{1.20f,2.2f})
                     }),
-                    new vvo_sd_cylinder("inner_water",water_material,{0.98f,1.0f}),
+                    new vvo_sd_cylinder("inner_water",water_material,{1.19f,1.0f}),
                     new vvo_sd_box("obs",sp_mat2,{0.1f,3.0f,0.1f}),
                 }),
 
                 //new vvo_sd_sphere("sph",borosilicate_glass_material,1.0f),
                 //new vvo_sd_pyramid4("sph",borosilicate_glass_material,{1,1,2.5}),
                 new vvo_sd_box("mirror",sp_mat,{3.0f,3.0f,0.1f}),
-                new vvo_sd_sphere("sph",diff_white),
+
+                new vop_union("sph",{
+                    new vvo_sd_sphere("sph_s",borosilicate_glass_material),
+                    new vvo_sd_sphere("sph_si",diff_white,0.4f),
+                }),
+
             }),
 
 		});

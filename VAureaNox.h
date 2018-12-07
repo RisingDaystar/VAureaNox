@@ -32,6 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <iostream>
 
 #define INTERSECT_ALGO intersect_rel
+#define NORMALS_ALGO eval_normals_tht
 #define LIGHT_PRECALC_ALGO precalc_emissive_hints
 //precalc_emissive_hints || precalc_emissive_hints_rejection
 
@@ -907,56 +908,57 @@ namespace vnx {
 			if (root != nullptr) {root->eval(p,res);}
 		}
 
-		inline virtual ygl::vec3f eval_normals(const VResult& vre,float eps) const {
+		inline virtual ygl::vec3f eval_normals_tht(const VResult& vre,float eps) const {
             if(!cmpf(vre.norm,zero3f)){return vre.norm;}
 			const auto p = vre.wor_pos;
+            /*if(vre.vdist<eps && vre.dist>-eps){
+                VResult res;
+                root->eval(p + nv1*eps,res);
+                auto n = nv1*sign(res.vdist)*abs(res.dist);
+                root->eval(p + nv2*eps,res);
+                n += nv2*sign(res.vdist)*abs(res.dist);
+                root->eval(p + nv3*eps,res);
+                n += nv3*sign(res.vdist)*abs(res.dist);
+                root->eval(p + nv4*eps,res);
+                n += nv4*sign(res.vdist)*abs(res.dist);
+                return normalize(n);
+            }else{*/
+                VResult res;
+                root->eval(p + nv1*eps,res);
+                auto n = nv1*res.dist;
+                root->eval(p + nv2*eps,res);
+                n += nv2*res.dist;
+                root->eval(p + nv3*eps,res);
+                n += nv3*res.dist;
+                root->eval(p + nv4*eps,res);
+                n += nv4*res.dist;
+                return normalize(n);
+            //}
 
-			VResult res;
-			root->eval(p + nv1*eps,res);
-			auto n = nv1*res.dist;
-			root->eval(p + nv2*eps,res);
-			n += nv2*res.dist;
-			root->eval(p + nv3*eps,res);
-			n += nv3*res.dist;
-			root->eval(p + nv4*eps,res);
-			n += nv4*res.dist;
-			return normalize(n);
+
 		}
 
-		inline virtual ygl::vec3f eval_a_normals(const VResult& vre,float eps) const {
+		inline virtual ygl::vec3f eval_normals_cnt(const VResult& vre,float eps) const {
             if(!cmpf(vre.norm,zero3f)){return vre.norm;}
 			const auto p = vre.wor_pos;
-
 			VResult res;
-			root->eval(p + nv1*eps,res);
-			auto n = nv1*abs(res.dist);
-			root->eval(p + nv2*eps,res);
-			n += nv2*abs(res.dist);
-			root->eval(p + nv3*eps,res);
-			n += nv3*abs(res.dist);
-			root->eval(p + nv4*eps,res);
-			n += nv4*abs(res.dist);
-			return normalize(n);
+
+			vec3f norm = zero3f;
+			root->eval(p + vec3f{eps,0,0},res);
+			norm.x = res.dist;
+			root->eval(p - vec3f{eps,0,0},res);
+			norm.x -= res.dist;
+			root->eval(p + vec3f{0,eps,0},res);
+			norm.y = res.dist;
+			root->eval(p - vec3f{0,eps,0},res);
+			norm.y -= res.dist;
+			root->eval(p + vec3f{0,0,eps},res);
+			norm.z = res.dist;
+			root->eval(p - vec3f{0,0,eps},res);
+			norm.z -= res.dist;
+
+			return normalize(norm);
 		}
-
-		inline virtual ygl::vec3f eval_v_normals(const VResult& vre,float eps) const {
-            //if(!cmpf(vre.norm,zero3f)){return vre.norm;}
-			const auto p = vre.wor_pos;
-
-			VResult res;
-			root->eval(p + nv1*eps,res);
-			auto n = nv1*res.vdist;
-			root->eval(p + nv2*eps,res);
-			n += nv2*res.vdist;
-			root->eval(p + nv3*eps,res);
-			n += nv3*res.vdist;
-			root->eval(p + nv4*eps,res);
-			n += nv4*res.vdist;
-			return normalize(n);
-		}
-
-
-
 
 		inline VNode* set_root(VNode* n) { root = n; return root; }
 		inline VNode* get_root() { return root; }
@@ -995,20 +997,20 @@ namespace vnx {
                 auto d = vre.dist;
                 auto absd = abs(d);
 
-                if(i==0){s = nz_sign(vre.vdist);if(nz_sign(vre.dist)<0){s=-1.0f;}pd = maxf_m1;}
+                if(i==0){s = nz_sign(vre.vdist);pd = maxf_m1;}
                 if(s<0){ //started inside
                     if(absd<ray.tmin){vre._found = true; return vre;}
                     t+=absd;
                     pd = d;
                 }else{  //started outside
-                    if(abs(d)>=abs(os)){
+                    if(absd>=abs(os)){
                         if(absd<ray.tmin){vre._found = true; return vre;}
                         os=d*min(1.0f,0.5f*d/pd);
                         t+=d+os;
                         pd=d;
                     }else{
                         t-=abs(os); // os
-                        pd=nz_sign(pd)*maxf_m1; //hmaxf
+                        pd=maxf_m1; //hmaxf
                         os=0.0;
                     }
                 }
@@ -1240,7 +1242,7 @@ namespace vnx {
             if(emap.find(id)==emap.end()){
                 auto vre_material = *vre.vmat;
                 if(vre_material.mutator!=nullptr){
-                    ygl::vec3f norm = scn.eval_normals(vre, neps);
+                    ygl::vec3f norm = scn.NORMALS_ALGO(vre, neps);
                     vre_material.eval_mutator(rng, vre, norm, vre_material);
                 };
                 if (vre.vdist<0.0f && vre_material.is_emissive()) {
@@ -1260,7 +1262,7 @@ namespace vnx {
                             if(er.vdist<0.0f && er.vsur->id == vre.vsur->id){
                                 auto er_material = *er.vmat;
                                 if(er_material.mutator!=nullptr){
-                                    ygl::vec3f norm = scn.eval_normals(er, neps);
+                                    ygl::vec3f norm = scn.NORMALS_ALGO(er, neps);
                                     er_material.eval_mutator(rng, er, norm, er_material);
                                 };
                                 if(er_material.is_emissive()){
@@ -1303,17 +1305,17 @@ namespace vnx {
         vre._found = true;
         if(vre.vsur!=nullptr && ptr->get_childs().empty() && vre.vsur->id == ptr->id){
             if(emap.find(id)==emap.end()){
-                auto vre_material = *vre.vmat;
+                auto vre_material = *vre.mat;
                 if(vre_material.mutator!=nullptr){
-                    ygl::vec3f norm = scn.eval_normals(vre, neps);
+                    ygl::vec3f norm = scn.NORMALS_ALGO(vre, neps);
                     vre_material.eval_mutator(rng, vre, norm, vre_material);
                 };
-                if (vre.vdist<0.0f && vre_material.is_emissive()) {
+                if (vre.dist<0.0f && vre_material.is_emissive()) {
                     std::vector<VResult>* epoints = &emap[id];
                     epoints->push_back(vre); n++;
 
                     //start by random angle, then bounce by using normals to hopefully map the volume ( other choice, start by at least 45 degrees, but needs testing)
-                    vec3f norm = scn.eval_normals(vre, neps);
+                    vec3f norm = scn.NORMALS_ALGO(vre, neps);
                     //vec3f dir = normalize(vec3f{0.45f,0.45f,0.45f});
                     //vec3f dir = normalize(vec3f{0.5f,0.5f,0.5f});
                     vec3f dir = normalize(rand3f_r(rng,-1.0f,1.0f));
@@ -1329,7 +1331,7 @@ namespace vnx {
                             if(verbose) std::cout<<"Er not found.\n";
                             continue;
                         }
-                        auto new_norm = scn.eval_normals(new_er, neps);
+                        auto new_norm = scn.NORMALS_ALGO(new_er, neps);
                         new_norm = normalize(new_norm+rand3f_r(rng,-0.1f,0.1f));
                         auto ndir = -ygl::reflect(ray.d,dot(ray.d,new_norm)<0 ? new_norm : -new_norm);
                         dir = ndir;
@@ -1337,7 +1339,7 @@ namespace vnx {
                         er = new_er;
                         ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)<0 ? norm : -norm,er.dist);
 
-                        auto er_material = *er.vmat;
+                        auto er_material = *er.mat;
                         if(er_material.mutator!=nullptr){
                             er_material.eval_mutator(rng, er, norm, er_material);
                         }
