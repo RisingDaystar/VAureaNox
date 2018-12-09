@@ -30,6 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <atomic>
 #include <stack>
 #include <iostream>
+#include <math.h>
 
 #define INTERSECT_ALGO intersect_rel
 #define NORMALS_ALGO eval_normals_tht
@@ -237,6 +238,12 @@ namespace vnx {
         return cmpf(a.x,b.x) == cmpf(a.y,b.y) == cmpf(a.z,b.z);
     }
 
+    inline bool has_nan(const vec3f& a){
+        return std::isnan(a.x) || std::isnan(a.y) || std::isnan(a.z);
+    }
+    inline bool is_zero_or_has_ltz(const vec3f& a){
+        return cmpf(a,zero3f) || a.x<-ygl::epsf || a.y<-ygl::epsf || a.z<-ygl::epsf;
+    }
 	/////
 	/////
 	//DUAL NUMBERS AUTOMATIC DERIVATIVES
@@ -1306,16 +1313,20 @@ namespace vnx {
         if(vre.vsur!=nullptr && ptr->get_childs().empty() && vre.vsur->id == ptr->id){
             if(emap.find(id)==emap.end()){
                 auto vre_material = *vre.mat;
+                ygl::vec3f norm = scn.NORMALS_ALGO(vre, neps);
                 if(vre_material.mutator!=nullptr){
-                    ygl::vec3f norm = scn.NORMALS_ALGO(vre, neps);
                     vre_material.eval_mutator(rng, vre, norm, vre_material);
                 };
-                if (vre.dist<0.0f && vre_material.is_emissive()) {
+                auto vre_vmaterial = *vre.vmat;
+                if(vre_vmaterial.mutator!=nullptr){
+                    vre_vmaterial.eval_mutator(rng, vre, norm, vre_vmaterial);
+                };
+                if (vre.vdist<0.0f && (vre_material.is_emissive() || vre_vmaterial.is_emissive())) {
                     std::vector<VResult>* epoints = &emap[id];
                     epoints->push_back(vre); n++;
 
                     //start by random angle, then bounce by using normals to hopefully map the volume ( other choice, start by at least 45 degrees, but needs testing)
-                    vec3f norm = scn.NORMALS_ALGO(vre, neps);
+                    //vec3f norm = scn.NORMALS_ALGO(vre, neps);
                     //vec3f dir = normalize(vec3f{0.45f,0.45f,0.45f});
                     //vec3f dir = normalize(vec3f{0.5f,0.5f,0.5f});
                     vec3f dir = normalize(rand3f_r(rng,-1.0f,1.0f));
@@ -1343,7 +1354,11 @@ namespace vnx {
                         if(er_material.mutator!=nullptr){
                             er_material.eval_mutator(rng, er, norm, er_material);
                         }
-                        if (er_material.is_emissive()) {
+                        auto er_vmaterial = *er.vmat;
+                        if(er_vmaterial.mutator!=nullptr){
+                            er_vmaterial.eval_mutator(rng, er, norm, er_vmaterial);
+                        }
+                        if (er_material.is_emissive() || er_vmaterial.is_emissive()) {
                             er._found = true;
                             epoints->push_back(er); n++;
                             if(verbose) std::cout<<"EM ( light: "<<id<<" ) : {"<<er.wor_pos.x<<","<<er.wor_pos.y<<","<<er.wor_pos.z<<"}\n";

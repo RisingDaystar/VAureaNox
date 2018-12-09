@@ -287,16 +287,17 @@ namespace vnx {
                 //TODO : controllare meccanismo del poll_volume
                 auto poll = poll_volume(scn, rng, rr);
                 VResult hit = scn.INTERSECT_ALGO( rr, n_max_march_iterations, i);
-                if(poll.is_inside() && !poll.emat.is_transmissive()) {/*std::cout<<"Blocked Direct Lighting!: "<<poll.emat.id<<"--> dist : "<<poll.eres.dist<<"; --> vdist :"<<poll.eres.vdist<<"\n";*/break;}
+                if(poll.is_inside() && !poll.emat.is_transmissive()) {if(status.bDebugMode){std::cout<<"*<!>Shadow Loop--> Blocked!: "<<poll.emat.id<<"--> dist : "<<poll.eres.dist<<"; --> vdist :"<<poll.eres.vdist<<"\n";}break;}
 				if (!hit.found() || !hit.valid()) { return zero3f; }
 
                 if(poll.is_inside_transmissive()){
                     w *= calc_beer_law(poll.emat,length(rr.o-hit.wor_pos));
                 }
-                if(w == zero3f){return zero3f;}
+                if(is_zero_or_has_ltz(w)){return zero3f;}
 
                 VMaterial hmat = *hit.mat;
                 n = scn.NORMALS_ALGO(hit, f_normal_eps);
+                if(n==zero3f){if(status.bDebugMode){std::cout<<"*<!>Shadow Loop--> Normal is zero\n";}return zero3f;}
 				hmat.eval_mutator(rng, hit, n, hmat);
 
 				if (hmat.is_emissive()) {
@@ -306,28 +307,27 @@ namespace vnx {
 				}
 
 				if (hmat.is_transmissive()) {
-                    if(!hmat.is_refractive()){
-                        bool outside = dot(rr.d,n) < 0;
-                        vec3f offBy = outside ? -n : n;
-                        rr = offsetted_ray(hit.wor_pos, rr, rr.d, rr.tmin, rr.tmax, offBy, hit.dist, f_refracted_ray_eps_mult);
-                    }else{
-                        if(!b_do_thin_shadows) return ygl::zero3f;
-                        bool outside = dot(rr.d,n) < 0;
-                        vec3f offBy = outside ? -n : n;
+                    if(!b_do_thin_shadows) return ygl::zero3f;
+                    bool outside = dot(rr.d,n) < 0;
+                    vec3f offBy = outside ? -n : n;
 
-                        //TODO : fix del meccanismo del poll_ray / poll_volume
-                        //auto poll_ray = offsetted_ray(hit.wor_pos,rr,rr.d,rr.tmin,rr.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
-                        //auto poll = poll_volume(scn,rng,poll_ray);
-                        //auto ior = poll_ray.ior;
+                    //TODO : fix del meccanismo del poll_ray / poll_volume
+                    //auto poll_ray = offsetted_ray(hit.wor_pos,rr,rr.d,rr.tmin,rr.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
+                    //auto poll = poll_volume(scn,rng,poll_ray);
+                    //auto ior = poll_ray.ior;
 
-                        auto ior = hmat.eval_ior(rr.wl,f_min_wl,f_max_wl,b_do_spectral);
-                        auto ks = eval_fresnel_dielectric(-rr.d,n,rr.ior,ior);
-                        w*=1.0f-ks;
-                        rr = offsetted_ray(hit.wor_pos, rr, rr.d, rr.tmin, rr.tmax, offBy, hit.dist, f_refracted_ray_eps_mult);
-                    }
+                    auto ior = hmat.eval_ior(rr.wl,f_min_wl,f_max_wl,b_do_spectral);
+                    auto ks = eval_fresnel_dielectric(-rr.d,n,rr.ior,ior);
+                    if(cmpf(ks,1.0f)) return zero3f;
+
+                    w*=1.0f-ks;
+                    rr = offsetted_ray(hit.wor_pos, rr, rr.d, rr.tmin, rr.tmax, offBy, hit.dist, f_refracted_ray_eps_mult);
+                    if(b> 2 && !russian_roulette(rng,w)) return zero3f;
 				}
 				else{ return ygl::zero3f; }
-				if(status.bDebugMode) std::cout<<"*Shadow Loop--> i:"<<i<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
+
+				if(has_nan(w)){std::cout<<"*<!>Shadow Loop--> NaN detected\n";return zero3f;}
+				if(status.bDebugMode) std::cout<<"*<!>Shadow Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
 
 				b++;
 			}
@@ -487,6 +487,7 @@ namespace vnx {
                     }
                     if(ndh>ygl::epsf){
                         auto odh = dot(wo.d,h);
+                        if(cmpf(odh,0.0f))return pdf;
                         auto d = (brdf_ggx_pdf(material.rs,ndi,ndo,ndh));
                         pdf += weights.y * d / (4*abs(odh));
                     }
@@ -517,7 +518,7 @@ namespace vnx {
                     if(ndo*ndi<=ygl::epsf) li+= ((one3f-F)*(brdf_ggx_DG(material.rs,irdn,ndo,dot(n,hv))) / (4*abs(irdn)*abs(ndo)))*abs(ndi);
                     else li+= (F*(brdf_ggx_DG(material.rs,irdn,ndo,dot(n,hv))) / (4*abs(irdn)*abs(ndo)))*abs(ndi);
                 }else{
-                    //if(ndo*ndi<=ygl::epsf) return zero3f;
+                    if(ndo*ndi<=ygl::epsf) return zero3f;
                     auto h = normalize(wi.d+wo.d);
                     auto ndh = dot(n,h);
                     vec3f F = zero3f;
@@ -706,7 +707,7 @@ namespace vnx {
                     //TODO, controllare meccanismo del poll volume
                     auto poll = poll_volume(scn, rng, sample.ray);
                     VResult hit = scn.INTERSECT_ALGO( sample.ray, n_max_march_iterations, n_iters);
-                    if(poll.is_inside() && !poll.emat.is_transmissive()) {/*std::cout<<"Blocked!: "<<poll.emat.id<<"--> dist : "<<poll.eres.dist<<"; --> vdist :"<<poll.eres.vdist<<"\n";*/break;}
+                    if(poll.is_inside() && !poll.emat.is_transmissive()) {if(status.bDebugMode){std::cout<<"*<!>Main Loop--> Blocked!: "<<poll.emat.id<<"--> dist : "<<poll.eres.dist<<"; --> vdist :"<<poll.eres.vdist<<"\n";}break;}
                     if (!hit.found() || !hit.valid()) {break; }
 
                     if (b_debug_iterations) {
@@ -725,7 +726,7 @@ namespace vnx {
                     auto n = scn.NORMALS_ALGO(hit, f_normal_eps);
 
                     material.eval_mutator(rng, hit, n, material);
-                    if(n==zero3f){if(status.bDebugMode){std::cout<<"<!>Normal is zero...\n";}break;}
+                    if(n==zero3f){if(status.bDebugMode){std::cout<<"*<!>Main Loop--> Normal is zero\n";}break;}
 
                     auto wo = -sample.ray;
                     auto wi = sample.ray;
@@ -745,6 +746,8 @@ namespace vnx {
                     sample_bsdfcos(scn, rng, hit,material,wo,n,samples);
                     if(samples.empty()) break;
 
+                    gather_ke = isGathering(material);
+
                     for(int si=1;si<samples.size();si++){ // supporto al branched, se necessario
                         auto ss = samples[si];
                         auto wi = ss.ray;
@@ -753,13 +756,12 @@ namespace vnx {
                         vec3f sw = w;
 
                         auto pdf = eval_bsdfcos_pdf(material,wi,wo,n);
-                        if(pdf<=ygl::epsf) break;
+                        if(pdf<=ygl::epsf) continue;
                         sw*= eval_bsdfcos(material,wi,wo,n)/pdf;
-                        if(sw==zero3f) break;
+                        if(is_zero_or_has_ltz(sw)) continue;
 
-                        if (b > 2 && !russian_roulette(rng,sw) && ss.type!=s_transmissive) continue;
-                        bool gke = isGathering(material);
-                        s_queue.push_back(VPExSample(ss,sw,gke,b+1));
+                        if (b > 2 && !russian_roulette(rng,sw)) continue; // && ss.type!=s_transmissive
+                        s_queue.push_back(VPExSample(ss,sw,gather_ke,b+1));
                     }
                     auto prev_sample = sample;
                     sample = samples[0];
@@ -769,12 +771,12 @@ namespace vnx {
                     auto pdf = eval_bsdfcos_pdf(material,wi,wo,n);
                     if(pdf<=ygl::epsf) break;
                     w*= eval_bsdfcos(material,wi,wo,n)/pdf;
-                    if(w==zero3f) break;
+                    if(is_zero_or_has_ltz(w)) break;
 
 
-                    if (b > 2 && !russian_roulette(rng,w) && sample.type!=s_transmissive) break;
-                    if(status.bDebugMode) std::cout<<"*Main Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
-                    gather_ke = isGathering(material);
+                    if (b > 2 && !russian_roulette(rng,w)) break; // && sample.type!=s_transmissive
+                    if(status.bDebugMode)std::cout<<"*<!>Main Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
+                    if(has_nan(w)){std::cout<<"*<!>Main loop--> NaN detected\n";break;}
 
                     b++;
                 };
