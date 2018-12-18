@@ -1347,7 +1347,7 @@ namespace vnx {
                         dir = ndir;
                         norm = new_norm;
                         er = new_er;
-                        ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,er.dist<ygl::epsf ? -norm : norm,er.dist);
+                        ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)<0 ? norm : -norm,er.dist);
 
                         auto er_material = *er.mat;
                         if(er_material.mutator!=nullptr){
