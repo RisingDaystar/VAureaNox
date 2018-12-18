@@ -320,11 +320,19 @@ namespace vnx {
                     bool outside = dot(rr.d,n) < 0;
                     vec3f offBy = outside ? -n : n;
 
-                    auto ior = hmat.eval_ior(rr.wl,f_min_wl,f_max_wl,b_do_spectral);
-                    auto ks = eval_fresnel_dielectric(-rr.d,n,rr.ior,ior);
-                    if(cmpf(ks,1.0f)) return zero3f;
+                    float ior = 1.0f;
+                    if(b_use_poll_ray_transmissive){
+                        auto poll_ray = offsetted_ray(hit.wor_pos, rr, rr.d, rr.tmin, rr.tmax, offBy, hit.dist, f_refracted_ray_eps_mult);
+                        auto poll = poll_volume(scn,rng,poll_ray);
+                        if(poll.is_inside_transmissive()) ior = poll_ray.ior;
+                        else ior = hmat.eval_ior(rr.wl,f_min_wl,f_max_wl,b_do_spectral);
+                    }else{
+                        ior = hmat.eval_ior(rr.wl,f_min_wl,f_max_wl,b_do_spectral);
+                    }
 
-                    w*=1.0f-ks;
+                    auto F = eval_fresnel_dielectric(-rr.d,n,rr.ior,ior);
+                    if(cmpf(F,1.0f)) return zero3f;
+                    w*=1.0f-F;
                     rr = offsetted_ray(hit.wor_pos, rr, rr.d, rr.tmin, rr.tmax, offBy, hit.dist, f_refracted_ray_eps_mult);
                     if(b> 2 && !russian_roulette(rng,w)) return zero3f;
 				}
@@ -782,10 +790,15 @@ namespace vnx {
                     auto brdf = eval_bsdfcos(material,wi,wo,n);
 
                     if(!gather_ke){
-                        VResult point = sample_emissive_in_light(scn, rng, ygl::get_random_int(rng,scn.emissive_hints.size()));
-                        VRay lwi = offsetted_ray(hit.wor_pos, wi, normalize(point.wor_pos-hit.wor_pos), wo.tmin, wo.tmax, n, hit.dist, 2.0f);
-                        //TODO, implement multiple lights pdf
-                        auto lpdf = eval_bsdfcos_pdf(material,lwi,wo,n);
+                        int idl = 0;
+                        VRay lwi = {};
+                        float lpdf = 0.0f;
+
+                        if(scn.emissive_hints.size()>0){
+                            VResult point = sample_emissive_in_light(scn, rng, ygl::get_random_int(rng,scn.emissive_hints.size()));
+                            lwi = offsetted_ray(hit.wor_pos, wi, normalize(point.wor_pos-hit.wor_pos), wo.tmin, wo.tmax, n, hit.dist, 2.0f);
+                            lpdf = eval_bsdfcos_pdf(material,lwi,wo,n);
+                        }
 
                         VResult lres;
                         vec3f ln;

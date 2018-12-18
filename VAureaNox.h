@@ -1315,7 +1315,7 @@ namespace vnx {
                 if(vre_vmaterial.mutator!=nullptr){
                     vre_vmaterial.eval_mutator(rng, vre, norm, vre_vmaterial);
                 };
-                if (vre.vdist<ygl::epsf && (vre_material.is_emissive() || vre_vmaterial.is_emissive())) {
+                if ((vre.vdist<ygl::epsf || vre.dist<ygl::epsf) && (vre_material.is_emissive() || vre_vmaterial.is_emissive())) {
                     std::vector<VResult>* epoints = &emap[id];
                     epoints->push_back(vre); n++;
 
@@ -1347,7 +1347,7 @@ namespace vnx {
                         dir = ndir;
                         norm = new_norm;
                         er = new_er;
-                        ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)<0 ? norm : -norm,er.dist);
+                        ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,-norm,er.dist);
 
                         auto er_material = *er.mat;
                         if(er_material.mutator!=nullptr){

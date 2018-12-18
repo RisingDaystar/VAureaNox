@@ -86,6 +86,7 @@ namespace vscndef {
 
 
         auto room = new vop_invert("room",new vvo_sd_box("box",diffuse,60.0f));
+        //auto room  = new vvo_sd_box("room",glass,60.0f);
         auto light = new vvo_sd_sphere("light",emissive,10.0f);
 
         auto box = new vvo_sd_box("box",diffuse2,{0.5f,2.0f,0.5f});
