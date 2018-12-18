@@ -27,7 +27,7 @@ namespace vscndef {
 
 	void init_pathtracing_scene(vnx::VScene& scn) {
 		scn.id = "pathtracing";
-		scn.camera._frame = ygl::lookat_frame<float>({ 0.0, 3.2f, 30.0f }, { 0.0f, 0.1f, 0.0f }, { 0, 1, 0 }); //diritto
+		scn.camera._frame = ygl::lookat_frame<float>({ 0.0, 1.2f, 30.0f }, { 0.0f, 0.1f, 0.0f }, { 0, 1, 0 }); //diritto
 		scn.camera.focus = ygl::length(ygl::vec3f{ 0, 3.1f,30.0f } -ygl::vec3f{ 0, 1, 0 });
 		scn.camera.yfov = 15 * ygl::pif / 180;
 		scn.camera.aperture = 0.00f;
@@ -35,11 +35,11 @@ namespace vscndef {
 
 		auto emissive = scn.add_material("emissive");
 		emissive->e_temp = 6500;
-		emissive->e_power = 6000;
+		emissive->e_power = 9000;
 
 		auto emissive_dim = scn.add_material("emissive_dim");
 		emissive_dim->e_temp = 6500;
-		emissive_dim->e_power = 20;
+		emissive_dim->e_power = 200;
 
 		auto diffuse = scn.add_material("diffuse");
 		diffuse->kr = vec3f{0.5f,0.5f,0.65f};
@@ -59,14 +59,14 @@ namespace vscndef {
 		diffuse2->kr = vec3f{1.0f,0.3f,0.3f};
 
         auto diffuse3 = scn.add_material("diffuse3");
-		diffuse3->kr = vec3f{0.2f,0.2f,0.2f};
+		diffuse3->kr = vec3f{0.8f,0.0f,0.0f};
 
         auto metal = scn.add_material("metal");
         metal->type = conductor;
         metal->ior = 1.5f;
         metal->ior_type = non_wl_dependant;
 		metal->kr = vec3f{0.4f,0.9f,0.4f};
-		metal->rs = 0.20f;
+		metal->rs = 0.05f;
 
         auto mirror = scn.add_material("mirror");
         mirror->type = conductor;
@@ -91,7 +91,7 @@ namespace vscndef {
         auto box = new vvo_sd_box("box",diffuse2,{0.5f,2.0f,0.5f});
         auto sphere = new vvo_sd_sphere("sphere",metal,1.0f);
         auto sphere2 = new vvo_sd_sphere("sphere2",glass,1.0f);
-        auto light2 = new vvo_sd_sphere("light2",emissive_dim,0.5f);
+        //auto light2 = new vvo_sd_sphere("light2",emissive_dim,0.5f);
         auto slab = new vvo_sd_box("slab",mirror,{1.5f,0.1f,1.5f});
         auto ring = new vop_subtraction("ring",{
             new vvo_sd_cylinder("outer",mirror,{1.3f,0.3f}),
@@ -106,7 +106,7 @@ namespace vscndef {
             sphere,
             sphere2,
             slab,
-            new vop_union("ring_group",{ring,ring_pedestal,light2}),
+            new vop_union("ring_group",{ring,ring_pedestal}),
             room,
 		});
 		scn.set_root(root);

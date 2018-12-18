@@ -37,7 +37,6 @@ using namespace vnx;
 
 namespace vnx {
 
-
 	void shut(VScene& scn, VRenderer* renderer) {
 		scn.shut();
 		if (renderer != nullptr) { delete renderer; renderer = nullptr; }
@@ -65,8 +64,6 @@ namespace vnx {
 		if (w <= 0 || h <= 0) { throw VException("Invalid image dimensions."); }
 		init_image(img,{w, h});
 		scn.camera.aspect = ((float)w)/((float)h);
-		scn.camera.compute_pixel_radius({w,h});
-
 	}
 
 	void task(int id, const VScene& scn, VRenderer* renderer, image3f& img, std::mutex& mtx, ygl::rng_state& rng, volatile std::atomic<int>& lrow, volatile std::atomic<int>& rowCounter) {

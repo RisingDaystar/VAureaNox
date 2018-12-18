@@ -286,9 +286,8 @@ struct vop_repeat : public VOperator {
             ep = transform_point_inverse(_frame, p) / scale;
             ep = transform_point(_frame, ep);
         }
-
-        vec3f mpc = gl_mod(ep,cells)-(0.5f*cells);
-        childs[0]->eval(mpc,res);
+        ep = gl_mod(ep,cells)-(0.5f*cells);
+        childs[0]->eval(ep,res);
 
 		res.wor_pos = p;
 		auto dspm = eval_displacement(ep);
@@ -332,6 +331,93 @@ struct vop_invert : public VOperator {
 	}
 };
 
+
+
+struct vop_onion : public VOperator {
+    float thickness = 0.2f;
+	vop_onion(std::string idv, VNode* chs) : VOperator(idv, { chs }), thickness(0.2f) {}
+	vop_onion(std::string idv, float tk, VNode* chs) : VOperator(idv, { chs }), thickness(tk){}
+	inline const char* type(){return "vop_onion";}
+	virtual void eval(const ygl::vec3f& p,VResult& res) {
+	    ygl::vec3f ep = p;
+        if(scale!=one3f){
+            ep = transform_point_inverse(_frame, p) / scale;
+            ep = transform_point(_frame, ep);
+        }
+        childs[0]->eval(ep,res);
+		res.wor_pos = p;
+
+        res.dist = abs(res.dist+thickness)-thickness; //abs(dist+thickness) ->added +thickness to preserve volume
+        res.vdist = abs(res.vdist+thickness)-thickness; //abs(dist+thickness) ->added +thickness to preserve volume
+
+		auto dspm = eval_displacement(ep);
+		auto sfct = min_element(scale);
+		res.dist += dspm;
+		res.dist *= sfct;
+
+		res.vdist += dspm;
+		res.vdist *= sfct;
+	}
+};
+
+struct vop_cut : public VOperator {
+    vec<short,3> axis = {0,1,0};
+    vec3f offset = zero3f;
+    float blend_factor = 0.0f;
+	vop_cut(std::string idv, VNode* chs) : VOperator(idv, { chs }),axis({0,1,0}),offset(zero3f),blend_factor(0.0f) {}
+	vop_cut(std::string idv,const vec<short,3>& ax,const vec3f& off,float bf, VNode* chs) : VOperator(idv, { chs }),axis(ax),offset(off),blend_factor(bf) {}
+	inline const char* type(){return "vop_cut";}
+	virtual void eval(const ygl::vec3f& p,VResult& res) {
+	    ygl::vec3f ep = p;
+        if(scale!=one3f){
+            ep = transform_point_inverse(_frame, p) / scale;
+            ep = transform_point(_frame, ep);
+        }
+        childs[0]->eval(ep,res);
+        auto epe = transform_point_inverse(_frame, ep+offset);
+
+        auto dist = res.dist;
+        auto vdist = res.vdist;
+        if(blend_factor<ygl::epsf){
+            if(axis.x!=0){
+                dist = std::max(dist,axis.x*epe.x);
+                vdist = std::max(vdist,axis.x*epe.x);
+            }
+            if(axis.y!=0){
+                dist = std::max(dist,axis.y*epe.y);
+                vdist = std::max(vdist,axis.y*epe.y);
+            }
+            if(axis.z!=0){
+                dist = std::max(dist,axis.z*epe.z);
+                vdist = std::max(vdist,axis.z*epe.z);
+            }
+        }else{
+            if(axis.x!=0){
+                dist = smax(dist,axis.x*epe.x,blend_factor);
+                vdist = smax(vdist,axis.x*epe.x,blend_factor);
+            }
+            if(axis.y!=0){
+                dist = smax(dist,axis.y*epe.y,blend_factor);
+                vdist = smax(vdist,axis.y*epe.y,blend_factor);
+            }
+            if(axis.z!=0){
+                dist = smax(dist,axis.z*epe.z,blend_factor);
+                vdist = smax(vdist,axis.z*epe.z,blend_factor);
+            }
+        }
+        res.dist = dist;
+        res.vdist = vdist;
+
+		res.wor_pos = p;
+		auto dspm = eval_displacement(ep);
+		auto sfct = min_element(scale);
+		res.dist += dspm;
+		res.dist *= sfct;
+
+		res.vdist += dspm;
+		res.vdist *= sfct;
+	}
+};
 
 
 #endif

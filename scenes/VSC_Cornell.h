@@ -47,11 +47,12 @@ namespace vscndef {
 
 		auto diff_white = scn.add_material("diff_white");
 		diff_white->kr = { 0.8f,0.8f,0.8f };
+		diff_white->rs = 0.5f;
 		//diff_white->ior_type = non_wl_dependant;
         //diff_white->ior = 1.2f;
 
 		auto carbon_diamond_material = scn.add_material("diamond_material");
-        carbon_diamond_material->ka = vec3f{0.01f,0.01f,0.01f};
+        carbon_diamond_material->ka = vec3f{3.01f,3.01f,3.01f};
         carbon_diamond_material->sm_b1 = 0.3306f;
         carbon_diamond_material->sm_c1 = 0.1750f;
         carbon_diamond_material->sm_b2 = 4.3356f;
@@ -71,7 +72,7 @@ namespace vscndef {
         borosilicate_glass_material->ior = 1.17f;
         borosilicate_glass_material->k_sca = 0.0f;
         */
-        borosilicate_glass_material->ka = vec3f{1.01f,1.01f,1.01f};
+        borosilicate_glass_material->ka = zero3f;
 		borosilicate_glass_material->sm_b1 = 1.03961212;
 		borosilicate_glass_material->sm_b2 = 0.231792344;
 		borosilicate_glass_material->sm_b3 = 1.01046945;
@@ -87,10 +88,7 @@ namespace vscndef {
         no_refr_media->k_sca = 0.0f;
 
         auto sp_mat2 = scn.add_material("sp_mat2");
-        sp_mat2->type = conductor;
         sp_mat2->kr = {0.8f,0.8f,0.8f};
-        //sp_mat2->kr = {0.4f,0,0};
-        sp_mat2->rs = 0.2f;
 
         auto sp_mat = scn.add_material("sp_mat");
         sp_mat->type = conductor;
@@ -100,6 +98,7 @@ namespace vscndef {
 
         auto cornell_composite_mat = scn.add_material("cornell_composite_mat");
         cornell_composite_mat->kr = {0.4f,0.4f,0.4f};
+        cornell_composite_mat->rs = 0.5f;
 		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
            if(hit.loc_pos.x<=-3.945f){mat.kr = {0.0f,0.4f,0.0f};/*mat.ks={1.0f,1.0f,1.0f};*/}
            else if(hit.loc_pos.x>=3.945f){mat.kr = {0.4f,0.0f,0.0f};/*mat.ks={1.0f,1.0f,1.0f};*/}
@@ -128,25 +127,22 @@ namespace vscndef {
                     new vvo_sd_box("box_subtr",cornell_composite_mat,3.95f),
                     new vvo_sd_box("box_subtr_ceil",cornell_composite_mat,{1.0f,0.5f,1.0f}),
                 }),
-                new vvo_sd_box("light",material_emissive,{ 1.0f,0.1f,1.0f }),
-                //new vvo_sd_sphere("light",material_emissive,0.3f),
+                new vvo_sd_box("light",material_emissive,{ 1.0f,0.03f,1.0f }),
+
                 new vop_union("glass",{
-                    new vop_subtraction("glass_sub",0.02f,{
-                        new vvo_sd_cylinder("outer",borosilicate_glass_material,{1.3f,2.3f}),
-                        new vvo_sd_cylinder("inner",borosilicate_glass_material,{1.10f,2.2f})
-                    }),
-                    new vvo_sd_cylinder("inner_water",water_material,{1.29f,1.0f}),
-                    new vvo_sd_box("obs",sp_mat2,{0.1f,3.0f,0.1f}),
+                    new vop_cut("glass_cylinder",{0,1,0},{0,-1.8f,0},0.0f,new vop_onion("_gc_eo",0.15f,new vvo_sd_cylinder("_gc_e",borosilicate_glass_material,{1.3f,2.3f}))),
+                    new vvo_sd_cylinder("inner_water",water_material,{0.99f,1.0f}),
+                    new vop_twist("obs",Z,0.8f,new vvo_sd_box("obs_t",diff_white,{0.1f,3.0f,0.1f})),
                 }),
 
-                //new vvo_sd_sphere("sph",borosilicate_glass_material,1.0f),
-                //new vvo_sd_pyramid4("sph",borosilicate_glass_material,{1,1,2.5}),
-                new vvo_sd_box("mirror",sp_mat,{3.0f,3.0f,0.1f}),
+
+                new vop_cut("mirror",{0,1,1},{0,0,0},0.1f,new vop_onion("mirror_o",0.06f,new vvo_sd_sphere("mirror_i",sp_mat))),
 
                 new vop_union("sph",{
                     new vvo_sd_sphere("sph_s",borosilicate_glass_material),
                     new vvo_sd_sphere("sph_si",diff_white,0.4f),
                 }),
+
 
             }),
 
@@ -156,14 +152,14 @@ namespace vscndef {
 
 		scn.set_translation("box_subtr",{0,0,0.1f});
         scn.set_translation("box_subtr_ceil",{0,3.8f,0.1f});
-        scn.set_translation("light", { 0.0f,3.95f,0 });
+        scn.set_translation("light", { 0.0f,4.00f,0 });
 
         scn.set_translation("glass",0,-1.8f,0);
         scn.set_translation("inner",0,0.6f,0);
-        scn.set_translation("inner_water",0,-1.2f,0);
+        scn.set_translation("inner_water",0,-2.0f,0);
 
-        scn.set_translation("obs",{-0.6f,1.3f,0});
-        scn.set_rotation_degs("obs",{0,0,20});
+        scn.set_translation("obs",{-0.4f,1.1f,0});
+        scn.set_rotation_degs("obs",{0,45,20});
 
         scn.set_translation("sph",{2.2f,-3.0f,-2.3f});
         scn.set_rotation_degs("sph",{45,45,45});
@@ -181,11 +177,11 @@ namespace vscndef {
 		*/
 
         auto ftor = [](const vec3f& p){
-            const float f = 8.0f;
-            const float fd = f*8;
+            const float f = 6.0f;
+            const float fd = f*1;
             return (sin(f*p.x)*sin(f*p.y)*sin(f*p.z))/fd; //18= 1/20 + 1/20 + 1/20 ///limiti della funzione sin (e cos...)
         };
-        //scn.set_displacement("glass",ftor);
+        //scn.set_displacement("inner_water",ftor);
 
 
 	}

@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stack>
 #include <iostream>
 #include <math.h>
+#include <sstream>
 
 #define INTERSECT_ALGO intersect_rel
 #define NORMALS_ALGO eval_normals_tht
@@ -204,9 +205,11 @@ namespace vnx {
 
     using std::max;
     template <typename T> inline ygl::vec<T,3> max(const ygl::vec<T,3>& v1,const ygl::vec<T,3>& v2){return ygl::vec<T,3>{max(v1.x,v2.x),max(v1.y,v2.y),max(v1.z,v2.z)};}
+    template <typename T> inline ygl::vec<T,2> max(const ygl::vec<T,2>& v1,const ygl::vec<T,2>& v2){return ygl::vec<T,2>{max(v1.x,v2.x),max(v1.y,v2.y)};}
 
     using std::min;
     template <typename T> inline ygl::vec<T,3> min(const ygl::vec<T,3>& v1,const ygl::vec<T,3>& v2){return ygl::vec<T,3>{min(v1.x,v2.x),min(v1.y,v2.y),min(v1.z,v2.z)};}
+    template <typename T> inline ygl::vec<T,2> min(const ygl::vec<T,2>& v1,const ygl::vec<T,2>& v2){return ygl::vec<T,2>{min(v1.x,v2.x),min(v1.y,v2.y)};}
 
     using std::abs;
     template <typename T> inline ygl::vec<T,3> abs(const ygl::vec<T,3>& v){return ygl::vec<T,3>{abs(v.x),abs(v.y),abs(v.z)};}
@@ -241,8 +244,23 @@ namespace vnx {
     inline bool has_nan(const vec3f& a){
         return std::isnan(a.x) || std::isnan(a.y) || std::isnan(a.z);
     }
+
+    inline bool has_nnormal(const vec3f& a){
+        return !(std::isnormal(a.x) && std::isnormal(a.y) && std::isnormal(a.z));
+    }
+
+    inline bool has_inf(const vec3f& a){
+        return !(std::isfinite(a.x) && std::isfinite(a.y) && std::isfinite(a.z));
+    }
+
     inline bool is_zero_or_has_ltz(const vec3f& a){
         return cmpf(a,zero3f) || a.x<-ygl::epsf || a.y<-ygl::epsf || a.z<-ygl::epsf;
+    }
+
+    inline std::string _p(const vec3f& v){
+        std::ostringstream oss;
+        oss << v.x << "," << v.y << "," << v.z;
+        return oss.str();
     }
 	/////
 	/////
@@ -425,47 +443,47 @@ namespace vnx {
 	*/
 
     ///Credits : http://bl.ocks.org/benjaminabel/4355926 ///
-	inline ygl::vec3f spectral_color(float w) // RGB <0,1> <- lambda w <380,780> [nm]
+	inline ygl::vec3f spectral_to_rgb(float w) // RGB <0,1> <- lambda w <380,780> [nm]
 	{
-		double l = 0.0; double R = 0.0; double G = 0.0; double B = 0.0;
-        if (w >= 380 && w < 440) {
-            R = -(w - 440.0) / (440.0 - 350.0);
-            G = 0.0;
-            B = 1.0;
-        } else if (w >= 440 && w < 490) {
-            R = 0.0;
-            G = (w - 440.0) / (490.0 - 440.0);
-            B = 1.0;
-        } else if (w >= 490 && w < 510) {
-            R = 0.0;
-            G = 1.0;
-            B = -(w - 510.0) / (510.0 - 490.0);
-        } else if (w >= 510 && w < 580) {
-            R = (w - 510.0) / (580.0 - 510.0);
-            G = 1.0;
+		float l = 0.0f; float R = 0.0f; float G = 0.0f; float B = 0.0f;
+        if (w >= 380.0f && w < 440.0f) {
+            R = -(w - 440.0f) / (440.0f - 350.0f);
+            G = 0.0f;
+            B = 1.0f;
+        } else if (w >= 440.0f && w < 490.0f) {
+            R = 0.0f;
+            G = (w - 440.0f) / (490.0f - 440.0f);
+            B = 1.0f;
+        } else if (w >= 490.0f && w < 510.0f) {
+            R = 0.0f;
+            G = 1.0f;
+            B = -(w - 510.0f) / (510.0f - 490.0f);
+        } else if (w >= 510.0f && w < 580.0f) {
+            R = (w - 510.0f) / (580.0f - 510.0f);
+            G = 1.0f;
+            B = 0.0f;
+        } else if (w >= 580.0f && w < 645.0f) {
+            R = 1.0f;
+            G = -(w - 645.0f) / (645.0f - 580.0f);
             B = 0.0;
-        } else if (w >= 580 && w < 645) {
-            R = 1.0;
-            G = -(w - 645.0) / (645.0 - 580.0);
-            B = 0.0;
-        } else if (w >= 645 && w <= 780) {
-            R = 1.0;
-            G = 0.0;
-            B = 0.0;
+        } else if (w >= 645.0f && w <= 780.0f) {
+            R = 1.0f;
+            G = 0.0f;
+            B = 0.0f;
         } else {
-            R = 0.0;
-            G = 0.0;
-            B = 0.0;
+            R = 0.0f;
+            G = 0.0f;
+            B = 0.0f;
         }
 
-        if (w >= 380 && w < 420) {
-            l = 0.3 + 0.7 * (w - 350) / (420 - 350);
-        } else if (w >= 420 && w <= 700) {
-            l = 1.0;
-        } else if (w > 700 && w <= 780) {
-            l = 0.3 + 0.7 * (780 - w) / (780 - 700);
+        if (w >= 380.0f && w < 420.0f) {
+            l = 0.3f + 0.7f * (w - 350.0f) / (420.0f - 350.0f);
+        } else if (w >= 420.0f && w <= 700.0f) {
+            l = 1.0f;
+        } else if (w > 700.0f && w <= 780.0f) {
+            l = 0.3f + 0.7f * (780.0f - w) / (780.0f - 700.0f);
         } else {
-            l = 0.0;
+            l = 0.0f;
         }
 		return {l*R,l*G,l*B};
 	}
@@ -504,7 +522,7 @@ namespace vnx {
 	}
 
     //.,.,.,nm^2,nm^2,nm^2,nm
-	inline double sellmeier_law(double b1, double b2, double b3, double c1, double c2, double c3, float wl) {
+	inline float sellmeier_law(float b1, float b2, float b3, float c1, float c2, float c3, float wl) {
 		wl *= 1e-2;
 		auto wl2 = wl*wl;
 		return std::sqrt(1 +
@@ -512,6 +530,10 @@ namespace vnx {
 			((b2*wl2) / (wl2 - c2)) +
 			((b3*wl2) / (wl2 - c3))
 		);
+	}
+
+	inline float F0_from_ior(float ior){
+	    return powf((ior-1.0f)/(ior+1.0f),2.0f);
 	}
 
 	struct VRay {
@@ -568,8 +590,6 @@ namespace vnx {
         }
 	};
 
-
-
 	struct VMaterial {
 	    VMaterial(): id(""){}
 	    VMaterial(std::string idv){id=idv;}
@@ -599,8 +619,6 @@ namespace vnx {
 		float sm_c2 = 0.0f;
 		float sm_c3 = 0.0f;
 
-
-
 		inline bool is_dielectric() const {return type==dielectric;}
 		inline bool is_conductor()const {return type==conductor;}
 
@@ -609,7 +627,6 @@ namespace vnx {
 		inline bool is_refractive() const { return is_transmissive() && (sm_b1>ygl::epsf || sm_b2>ygl::epsf || sm_b3>ygl::epsf || sm_c1>ygl::epsf || sm_c2>ygl::epsf || sm_c3>ygl::epsf);}
 
 		inline bool is_delta() const{return ((is_conductor() && rs<=ygl::epsf) || (is_transmissive() && rs<=ygl::epsf && k_sca<=ygl::epsf) || (is_dielectric() && !is_transmissive() && cmpf(kr,zero3f)));}
-
 
 		inline bool has_kr(){return kr!=zero3f;}
 
@@ -785,18 +802,11 @@ namespace vnx {
 	};
 
 	struct VCamera{
-
-        inline void compute_pixel_radius(vec2f img_size){
-            pixel_radius = cotan(yfov/2.0f)*1.0f / std::sqrt((focus*focus)-(1.0));
-            pixel_radius*=img_size.y/2.0f;
-		}
-
         frame3f _frame = identity_frame3f;
         float aspect = 1.0f;
         float focus = 1.0f;
         float aperture = 0.0f;
         float yfov = 1.0f;
-        float pixel_radius = 1.0f;
 	};
 
 	struct VScene {
@@ -829,6 +839,7 @@ namespace vnx {
 			}
 			return materials[id];
 		}
+
 
 		bool set_translation(const std::string& idv, const ygl::vec3f& amount) {
 			auto node = select(idv);
@@ -904,8 +915,6 @@ namespace vnx {
 
 		}
 
-
-
 		inline VResult eval(const vec3f& p) const {
 		    VResult res;
 			if (root != nullptr) {root->eval(p,res);}
@@ -918,18 +927,6 @@ namespace vnx {
 		inline virtual ygl::vec3f eval_normals_tht(const VResult& vre,float eps) const {
             if(!cmpf(vre.norm,zero3f)){return vre.norm;}
 			const auto p = vre.wor_pos;
-            /*if(vre.vdist<eps && vre.dist>-eps){
-                VResult res;
-                root->eval(p + nv1*eps,res);
-                auto n = nv1*sign(res.vdist)*abs(res.dist);
-                root->eval(p + nv2*eps,res);
-                n += nv2*sign(res.vdist)*abs(res.dist);
-                root->eval(p + nv3*eps,res);
-                n += nv3*sign(res.vdist)*abs(res.dist);
-                root->eval(p + nv4*eps,res);
-                n += nv4*sign(res.vdist)*abs(res.dist);
-                return normalize(n);
-            }else{*/
                 VResult res;
                 root->eval(p + nv1*eps,res);
                 auto n = nv1*res.dist;
@@ -940,9 +937,6 @@ namespace vnx {
                 root->eval(p + nv4*eps,res);
                 n += nv4*res.dist;
                 return normalize(n);
-            //}
-
-
 		}
 
 		inline virtual ygl::vec3f eval_normals_cnt(const VResult& vre,float eps) const {
@@ -1308,9 +1302,9 @@ namespace vnx {
 		std::string id = p_prefix+ptr->id;
 
         VResult vre;
-        ptr->eval(transform_point(ptr->_frame,zero3f),vre);
+        scn.eval(transform_point(ptr->_frame,zero3f),vre);
         vre._found = true;
-        if(vre.vsur!=nullptr && ptr->get_childs().empty() && vre.vsur->id == ptr->id){
+        if(vre.vsur!=nullptr && vre.vsur->id == ptr->id){
             if(emap.find(id)==emap.end()){
                 auto vre_material = *vre.mat;
                 ygl::vec3f norm = scn.NORMALS_ALGO(vre, neps);
@@ -1321,14 +1315,10 @@ namespace vnx {
                 if(vre_vmaterial.mutator!=nullptr){
                     vre_vmaterial.eval_mutator(rng, vre, norm, vre_vmaterial);
                 };
-                if (vre.vdist<0.0f && (vre_material.is_emissive() || vre_vmaterial.is_emissive())) {
+                if (vre.vdist<ygl::epsf && (vre_material.is_emissive() || vre_vmaterial.is_emissive())) {
                     std::vector<VResult>* epoints = &emap[id];
                     epoints->push_back(vre); n++;
 
-                    //start by random angle, then bounce by using normals to hopefully map the volume ( other choice, start by at least 45 degrees, but needs testing)
-                    //vec3f norm = scn.NORMALS_ALGO(vre, neps);
-                    //vec3f dir = normalize(vec3f{0.45f,0.45f,0.45f});
-                    //vec3f dir = normalize(vec3f{0.5f,0.5f,0.5f});
                     vec3f dir = normalize(rand3f_r(rng,-1.0f,1.0f));
                     VResult er = vre;
                     VRay ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
@@ -1338,13 +1328,22 @@ namespace vnx {
                         auto new_er = scn.INTERSECT_ALGO(ray, 512,jj);
                         if(!new_er.found()){
                             dir = normalize(rand3f_r(rng,-1.0f,1.0f));
-                            ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,zero3f,vre.dist);
+                            ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
                             if(verbose) std::cout<<"Er not found.\n";
                             continue;
                         }
                         auto new_norm = scn.NORMALS_ALGO(new_er, neps);
-                        new_norm = normalize(new_norm+rand3f_r(rng,-0.1f,0.1f));
-                        auto ndir = -ygl::reflect(ray.d,dot(ray.d,new_norm)<0 ? new_norm : -new_norm);
+
+                        ///ggx,  for internal emissive bounces
+                        auto rn = ygl::get_random_vec2f(rng);
+                        auto fp = dot(new_norm, ray.d) >= 0.0f ? ygl::make_frame_fromz(zero3f, new_norm) : ygl::make_frame_fromz(zero3f, -new_norm);
+                        auto tan2 = 0.1f * 0.1f * rn.y / (1 - rn.y);
+                        auto rz = std::sqrt(1 / (tan2 + 1)), rr = std::sqrt(1 - rz * rz), rphi = 2 * ygl::pif * rn.x;
+                        auto wh_local = ygl::vec3f{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
+                        auto ndir = ygl::transform_direction(fp, wh_local);
+                        ///
+
+                        ndir = -ygl::reflect(ray.d,ndir);
                         dir = ndir;
                         norm = new_norm;
                         er = new_er;
