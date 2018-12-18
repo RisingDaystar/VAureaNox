@@ -86,13 +86,12 @@ namespace vscndef {
 
 
         auto room = new vop_invert("room",new vvo_sd_box("box",diffuse,60.0f));
-        //auto room  = new vvo_sd_box("room",glass,60.0f);
         auto light = new vvo_sd_sphere("light",emissive,10.0f);
 
         auto box = new vvo_sd_box("box",diffuse2,{0.5f,2.0f,0.5f});
         auto sphere = new vvo_sd_sphere("sphere",metal,1.0f);
         auto sphere2 = new vvo_sd_sphere("sphere2",glass,1.0f);
-        //auto light2 = new vvo_sd_sphere("light2",emissive_dim,0.5f);
+        auto light2 = new vvo_sd_sphere("light2",emissive_dim,0.5f);
         auto slab = new vvo_sd_box("slab",mirror,{1.5f,0.1f,1.5f});
         auto ring = new vop_subtraction("ring",{
             new vvo_sd_cylinder("outer",mirror,{1.3f,0.3f}),
@@ -103,6 +102,7 @@ namespace vscndef {
 
 		auto root = new vop_union("root", {
             light,
+            light2,
             box,
             sphere,
             sphere2,

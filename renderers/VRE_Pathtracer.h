@@ -444,7 +444,7 @@ namespace vnx {
                 if(material.is_transmissive()){
                     sample_transmissive(scn,rng,hit,material,wo,n,n,samples); //TODO
                 }else if(material.is_dielectric()){
-                    auto ior = material.eval_ior(wo.ior,f_min_wl,f_max_wl,b_do_spectral);
+                    auto ior = material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
                     auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,ior);
 
                     auto weights = vec2f{(1.0f-F),F};
@@ -790,7 +790,6 @@ namespace vnx {
                     auto brdf = eval_bsdfcos(material,wi,wo,n);
 
                     if(!gather_ke){
-                        int idl = 0;
                         VRay lwi = {};
                         float lpdf = 0.0f;
 
