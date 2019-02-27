@@ -63,7 +63,6 @@ struct vvo_sd_plane : public VVolume {
 		dv+=eval_displacement(ep);
         dv*=min_element(scale);
 		res = VResult{ this,this,material,material,dv,dv,zero3f,p,ep };
-
 	}
 };
 struct vvo_sd_sphere : public VVolume {
@@ -96,7 +95,6 @@ struct vvo_sd_box : public VVolume {
 		dv+=eval_displacement(ep);
         dv*=min_element(scale);
 		res = VResult{ this,this,material,material,dv,dv,zero3f,p,ep };
-
 	}
 };
 struct vvo_sd_ellipsoid : public VVolume {
@@ -293,7 +291,5 @@ struct vvo_sd_diamond : public VVolume {
 		res = VResult{ this,this,material,material,dv,dv,zero3f,p,ep };
 	}
 };
-
-
 
 #endif

@@ -74,6 +74,42 @@ namespace vnx {
         }
 	};
 
+    struct VMemory{
+        std::vector<void*> memory;
+
+        VMemory(){
+            memory.reserve(8);
+        }
+
+        template<typename T> T* New(T* ptr){
+            memory.push_back(ptr);
+            return ptr;
+        }
+
+        ~VMemory(){
+            //std::cout<<"Dtor called\n";
+            for(void* mptr : memory){
+                if(mptr) delete mptr;
+                mptr = nullptr;
+            }
+            memory.clear();
+        }
+    };
+
+    template<class T> struct VScopedPtr{
+        bool _adr = false;
+        T* _ptr = nullptr;
+
+        VScopedPtr(T* ptr,bool adr):_ptr(ptr),_adr(adr){}
+        ~VScopedPtr(){
+            if(_adr==true){
+                if(_ptr!=nullptr) delete _ptr;
+                _ptr = nullptr;
+            }
+        }
+        inline void setADR(bool v){_adr = v;}
+    };
+
 	inline float rand1f_r(rng_state& rng, float a, float b) {
         return a + (b - a) * get_random_float(rng);
     }
@@ -85,6 +121,7 @@ namespace vnx {
     }
 
     inline vec3f toVec3f(float v){return {v,v,v};}
+    inline vec2f toVec2f(float v){return {v,v};}
 
     enum ro_axis{
         RO_XYZ,
@@ -131,8 +168,7 @@ namespace vnx {
 		});
 	}
 
-
-	inline void print_format_seconds(long long seconds) {
+	inline void print_hhmmss(long long seconds) {
 		int min = seconds / 60;
 		int hours = min / 60;
 		std::cout << (hours % 60) << "h : " << (min % 60) << "m : " << (seconds % 60) << "s\n";
@@ -164,9 +200,12 @@ namespace vnx {
         return 1.0f/(tan(x));
     }
 
-
 	inline float radians(float in) {
 		return (in*ygl::pif) / 180.0f;
+	}
+
+	inline float degrees(float in){
+        return (in/ygl::pif)*180;
 	}
 
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
@@ -185,6 +224,80 @@ namespace vnx {
 	}
 	//
 
+	template <typename T> inline ygl::mat<T,4,4> scaling_matrix(const ygl::vec<T,3>& v){
+        return mat<T,4,4>{
+            vec<T,4>{v.x,T(0),T(0),T(0)},
+            vec<T,4>{T(0),v.y,T(0),T(0)},
+            vec<T,4>{T(0),T(0),v.z,T(0)},
+            vec<T,4>{T(0),T(0),T(0),T(1)}
+        };
+	}
+
+
+	template <typename T> inline ygl::mat<T,4,4> translation_matrix(const ygl::vec<T,3>& v){
+        return mat<T,4,4>{
+            vec<T,4>{T(1),T(0),T(0),v.x},
+            vec<T,4>{T(0),T(1),T(0),v.y},
+            vec<T,4>{T(0),T(0),T(1),v.z},
+            vec<T,4>{T(0),T(0),T(0),T(1)}
+        };
+	}
+
+
+
+    template<typename T> inline ygl::mat<T,4,4> perspective_matrix(T fov,T aspect, T near, T far) {
+        fov = clamp(fov,ygl::epsf,180.0f-ygl::epsf);
+        near = max(near,0.0f);
+        far = max(far,near+ygl::epsf);
+
+        auto scale = tan(fov*0.5f*ygl::pi<T> / 180.0f)* near;
+        auto r = aspect * scale;
+        auto l = -r;
+        auto t = scale;
+        auto b = -t;
+
+        mat<T,4,4> matrix = {
+            vec<T,4>{(2*near)/(r-l),0, (r+l)/(r-l), 0},
+            vec<T,4>{0,(2*near)/(t-b),(t+b)/(t-b),0},
+            vec<T,4>{0,0, -((far+near)/(far-near)), -((2*far*near)/(far-near))},
+            vec<T,4>{0,0,0,1},
+        };
+        return matrix;
+    }
+
+    template<typename T> inline ygl::mat<T,4,4> perspective_matrix_rtrace(T fov,T aspect) {
+        fov = clamp(fov,ygl::epsf,180.0f-ygl::epsf);
+        const T n = 0.01f;
+        const T f = 1000.0f;
+        T yScale = 1.0f / tan( fov * 0.5f );
+        T xScale = yScale / aspect;
+        mat<T,4,4> m{
+                vec<T,4>{xScale , 0.0f , 0.0f , 0.0f} ,
+                vec<T,4>{0.0f , yScale , 0.0f , 0.0f} ,
+                vec<T,4>{0.0f , 0.0f , f/(f-n) , -f*n/(f-n)},
+                vec<T,4>{0.0f , 0.0f , 1.0f , 0.0f}
+                };
+        return m;
+    }
+
+
+    template <typename T> inline mat<T,4,4> lookAt(const vec<T,3>& from, const vec<T,3>& to, const vec<T,3>& tmp = vec<T,3>{0,1,0}){
+        vec<T,3> xaxis = normalize(from - to);
+        vec<T,3> yaxis = cross(normalize(tmp), xaxis);
+        vec<T,3> zaxis = cross(xaxis, yaxis);
+
+
+        mat<T,4,4> viewMatrix = {
+            vec<T,4>{      xaxis.x,            yaxis.x,            zaxis.x,       0 },
+            vec<T,4>{      xaxis.y,            yaxis.y,            zaxis.y,       0 },
+            vec<T,4>{      xaxis.z,            yaxis.z,            zaxis.z,       0 },
+            vec<T,4>{-dot( xaxis, from ), -dot( yaxis, from ), -dot( zaxis, from ),  1 }
+        };
+
+
+
+        return viewMatrix;
+    }
 
 	template <typename T> inline T max_element(const ygl::vec<T, 3>& v) { return std::max(v.x, std::max(v.y, v.z)); }
 	template <typename T> inline T max_element(const ygl::vec<T, 2>& v) { return std::max(v.x, v.y); }
@@ -223,8 +336,7 @@ namespace vnx {
     template <typename T> inline T adot(const ygl::vec<T,3>& v1,const ygl::vec<T,3>& v2){ return abs(dot(v1,v2));}
     template <typename T> inline T adot(const ygl::vec<T,4>& v1,const ygl::vec<T,4>& v2){ return abs(dot(v1,v2));}
 
-    inline bool cmpf(float a, float b)
-    {
+    inline bool cmpf(float a, float b){
         const float absA = abs(a);
 		const float absB = abs(b);
 		const float diff = abs(a - b);
@@ -260,6 +372,11 @@ namespace vnx {
     inline std::string _p(const vec3f& v){
         std::ostringstream oss;
         oss << v.x << "," << v.y << "," << v.z;
+        return oss.str();
+    }
+    inline std::string _p(const vec2f& v){
+        std::ostringstream oss;
+        oss << v.x << "," << v.y;
         return oss.str();
     }
 	/////
@@ -312,7 +429,6 @@ namespace vnx {
             (a.dual * b.real - a.real * b.dual) / (b.real * b.real)
         );
 	}
-
 
 	template <typename T> inline dual3<T> pow(const dual3<T>& a, float y){
         return dual3<T>(
@@ -566,30 +682,6 @@ namespace vnx {
 
 	enum e_axis { X, Y, Z };
 
-
-	struct VBxdfSample{
-        vec3f radiance = zero3f;
-        vec3f wi = zero3f;
-        float pdf = 0.0f;
-	};
-
-
-	struct VBxdf{
-        virtual inline float Pdf(const VRay& wo,const VRay& wi){
-            return 0.0f;
-        }
-        virtual inline vec3f Radiance(const VRay& wo,const VRay& wi){
-            return zero3f;
-        }
-        virtual inline vec3f Sample(const VRay& wo,const VRay& wi){
-            return zero3f;
-        }
-        virtual inline void Eval(const VRay& wo,const VRay& wi,VBxdfSample& ss){
-
-
-        }
-	};
-
 	struct VMaterial {
 	    VMaterial(): id(""){}
 	    VMaterial(std::string idv){id=idv;}
@@ -598,7 +690,6 @@ namespace vnx {
 
         VMaterialType type = dielectric;
         VIorType ior_type = wl_dependant;
-
 
 		ygl::vec3f kr = ygl::zero3f;
 		ygl::vec3f ka = ygl::zero3f;
@@ -626,7 +717,7 @@ namespace vnx {
 		inline bool is_transmissive() const { return k_sca>=-ygl::epsf;}
 		inline bool is_refractive() const { return is_transmissive() && (sm_b1>ygl::epsf || sm_b2>ygl::epsf || sm_b3>ygl::epsf || sm_c1>ygl::epsf || sm_c2>ygl::epsf || sm_c3>ygl::epsf);}
 
-		inline bool is_delta() const{return ((is_conductor() && rs<=ygl::epsf) || (is_transmissive() && rs<=ygl::epsf && k_sca<=ygl::epsf) || (is_dielectric() && !is_transmissive() && cmpf(kr,zero3f)));}
+		inline bool is_delta() const{return ((is_conductor() && rs<=ygl::epsf) || (is_transmissive() && rs<=ygl::epsf) || (is_dielectric() && !is_transmissive() && cmpf(kr,zero3f)));}
 
 		inline bool has_kr(){return kr!=zero3f;}
 
@@ -692,7 +783,6 @@ namespace vnx {
 		inline void set_scale(float x, float y, float z) { if (min_element(ygl::vec3f{ x,y,z }) <= ygl::epsf) { scale = one3f; return; } scale = { x,y,z }; }
 
 		VNode* select(const std::string& n) {
-
 			auto chs = get_childs();
 			if (chs.empty()) { return nullptr; }
 			for (auto& child : chs) {
@@ -719,8 +809,6 @@ namespace vnx {
 			}
 			return results;
 		}
-
-
 
 		inline virtual void eval(const vec3f& p,VResult& res) = 0;
 	};
@@ -790,10 +878,9 @@ namespace vnx {
 		float dist = maxf;
 		float vdist = maxf;
 
-		vec3f norm = zero3f;
+		vec3f norm = zero3f; //still unused
 		vec3f wor_pos = zero3f;
 		vec3f loc_pos = zero3f;
-
 
 		bool _found = false;
 
@@ -802,11 +889,65 @@ namespace vnx {
 	};
 
 	struct VCamera{
-        frame3f _frame = identity_frame3f;
-        float aspect = 1.0f;
+        //frame3f _frame = identity_frame3f;
+        //float aspect = 1.0f;
         float focus = 1.0f;
         float aperture = 0.0f;
         float yfov = 1.0f;
+
+        vec3f mOrigin = zero3f;
+        vec3f mTarget = zero3f;
+        vec3f mUp = {0,1,0};
+
+        vec2f mResolution;
+        float mAspect;
+
+        mat4f mWorldToCamera = identity_mat4f;
+        mat4f mWorldToRaster = identity_mat4f;
+        mat4f mCameraToRaster = identity_mat4f;
+        mat4f mCameraToClip = identity_mat4f;
+        mat4f mClipToRaster = identity_mat4f;
+
+
+        mat4f mCameraToWorld = identity_mat4f;
+        mat4f mRasterToWorld = identity_mat4f;
+        mat4f mRasterToCamera = identity_mat4f;
+
+        inline void Setup(const vec2f& resolution){
+            mResolution = resolution;
+            mAspect = float(mResolution.x) / float(mResolution.y);
+
+            mClipToRaster =
+                frame_to_mat(scaling_frame(vec3f{mResolution.x,mResolution.y,1.0f}))*
+                frame_to_mat(scaling_frame(vec3f{0.5f,-0.5f,1.0f}))*
+                frame_to_mat(translation_frame(vec3f{1.0f,-1.0f,0.0f}));
+
+            mCameraToClip = perspective_mat(yfov,mAspect,0.1f,1.0f);
+            mCameraToRaster = mClipToRaster*mCameraToClip;
+            mWorldToCamera = inverse(frame_to_mat(lookat_frame(mOrigin,mTarget,mUp)));
+            mWorldToRaster = mCameraToRaster*mWorldToCamera;
+
+
+            //Inverse
+            mCameraToWorld = inverse(mWorldToCamera);
+            mRasterToCamera = inverse(mCameraToRaster);
+            mRasterToWorld = inverse(mWorldToRaster);
+        }
+
+        inline bool inBounds(const vec3f& raster,vec2i& pid) const {
+            pid = vec2i{int(std::round(raster.x)),int(std::round(raster.y))};
+            return (pid.x>=0&&pid.x<int(mResolution.x) && pid.y>=0 && pid.y<int(mResolution.y));
+        }
+
+        inline VRay Cast(float x,float y,const vec2f& uv) const{
+            vec3f raster_point = {x+uv.x,y+uv.y,0.0f};
+            vec3f view_dir = transform_point(mRasterToWorld,raster_point);
+
+            VRay rr;
+            rr.o = transform_point(mCameraToWorld,zero3f);
+            rr.d = normalize(view_dir-rr.o);
+            return rr;
+        }
 	};
 
 	struct VScene {
@@ -814,7 +955,6 @@ namespace vnx {
 		std::vector<std::vector<VResult>> emissive_hints;
 		std::map<std::string, VMaterial*> materials;
 		std::vector<VNode*> nodes;
-
 
 		VScene():VScene(""){}
 
@@ -839,7 +979,6 @@ namespace vnx {
 			}
 			return materials[id];
 		}
-
 
 		bool set_translation(const std::string& idv, const ygl::vec3f& amount) {
 			auto node = select(idv);
@@ -887,7 +1026,6 @@ namespace vnx {
 			return true;
 		}
 
-
 		bool set_scale(const std::string& idv, const ygl::vec3f& amount) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
@@ -912,16 +1050,15 @@ namespace vnx {
 			if (node == nullptr) { return false; }
 			node->displacement = ftor;
 			return true;
-
 		}
 
 		inline VResult eval(const vec3f& p) const {
 		    VResult res;
-			if (root != nullptr) {root->eval(p,res);}
+			if (root != nullptr) {root->eval(p,res);res.wor_pos = p;} //ensure wor_pos is set to world coord
 			return res;
 		}
 		inline void eval(const vec3f& p,VResult& res) const {
-			if (root != nullptr) {root->eval(p,res);}
+			if (root != nullptr) {root->eval(p,res);res.wor_pos = p;} // ensure wor_pos i set to worl coord
 		}
 
 		inline virtual ygl::vec3f eval_normals_tht(const VResult& vre,float eps) const {
@@ -1000,12 +1137,12 @@ namespace vnx {
 
                 if(i==0){s = nz_sign(vre.vdist);pd = maxf_m1;}
                 if(s<0){ //started inside
-                    if(absd<ray.tmin){vre._found = true; return vre;}
+                    if(absd<ray.tmin){vre._found = true;/*vre.wor_pos+=(abs(d)*ray.d);*/ return vre;}
                     t+=absd;
                     pd = d;
                 }else{  //started outside
                     if(absd>=abs(os)){
-                        if(absd<ray.tmin){vre._found = true; return vre;}
+                        if(absd<ray.tmin){vre._found = true;/*vre.wor_pos+=(abs(d)*ray.d);*/ return vre;}
                         os=d*min(1.0f,0.5f*d/pd);
                         t+=d+os;
                         pd=d;
@@ -1015,10 +1152,9 @@ namespace vnx {
                         os=0.0;
                     }
                 }
-
-                if(std::abs(t)>ray.tmax) return vre;
-
+                if(std::abs(t)>ray.tmax) break;
             }
+            vre._found = false;
             return vre;
 		}
 
@@ -1030,10 +1166,11 @@ namespace vnx {
                 eval(ray.o + (ray.d*t),vre);
 				auto d = std::abs(vre.dist);
 
-				if (d < ray.tmin) { vre._found = true; return vre; }
+				if (d < ray.tmin) { vre._found = true;return vre; }
 				t += d;
-				if (t > ray.tmax) { return vre; }
+				if (t > ray.tmax) { break; }
 			}
+			vre._found = false;
 			return vre;
 		}
 	};
@@ -1093,7 +1230,6 @@ namespace vnx {
 			params.insert(std::pair<std::string, std::string>(name, value));
 		}
 
-
 		std::string try_get(std::string k, std::string dVal) const {
 			auto match = params.find(k);
 			if (match == params.end()) { return dVal; }
@@ -1118,16 +1254,12 @@ namespace vnx {
 
 			return std::stoi(match->second);
 		}
-
-
-
 	};
 
 	struct VRenderer : VConfigurable{
 		VRenderer(std::string cf) : VConfigurable(cf){}
 
 		VStatus status;
-
 
 		virtual ~VRenderer() {
 			shut();
@@ -1139,7 +1271,6 @@ namespace vnx {
 		inline virtual std::string img_affix(const VScene& scn) const {return std::string("");};
 		inline virtual void eval_image(const VScene& scn, ygl::rng_state& rng, image3f& img, int width,int height, int j) = 0;
 	};
-
 
 	inline void save_ppm(std::string fname, const image3f& img) {
 		const int x = img.size.x, y = img.size.y;
@@ -1229,7 +1360,6 @@ namespace vnx {
 		for (auto child : chs) { apply_transforms(child, fr); }
 	}
 
-
     //TODO : FIX
     inline precalc_emissive_hints_rejection(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,float ieps,float neps,bool verbose){
 		if (ptr == nullptr) { return 0; }
@@ -1294,83 +1424,107 @@ namespace vnx {
         return n;
     }
 
-
     inline int precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,float ieps,float neps,bool verbose) {
 		if (ptr == nullptr) { return 0; }
 		int n = 0;
 
-		std::string id = p_prefix+ptr->id;
-
+		//std::string id = p_prefix+ptr->id;
         VResult vre;
         scn.eval(transform_point(ptr->_frame,zero3f),vre);
         vre._found = true;
-        if(vre.vsur!=nullptr && vre.vsur->id == ptr->id){
-            if(emap.find(id)==emap.end()){
-                auto vre_material = *vre.mat;
-                ygl::vec3f norm = scn.NORMALS_ALGO(vre, neps);
-                if(vre_material.mutator!=nullptr){
-                    vre_material.eval_mutator(rng, vre, norm, vre_material);
-                };
-                auto vre_vmaterial = *vre.vmat;
-                if(vre_vmaterial.mutator!=nullptr){
-                    vre_vmaterial.eval_mutator(rng, vre, norm, vre_vmaterial);
-                };
-                if ((vre.vdist<ygl::epsf || vre.dist<ygl::epsf) && (vre_material.is_emissive() || vre_vmaterial.is_emissive())) {
-                    std::vector<VResult>* epoints = &emap[id];
-                    epoints->push_back(vre); n++;
+        auto vre_material = *vre.mat;
+        ygl::vec3f norm = scn.NORMALS_ALGO(vre, neps);
+        if(vre_material.mutator!=nullptr){
+            vre_material.eval_mutator(rng, vre, norm, vre_material);
+        };
+        auto vre_vmaterial = *vre.vmat;
+        if(vre_vmaterial.mutator!=nullptr){
+            vre_vmaterial.eval_mutator(rng, vre, norm, vre_vmaterial);
+        };
+        if(vre_vmaterial.is_emissive() || vre_material.is_emissive()){
+            /*
+            vec3f dir = normalize(rand3f_r(rng,-1.0f,1.0f));
+            VResult er = vre;
+            VRay ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
 
-                    vec3f dir = normalize(rand3f_r(rng,-1.0f,1.0f));
-                    VResult er = vre;
-                    VRay ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
+            if(er.dist<0.0f || er.vdist<0.0f){
+                if (vre_material.is_emissive()) {
+                    std::vector<VResult>* epoints = &emap[er.sur->id];
+                    er._found = true;
+                    epoints->push_back(er); n++;
+                    if(verbose) std::cout<<"EM ( light: "<<er.sur->id<<" ) : {"<<er.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
+                }else if(vre_vmaterial.is_emissive()){
+                    std::vector<VResult>* epoints = &emap[er.vsur->id];
+                    er._found = true;
+                    epoints->push_back(er); n++;
+                    if(verbose) std::cout<<"EM ( light: "<<er.vsur->id<<" ) : {"<<er.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
+                }
+            }*/
+            auto dir = ygl::sample_sphere_direction(ygl::get_random_vec2f(rng));
+            auto ray = VRay{vre.wor_pos,dir,ieps,1000.0f};
+            VResult fvre = vre;
+            for (int i=0; i < n_em_e; i++) {
+                int n_iters = 0;
+                vre = scn.INTERSECT_ALGO(ray,512,n_iters);
 
-                    for (int i=0; i < n_em_e; i++) {
-                        int jj = 0;
-                        auto new_er = scn.INTERSECT_ALGO(ray, 512,jj);
-                        if(!new_er.found()){
-                            dir = normalize(rand3f_r(rng,-1.0f,1.0f));
-                            ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
-                            if(verbose) std::cout<<"Er not found.\n";
-                            continue;
-                        }
-                        auto new_norm = scn.NORMALS_ALGO(new_er, neps);
+                //int jj = 0;
+                /*auto new_er = scn.INTERSECT_ALGO(ray, 512,jj);
+                if(!new_er.found()){
+                    dir = normalize(rand3f_r(rng,-1.0f,1.0f));
+                    ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
+                    if(verbose) std::cout<<"Er not found.\n";
+                    continue;
+                }
+                auto new_norm = scn.NORMALS_ALGO(new_er, neps);
+                */
 
-                        ///ggx,  for internal emissive bounces
-                        auto rn = ygl::get_random_vec2f(rng);
-                        auto fp = dot(new_norm, ray.d) >= 0.0f ? ygl::make_frame_fromz(zero3f, new_norm) : ygl::make_frame_fromz(zero3f, -new_norm);
-                        auto tan2 = 0.1f * 0.1f * rn.y / (1 - rn.y);
-                        auto rz = std::sqrt(1 / (tan2 + 1)), rr = std::sqrt(1 - rz * rz), rphi = 2 * ygl::pif * rn.x;
-                        auto wh_local = ygl::vec3f{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
-                        auto ndir = ygl::transform_direction(fp, wh_local);
-                        ///
+                if(!vre.found()){
+                    dir = normalize(rand3f_r(rng,-1.0f,1.0f));
+                    ray = offsetted_ray(fvre.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
+                    continue;
+                }
 
-                        ndir = -ygl::reflect(ray.d,ndir);
-                        dir = ndir;
-                        norm = new_norm;
-                        er = new_er;
-                        ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)<0 ? norm : -norm,er.dist);
+                auto norm = scn.NORMALS_ALGO(vre, neps);
 
-                        auto er_material = *er.mat;
-                        if(er_material.mutator!=nullptr){
-                            er_material.eval_mutator(rng, er, norm, er_material);
-                        }
-                        auto er_vmaterial = *er.vmat;
-                        if(er_vmaterial.mutator!=nullptr){
-                            er_vmaterial.eval_mutator(rng, er, norm, er_vmaterial);
-                        }
-                        if (er_material.is_emissive() || er_vmaterial.is_emissive()) {
-                            er._found = true;
-                            epoints->push_back(er); n++;
-                            if(verbose) std::cout<<"EM ( light: "<<id<<" ) : {"<<er.wor_pos.x<<","<<er.wor_pos.y<<","<<er.wor_pos.z<<"}\n";
-                        }
+                ///ggx,  for internal emissive bounces
+                auto rn = ygl::get_random_vec2f(rng);
+                auto fp = dot(ray.d,norm) >= 0.0f ? ygl::make_frame_fromz(zero3f, norm) : ygl::make_frame_fromz(zero3f, -norm);
+                auto tan2 = 0.1f * 0.1f * rn.y / (1 - rn.y);
+                auto rz = std::sqrt(1 / (tan2 + 1)), rr = std::sqrt(1 - rz * rz), rphi = 2 * ygl::pif * rn.x;
+                auto wh_local = ygl::vec3f{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
+                dir = ygl::transform_direction(fp, wh_local);
+                ///
+
+                dir = -ygl::reflect(ray.d,dir);
+                ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)>=0 ? norm : -norm,vre.dist);
+
+                auto er_material = *vre.mat;
+                if(er_material.mutator!=nullptr){
+                    er_material.eval_mutator(rng, vre, norm, er_material);
+                }
+                auto er_vmaterial = *vre.vmat;
+                if(er_vmaterial.mutator!=nullptr){
+                    er_vmaterial.eval_mutator(rng, vre, norm, er_vmaterial);
+                }
+                if(vre.dist<0.0f && vre.vdist<0.0f){
+                    if (er_material.is_emissive()) {
+                        std::vector<VResult>* epoints = &emap[vre.sur->id];
+                        vre._found = true;
+                        epoints->push_back(vre); n++;
+                        if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
+                    }else if(er_vmaterial.is_emissive()){
+                        std::vector<VResult>* epoints = &emap[vre.vsur->id];
+                        vre._found = true;
+                        epoints->push_back(vre); n++;
+                        if(verbose) std::cout<<"EM ( light: "<<vre.vsur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
                     }
                 }
             }
         }
-
 		auto chs = ptr->get_childs();
 		if (chs.empty()) { return n; }
 		for (auto node : chs) {
-			n+=precalc_emissive_hints(scn, rng, emap, node,id, n_em_e, ieps, neps, verbose);
+			n+=precalc_emissive_hints(scn, rng, emap, node,ptr->id, n_em_e, ieps, neps, verbose);
 		}
 
 		return n;
@@ -1387,34 +1541,31 @@ namespace vnx {
 	}
 
 	///Procedural patterns utilities
-        inline bool on_pattern_gradient_oblique(const vec3f& loc_pos,float angle,float sx){
-            angle = radians(angle);
-            const float cangle = std::cos(angle);
-            const float sangle = std::sin(angle);
+    inline bool on_pattern_gradient_oblique(const vec3f& loc_pos,float angle,float sx){
+        angle = radians(angle);
+        const float cangle = std::cos(angle);
+        const float sangle = std::sin(angle);
 
-            float s = loc_pos.x * cangle - loc_pos.y * sangle;
-            float t = loc_pos.y * cangle + loc_pos.x * sangle;
-            if((modulo(s * sx) < 0.5f)){
-                return true;
-            }
-            return false;
+        float s = loc_pos.x * cangle - loc_pos.y * sangle;
+        float t = loc_pos.y * cangle + loc_pos.x * sangle;
+        if((modulo(s * sx) < 0.5f)){
+            return true;
         }
+        return false;
+    }
 
-        inline bool on_pattern_gradient_checker(const vec3f& loc_pos,float angle,const vec2f& sc){
-            angle = radians(angle);
-            const float cangle = std::cos(angle);
-            const float sangle = std::sin(angle);
+    inline bool on_pattern_gradient_checker(const vec3f& loc_pos,float angle,const vec2f& sc){
+        angle = radians(angle);
+        const float cangle = std::cos(angle);
+        const float sangle = std::sin(angle);
 
-            float s = loc_pos.x * cangle - loc_pos.y * sangle;
-            float t = loc_pos.y * cangle + loc_pos.x * sangle;
-            if((modulo(s * sc.x) < 0.5f) || (modulo(t * sc.y) < 0.5f)){
-                return true;
-            }
-            return false;
-
+        float s = loc_pos.x * cangle - loc_pos.y * sangle;
+        float t = loc_pos.y * cangle + loc_pos.x * sangle;
+        if((modulo(s * sc.x) < 0.5f) || (modulo(t * sc.y) < 0.5f)){
+            return true;
         }
-
-
+        return false;
+    }
 };
 
 

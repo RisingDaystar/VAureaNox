@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "scenes\VSC_Cornell.h"
 #include "scenes\VSC_Gi_test.h"
 #include "scenes\VSC_Nested.h"
+
 #include "renderers\VRE_Pathtracer.h"
 
 #define MONITOR_THREAD_SUPPORT
@@ -35,6 +36,35 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace ygl;
 using namespace vnx;
 
+//TODO, interfaccia file unificata
+struct VFileConfigs{
+    std::map<std::string,std::map<std::string,std::string>> mappings;
+
+    void eval(const std::string& line){
+        std::string value = "";
+        std::string name = "";
+        std::string section = "";
+        int state = 0;
+        for(int i=0;i<line.size();i++){
+            if(line[i]==':' && state==0){state = 1;continue;}
+            if(line[i]==':' && state!=0){break;}
+            if(line[i] == ';') break;
+            if(line[i] == ' ' || line[i]=='\n' || line[i]=='\r'){continue;}
+            if(line[i]=='#' && state==0){state = -1;continue;}
+
+            if(state==-1){section+=line[i];}
+            else if(state==0){name+=line[i];}
+            else if(state==1){value+=line[i];}
+        }
+
+        if(mappings.find(section)!=mappings.end()) return; // sezione duplicata
+
+        if(!section.size() || !name.size() || !value.size()) throw new VException("Badly formatted config file.");
+        mappings[section][name] = value;
+    }
+};
+
+
 namespace vnx {
 
 	void shut(VScene& scn, VRenderer* renderer) {
@@ -43,6 +73,7 @@ namespace vnx {
 	}
 
 	void init(VScene& scn, VRenderer** renderer, image3f& img, const VConfigurable& config) {
+
 		auto renderer_type = config.try_get("renderer_type", "");
 		auto render_scene = config.try_get("render_scene", "spider");
 
@@ -63,7 +94,7 @@ namespace vnx {
 		int h = config.try_get("i_image_height", 480);
 		if (w <= 0 || h <= 0) { throw VException("Invalid image dimensions."); }
 		init_image(img,{w, h});
-		scn.camera.aspect = ((float)w)/((float)h);
+		scn.camera.Setup(vec2f{float(w),float(h)});
 	}
 
 	void task(int id, const VScene& scn, VRenderer* renderer, image3f& img, std::mutex& mtx, ygl::rng_state& rng, volatile std::atomic<int>& lrow, volatile std::atomic<int>& rowCounter) {
@@ -72,7 +103,6 @@ namespace vnx {
 
 
 		while (!renderer->status.bStopped) {
-
 			//sincronizzazione per evitare data race...insignificante overhead
 			mtx.lock();
 			int j = lrow;
@@ -95,8 +125,8 @@ namespace vnx {
 	}
 
 
-
-	void monitor_task(std::mutex& mtx, const VScene& scn,VRenderer* renderer,const image3f& img){ //bool& bStopped,bool& bDebug,const bool& bFinished
+    //Utilizza "conio.h" , non standard, disattivabile in compilazione.
+	void monitor_task(std::mutex& mtx, const VScene& scn,VRenderer* renderer,const image3f& img){
         #ifdef MONITOR_THREAD_SUPPORT
         while(!renderer->status.bStopped && !renderer->status.bFinished){
             if(!kbhit()){std::this_thread::sleep_for(std::chrono::milliseconds(1000));continue;} //1s sleep, per evitare massiccio overhead
@@ -169,7 +199,7 @@ int main() {
         int n_lights = scn.emissive_hints.size();
         for (auto ep : scn.emissive_hints) {n_emiss += ep.size();}
 		printf("**Calculated : \"%d\" lights -> \"%d\" emissive hints **\n\n",n_lights,n_emiss);
-
+        printf("**Selected renderer : \"%s\" **\n",renderer->type().c_str());
 		renderer->post_init(scn);
 	}
 	catch (std::exception& ex) {
@@ -190,7 +220,7 @@ int main() {
 
 	std::thread* monitor = nullptr;
 
-	printf("**Rendering \"%s\" with renderer \"%s\" using \"%d\" threads : \n", scn.id.c_str(), renderer->type().c_str(), std::max(1,nThreads));
+	printf("**Rendering \"%s\" using \"%d\" threads **\n", scn.id.c_str(),  std::max(1,nThreads));
 	if(b_start_monitor){
         monitor = new std::thread(monitor_task, std::ref(mtx), std::ref(scn), renderer, std::ref(img));
         printf("**Monitor Thread started\n");
@@ -228,10 +258,9 @@ int main() {
 
 	if(!renderer->status.bStopped) printf("\n*Rendering completed in : ");
 	else printf("\n*Rendering stopped after : ");
-	print_format_seconds(seconds);
+	print_hhmmss(seconds);
 
 	auto fname = "VAureaNox_"+scn.id+"_"+std::to_string(img.size.x) + "x" + std::to_string(img.size.y) + ("_"+renderer->type())+renderer->img_affix(scn);
-	if(nThreads <= 1) fname+="_st";
 	if(renderer->status.bStopped) fname+="_UNCOMPLETED";
 
 	printf("\n*Saving image \"%s\" \n", fname.c_str());

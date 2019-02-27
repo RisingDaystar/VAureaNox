@@ -25,10 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 namespace vnx {
 
 	struct VRE_Pathtracer : VRenderer {
-		enum v_light_mode {
-			direct,
-			mis
-		};
 
 		enum v_aa_mode {
 			aa_montecarlo,
@@ -36,16 +32,25 @@ namespace vnx {
 		};
 
 		enum v_sample_type{
-            s_camera,
-		    s_diffuse,
-		    s_specular,
-		    s_glossy,
-		    s_transmissive,
+            s_undefined,
+		    s_reflected,
+		    s_tr_reflected,
+		    s_transmitted,
 		};
 
 		struct VSample{
             VRay ray;
-            v_sample_type type = s_camera;
+            v_sample_type type = s_undefined;
+            vec2f pdf_factor = one2f;
+		};
+
+		struct VSampleEx{
+            VSampleEx(): sample({}),w(zero3f),ge(true),b(0){};
+		    VSampleEx(VSample samplev,vec3f wv,bool gev,int bv): sample(samplev),w(wv),ge(gev),b(bv){};
+            VSample sample;
+            vec3f w;
+            bool ge;
+            int b;
 		};
 
 		struct VVolumePoll{
@@ -66,12 +71,7 @@ namespace vnx {
             bool inline is_on_outside_surface_transmissive(const VRay& ray){return is_on_outside_surface(ray) && emat.is_transmissive();}
 		};
 
-		bool b_do_gi = true; //DEPRECATED
 		bool b_do_spectral = true;
-		bool b_do_thin_shadows = false;
-		bool b_do_branched_dielectric = true;
-		bool b_do_double_direct_sampling = true; //DEPRECATED
-		bool b_use_poll_ray_transmissive = false;
 		bool b_debug_normals = false;
 		bool b_debug_iterations = false;
 
@@ -88,7 +88,6 @@ namespace vnx {
 
 		v_aa_mode e_aa_mode = aa_montecarlo;
 
-
 		VRE_Pathtracer(std::string cf) : VRenderer(cf) {} ///TODO inizializzazione stile c++
 
 		inline std::string type() const {return "PathTracer";}
@@ -104,18 +103,10 @@ namespace vnx {
 			return aa_ssaa;
 		};
 
-
-
 		inline void init(){
             parse();
 
-            b_do_gi = try_get("b_do_gi", b_do_gi);
 			b_do_spectral = try_get("b_do_spectral", b_do_spectral);
-			b_do_thin_shadows = try_get("b_do_thin_shadows", b_do_thin_shadows);
-			b_do_branched_dielectric = try_get("b_do_branched_dielectric", b_do_branched_dielectric);
-			b_do_double_direct_sampling = try_get("b_do_double_direct_sampling", b_do_double_direct_sampling); //DEPRECATED
-			b_use_poll_ray_transmissive = try_get("b_use_poll_ray_transmissive", b_use_poll_ray_transmissive);
-
 
 			n_ray_samples = try_get("n_ray_samples", n_ray_samples);
 			if (n_ray_samples <= 0) { throw VException("n_ray_samples <= 0"); }
@@ -153,19 +144,22 @@ namespace vnx {
 		};
 
         inline void post_init(VScene& scn){
+            std::cout<<"**Using : "<<n_ray_samples<<" samples per pixel**\n";
         }
 
-
-		inline bool russian_roulette(ygl::rng_state& rng,ygl::vec3f& w){
+		/*inline bool russian_roulette(ygl::rng_state& rng,ygl::vec3f& w){
             auto rrprob = 1.0f - min(max_element(w), 0.95f);
+            //if (get_random_float(rng) < rrprob) return false; //?
             if (get_random_float(rng) < rrprob) return false;
             w *= 1.0f / (1.0f - rrprob);
             return true;
-		}
+		}*/
 
-		inline ygl::vec3f calc_offBy(const vec3f& d, const ygl::vec3f& norm) {
-			if (!(dot(d, norm) < 0.0f)) { return -norm; }
-			return norm;
+		inline bool russian_roulette(ygl::rng_state& rng,ygl::vec3f& w){
+            auto rrprob = min(max_element(w), 0.95f);
+            if (get_random_float(rng) > rrprob) return false;
+            w *= 1.0f / rrprob;
+            return true;
 		}
 
 		//////Hints from
@@ -180,12 +174,11 @@ namespace vnx {
         inline vec3f refract(const vec3f &I, const vec3f &N,float etai,float etat){
             float cosi = ygl::clamp(dot(I,N),-1.0f, 1.0f);
             vec3f n = N;
-            if (cosi < 0) { cosi = -cosi; } else { std::swap(etai, etat); n= -N; }
+            if (cosi < 0) { cosi = -cosi; } else { /*std::swap(etai, etat);*/ n= -N; }
             float eta = etai / etat;
             float k = 1 - eta * eta * (1 - cosi * cosi);
             return k < 0 ? zero3f : eta * I + (eta * cosi - sqrtf(k)) * n;
         }
-
 
 		inline vec3f brdf_diffuse_ashikhmin(const VMaterial& m,const float Rs,const VRay& wi,const VRay& wo,float ndi,float ndo){
             auto rfc = ((28.0f)/(23.0f*ygl::pif))*m.kr*(1.0f-Rs);
@@ -271,9 +264,8 @@ namespace vnx {
 		//https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 		//////
 		inline float eval_fresnel_dielectric(const vec3f& I, const vec3f& N,float etai,float etat){
-
             float cosi = ygl::clamp(dot(I,N),-1.0f, 1.0f);
-            if (cosi > ygl::epsf) { std::swap(etai, etat); }
+            //if (cosi > ygl::epsf) { std::swap(etai, etat); }
 
             float sint = etai / etat * sqrtf(std::max(0.f, 1 - cosi * cosi));
             if (sint >= 1) {
@@ -289,59 +281,36 @@ namespace vnx {
 		}
 
 
-		inline ygl::vec3f eval_light(const VScene& scn,ygl::rng_state& rng,const VRay& orr, ygl::vec3f n,ygl::vec3f& ln,VResult& lres) {
-			ygl::vec3f w = one3f;
-			int i = 0;
-			int b = 0;
-			VRay rr = orr;
-			while (true) {
-                auto poll = poll_volume(scn, rng, rr);
-                VResult hit = scn.INTERSECT_ALGO( rr, n_max_march_iterations, i);
-				if (!hit.found() || !hit.valid()) { return zero3f; }
+		inline float pow2(float a){return a*a;}
 
+
+		inline ygl::vec3f eval_light(const VScene& scn,ygl::rng_state& rng,VRay rr,ygl::vec3f& ln,VResult& lres) {
+			ygl::vec3f w = one3f;
+			while(true){
+                int i = 0;
+                auto old_rr = rr;
+                auto poll = poll_volume(scn, rng, rr);
+                lres = scn.INTERSECT_ALGO( rr, n_max_march_iterations, i);
+                if (!lres.found() || !lres.valid()) { return zero3f; }
                 if(poll.is_inside_transmissive()){
-                    w *= calc_beer_law(poll.emat,length(rr.o-hit.wor_pos));
+                    w *= calc_beer_law(poll.emat,length(rr.o-lres.wor_pos));
                 }
                 if(is_zero_or_has_ltz(w)){return zero3f;}
 
-                VMaterial hmat = *hit.mat;
-                n = scn.NORMALS_ALGO(hit, f_normal_eps);
-                if(n==zero3f){if(status.bDebugMode){std::cout<<"*<!>Shadow Loop--> Normal is zero\n";}return zero3f;}
-				hmat.eval_mutator(rng, hit, n, hmat);
+                VMaterial hmat = *lres.mat;
+                ln = scn.NORMALS_ALGO(lres, f_normal_eps);
+                hmat.eval_mutator(rng, lres, ln, hmat);
 
-				if (hmat.is_emissive()) {
-					ln = n;
-                    lres = hit;
+                if (hmat.is_emissive()) {
                     return w*eval_le(rr,hmat.e_power,hmat.e_temp);
-				}
-
-				if (hmat.is_transmissive()) {
-                    if(!b_do_thin_shadows) return ygl::zero3f;
-                    bool outside = dot(rr.d,n) < 0;
-                    vec3f offBy = outside ? -n : n;
-
-                    float ior = 1.0f;
-                    if(b_use_poll_ray_transmissive){
-                        auto poll_ray = offsetted_ray(hit.wor_pos, rr, rr.d, rr.tmin, rr.tmax, offBy, hit.dist, f_refracted_ray_eps_mult);
-                        auto poll = poll_volume(scn,rng,poll_ray);
-                        if(poll.is_inside_transmissive()) ior = poll_ray.ior;
-                        else ior = hmat.eval_ior(rr.wl,f_min_wl,f_max_wl,b_do_spectral);
-                    }else{
-                        ior = hmat.eval_ior(rr.wl,f_min_wl,f_max_wl,b_do_spectral);
-                    }
-
-                    auto F = eval_fresnel_dielectric(-rr.d,n,rr.ior,ior);
-                    if(cmpf(F,1.0f)) return zero3f;
-                    w*=1.0f-F;
-                    rr = offsetted_ray(hit.wor_pos, rr, rr.d, rr.tmin, rr.tmax, offBy, hit.dist, f_refracted_ray_eps_mult);
-                    if(b> 2 && !russian_roulette(rng,w)) return zero3f;
-				}
-				else{ return ygl::zero3f; }
-
-				if(has_inf(w)){std::cout<<"*<!>Shadow Loop--> Not finite number detected: "<<_p(w)<<"\n";return zero3f;}
-				if(status.bDebugMode) std::cout<<"*<!>Shadow Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
-
-				b++;
+                }
+                if(hmat.is_transmissive() && !cmpf(old_rr.ior,rr.ior)){
+                    bool outside = dot(rr.d,ln) > 0;
+                    vec3f offBy = outside ? -ln : ln;
+                    rr = offsetted_ray(lres.wor_pos,rr,rr.d,rr.tmin,rr.tmax,offBy,lres.dist);
+                    continue;
+                }
+                return zero3f;
 			}
 			return zero3f;
 		}
@@ -349,13 +318,14 @@ namespace vnx {
 
 		inline vec3f sample_diffuse(const vec2f& rn,const vec3f& o,const vec3f& n){
             auto fp = dot(n, o) >= 0 ? make_frame_fromz(zero3f, n) : make_frame_fromz(zero3f, -n);
-            auto rz = sqrtf(rn.y), rr = sqrtf(1 - rz * rz), rphi = 2 * ygl::pif * rn.x;
-            auto wh_local = ygl::vec3f{rr * cosf(rphi), rr * sinf(rphi), rz };
+            auto wh_local = sample_hemisphere_direction_cosine(rn);
             return ygl::transform_direction(fp, wh_local);
 		}
 
+
 		inline vec3f sample_ggx(const vec2f& rn,const vec3f& o,const vec3f& n,float rs){
-            auto fp = dot(n, o) >= 0 ? make_frame_fromz(zero3f, n) : make_frame_fromz(zero3f, -n);
+            //auto fp = dot(n, o) >= 0 ? make_frame_fromz(zero3f, n) : make_frame_fromz(zero3f, -n);
+            auto fp = make_frame_fromz(zero3f,n);
             auto tan2 = rs * rs * rn.y / (1 - rn.y);
             auto rz = std::sqrt(1 / (tan2 + 1)), rr = std::sqrt(1 - rz * rz), rphi = 2 * ygl::pif * rn.x;
             auto wh_local = ygl::vec3f{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
@@ -365,10 +335,10 @@ namespace vnx {
 		inline VResult sample_emissive(const VScene& scn,ygl::rng_state& rng,int& idl){
 		    idl = 0;
 		    if(scn.emissive_hints.empty()) return VResult();
-		    idl = (int)(ygl::get_random_float(rng) * scn.emissive_hints.size());
+            idl = ygl::get_random_int(rng,scn.emissive_hints.size());
             const std::vector<VResult>* ep = &scn.emissive_hints[idl];
             if(ep->empty()) return VResult();
-            VResult point = (*ep)[(int)(ygl::get_random_float(rng) * ep->size())];
+            VResult point = (*ep)[ygl::get_random_int(rng,ep->size())];
             return point;
 		}
 
@@ -376,73 +346,54 @@ namespace vnx {
 		    if(scn.emissive_hints.empty()) return VResult();
             const std::vector<VResult>* ep = &scn.emissive_hints[idl];
             if(ep->empty()) return VResult();
-            VResult point = (*ep)[(int)(ygl::get_random_float(rng) * ep->size())];
+            VResult point = (*ep)[ygl::get_random_int(rng,ep->size())];
             return point;
 		}
 
-		inline void sample_transmissive(const VScene& scn, ygl::rng_state& rng, const VResult& hit, const VMaterial& material,const VRay& wo, const ygl::vec3f& n, const ygl::vec3f& wh, std::vector<VSample>& samples){
-                auto wi = -wo;
-                bool outside = dot(wo.d,n) > 0;
-                vec3f offBy = outside ? -n : n;
-                auto type_refl = s_specular;
-                float ior;
-                if(b_use_poll_ray_transmissive){
-                    auto poll_ray = offsetted_ray(hit.wor_pos,wi,wi.d,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
-                    auto poll = poll_volume(scn,rng,poll_ray);
-                    if(poll.is_inside_transmissive()) ior = poll_ray.ior;
-                    else ior = material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
-                }else{
-                    ior = material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
-                }
+		inline VSample sample_transmissive( const VScene& scn, ygl::rng_state& rng, const VResult& hit, const VMaterial& material,const VRay& wo, const ygl::vec3f& n, const ygl::vec3f& wh){
+            auto wi = -wo;
+            bool outside = dot(wo.d,n) > 0;
+            vec3f offBy = outside ? -n : n;
 
-                auto F = eval_fresnel_dielectric(wi.d,wh,wi.ior,ior);
+            auto poll_ray = offsetted_ray(hit.wor_pos,wi,wi.d,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
+            auto poll = poll_volume(scn,rng,poll_ray);
+            float ior = poll_ray.ior;
+            auto F = eval_fresnel_dielectric(wi.d,wh,wi.ior,ior);
 
-                if(b_do_branched_dielectric){
-                    if(F<1.0f){
-                        auto refr_dir = refract(wi.d,wh,wi.ior,ior);
-                        auto iray = offsetted_ray(hit.wor_pos,wi,refr_dir,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
-                        samples.push_back(VSample{iray,s_transmissive});
-                    }
-                    if(F>0.0f){
-                        auto refl_dir = ygl::reflect(wo.d,outside ? wh : -wh);
-                        auto iray = offsetted_ray(hit.wor_pos,wi,refl_dir,wi.tmin,wi.tmax,-offBy,hit.dist,f_refracted_ray_eps_mult);
-                        samples.push_back(VSample{iray,type_refl});
-                    }
+            if(cmpf(F,0.0f)){
+                auto refr_dir = refract(wi.d,wh,wi.ior,ior);
+                auto iray = offsetted_ray(hit.wor_pos,wi,refr_dir,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
+                return VSample{iray,s_transmitted,{0,1.0f}};
+            }else if(cmpf(F,1.0f)){
+                auto refl_dir = ygl::reflect(wo.d,outside ? wh : -wh);
+                auto iray = offsetted_ray(hit.wor_pos,wi,refl_dir,wi.tmin,wi.tmax,-offBy,hit.dist);
+                return VSample{iray,s_tr_reflected,{0,1.0f}};
+            }else{
+                //auto rn_ks = get_random_float(rng);
+                if(get_random_float(rng)>0.5f){
+                    auto refr_dir = refract(wi.d,wh,wi.ior,ior);
+                    auto iray = offsetted_ray(hit.wor_pos,wi,refr_dir,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
+                    return VSample{iray,s_transmitted,{0,0.5f}};
                 }else{
-                    if(cmpf(F,0.0f)){
-                        auto refr_dir = refract(wi.d,wh,wi.ior,ior);
-                        auto iray = offsetted_ray(hit.wor_pos,wi,refr_dir,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
-                        samples.push_back(VSample{iray,s_transmissive});
-                    }else if(cmpf(F,1.0f)){
-                        auto refl_dir = ygl::reflect(wo.d,outside ? wh : -wh);
-                        auto iray = offsetted_ray(hit.wor_pos,wi,refl_dir,wi.tmin,wi.tmax,-offBy,hit.dist,f_refracted_ray_eps_mult);
-                        samples.push_back(VSample{iray,type_refl});
-                    }else{
-                        auto rn_ks = get_random_float(rng);
-                        if(rn_ks>F){
-                            auto refr_dir = refract(wi.d,wh,wi.ior,ior);
-                            auto iray = offsetted_ray(hit.wor_pos,wi,refr_dir,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
-                            samples.push_back(VSample{iray,s_transmissive});
-                        }else{
-                            auto refl_dir = ygl::reflect(wo.d,outside ? wh : -wh);
-                            auto iray = offsetted_ray(hit.wor_pos,wi,refl_dir,wi.tmin,wi.tmax,-offBy,hit.dist,f_refracted_ray_eps_mult);
-                            samples.push_back(VSample{iray,type_refl});
-                        }
-                    }
+                    auto refl_dir = ygl::reflect(wo.d,outside ? wh : -wh);
+                    auto iray = offsetted_ray(hit.wor_pos,wi,refl_dir,wi.tmin,wi.tmax,-offBy,hit.dist);
+                    return VSample{iray,s_tr_reflected,{0,0.5f}};
                 }
+            }
 		}
 
-		inline void sample_bsdfcos(const VScene& scn, ygl::rng_state& rng, const VResult& hit, const VMaterial& material,const VRay& wo, const ygl::vec3f& n, std::vector<VSample>& samples) {
+		inline VSample sample_bsdfcos(const VScene& scn, ygl::rng_state& rng, const VResult& hit, const VMaterial& material,const VRay& wo, const ygl::vec3f& n) {
             if(material.is_delta()){
                 if(material.is_transmissive()){
-                    sample_transmissive(scn,rng,hit,material,wo,n,n,samples);
+                    return sample_transmissive(scn,rng,hit,material,wo,n,n);
                 }else{
-                    auto iray = offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,dot(n,wo.d) >= 0 ? n : -n), wo.tmin, wo.tmax, n, hit.dist);
-                    samples.push_back(VSample{iray,s_specular});
+                    auto offby = n;//dot(wo.d,n)>=0 ? n : -n;
+                    auto iray = offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,offby), wo.tmin, wo.tmax, offby, hit.dist);
+                    return VSample{iray,s_reflected,{0.0f,1.0f}};
                 }
             }else{
                 if(material.is_transmissive()){
-                    sample_transmissive(scn,rng,hit,material,wo,n,n,samples); //TODO
+                    return sample_transmissive(scn,rng,hit,material,wo,n,n); //TODO
                 }else if(material.is_dielectric()){
                     auto ior = material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
                     auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,ior);
@@ -453,28 +404,30 @@ namespace vnx {
                     auto rr = ygl::get_random_float(rng);
                     if(rr<weights.x){
                         auto rn = ygl::get_random_vec2f(rng);
-                        auto iray = offsetted_ray(hit.wor_pos, wo, sample_diffuse(rn,wo.d,n), wo.tmin, wo.tmax, n, hit.dist);
-                        samples.push_back(VSample{iray,s_diffuse});
+                        auto offby = n;//dot(wo.d,n)>=0 ? n : -n;
+                        auto iray = offsetted_ray(hit.wor_pos, wo, sample_diffuse(rn,wo.d,n), wo.tmin, wo.tmax, offby, hit.dist);
+                        return VSample{iray,s_reflected,weights};
                     }else{
                         auto rn = ygl::get_random_vec2f(rng);
-                        auto iray = offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,sample_ggx(rn,wo.d,n,material.rs)), wo.tmin, wo.tmax, n, hit.dist, 2.0f);
-                        samples.push_back(VSample{iray,s_glossy});
+                        auto offby = n;//dot(wo.d,n)>=0 ? n : -n;
+                        auto iray = offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,sample_ggx(rn,wo.d,n,material.rs)), wo.tmin, wo.tmax, offby, hit.dist);
+                        return VSample{iray,s_reflected,weights};
                     }
                 }else{
                     auto rn = ygl::get_random_vec2f(rng);
-                    auto iray = offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,sample_ggx(rn,wo.d,n,material.rs)), wo.tmin, wo.tmax, n, hit.dist, 2.0f);
-                    samples.push_back(VSample{iray,s_glossy});
+                    auto offby = n;//dot(wo.d,n)>=0 ? n : -n;
+                    auto iray = offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,sample_ggx(rn,wo.d,n,material.rs)), wo.tmin, wo.tmax, offby, hit.dist);
+                    return VSample{iray,s_reflected,{0.0f,1.0f}};
                 }
-
             }
 		}
 
-		inline float eval_bsdfcos_pdf( const VMaterial& material, const VRay& wi, const VRay& wo, const ygl::vec3f& n) {
+		inline float eval_bsdfcos_pdf( const VMaterial& material, const VRay& wi, const VRay& wo, const ygl::vec3f& n,const vec2f& weights = one2f) {
 		    float pdf = 0.0f;
 
 		    if(material.is_delta()){
-                if(material.is_conductor()) pdf = 1;
-                else if(material.is_transmissive()) pdf = 1;
+                if(material.is_conductor()) pdf = 1.0f;
+                else if(material.is_transmissive())pdf = weights.y;
 		    }else{
                 auto ndi = dot(n,wi.d);
                 auto ndo = dot(n,wo.d);
@@ -497,8 +450,8 @@ namespace vnx {
                     }else{
                         auto ior = material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
                         auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,ior);
-                        auto weights = vec2f{(1.0f-F),F};
-                        weights /= weights.x+weights.y;
+                        //auto weights = vec2f{(1.0f-F),F};
+                        //weights /= weights.x+weights.y;
 
                         pdf += (weights.x)*(abs(ndi)/ygl::pif);
 
@@ -513,7 +466,7 @@ namespace vnx {
 		    return pdf;
 		}
 
-		inline ygl::vec3f eval_bsdfcos(const VMaterial& material, const VRay& wi, const VRay& wo, const ygl::vec3f& n) {
+		inline ygl::vec3f eval_bsdfcos(const VScene& scn,ygl::rng_state& rng,const VResult& hit,const VMaterial& material, const VRay& wi, const VRay& wo, const ygl::vec3f& n) {
 		    vec3f li = zero3f;
             auto ndi = dot(n,wi.d);
             auto ndo = dot(n,wo.d);
@@ -522,8 +475,14 @@ namespace vnx {
                     auto F = eval_fresnel_conductor(wo.d,n,wi.ior,material.kr);
                     li +=F;
                 }else if(material.is_transmissive()){
-                    auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral));
-                    if(ndo*ndi<ygl::epsf) li+= toVec3f(1.0f-F);
+                    bool outside = dot(wo.d,n) > 0;
+                    vec3f offBy = outside ? -n : n;
+                    auto poll_ray = offsetted_ray(hit.wor_pos,wo,wo.d,wo.tmin,wo.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
+                    auto poll = poll_volume(scn,rng,poll_ray);
+                    float ior = poll_ray.ior;
+
+                    auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,ior);
+                    if(ndo*ndi<=ygl::epsf) li+= toVec3f(1.0f-F);
                     else li+= toVec3f(F);
                 }
 		    }else{
@@ -553,11 +512,9 @@ namespace vnx {
                         auto m1_ndo5 = std::pow((1.0f-abs(ndo)),5.0f);
                         li += (material.kr/ygl::pif)*(1.0f+fd90*m1_ndi5)*(1.0f+fd90*m1_ndo5)*(one3f-F);
 
-
                         if(ndh==0.0f) return li*abs(ndi);
                         li+=brdf_ggx_D(material.rs,ndi,ndo,ndh) / (4.f * abs(dot(wi.d, h)) * max(abs(ndi), abs(ndo))) * F;
                     }
-
                 }
                 li*=abs(ndi);
 		    }
@@ -577,15 +534,38 @@ namespace vnx {
 		}
 
 		inline VVolumePoll poll_volume(const VScene& scn, ygl::rng_state& rng, VRay& ray){
-		    VResult ev;
-			scn.eval(ray.o,ev);
+			auto ev = scn.eval(ray.o);
 
-            VMaterial evmat = *ev.vmat;
+            VMaterial evmat;
+            //fix for nested dielectrics
+            if(ev.vdist<0.0f && ev.dist<0.0f && abs(ev.dist)<abs(ev.vdist)){
+                evmat = *ev.mat;
+            }
+            else{
+                evmat = *ev.vmat;
+            }
+
             ygl::vec3f evnorm = scn.NORMALS_ALGO(ev,f_normal_eps);
             evmat.eval_mutator(rng, ev, evnorm, evmat);
 
 			if(ev.vdist<ygl::epsf || ev.dist<ygl::epsf) update_ray_physics(ray,evmat.eval_ior(ray.wl,f_min_wl,f_max_wl,b_do_spectral));
 			else update_ray_physics(ray,1.0f);
+            return {ev,evmat};
+		}
+
+		inline VVolumePoll poll_volume_noray(const VScene& scn, ygl::rng_state& rng,const VRay& ray){
+			auto ev = scn.eval(ray.o);
+            VMaterial evmat;
+            //fix for nested dielectrics
+            if(ev.vdist<0.0f && ev.dist<0.0f && abs(ev.dist)<abs(ev.vdist)){
+                evmat = *ev.mat;
+            }
+            else{
+                evmat = *ev.vmat;
+            }
+
+            ygl::vec3f evnorm = scn.NORMALS_ALGO(ev,f_normal_eps);
+            evmat.eval_mutator(rng, ev, evnorm, evmat);
             return {ev,evmat};
 		}
 
@@ -596,304 +576,269 @@ namespace vnx {
             return pwr;
 		}
 
-        //DEPRECATED
-		inline vec3f sample_direct_from_light(const VScene& scn, ygl::rng_state& rng, const VRay& wo,const VResult& hit,const VMaterial& material, const ygl::vec3f& n){
-            vec3f output = zero3f;
-            const int n_lights = scn.emissive_hints.size();
-            for(int idl=0;idl<n_lights;idl++){
-                vec3f dir = zero3f;
-                VResult point = sample_emissive_in_light(scn, rng, idl);
-                if(point.found()) dir = normalize(point.wor_pos - hit.wor_pos);
-                if(dir!=zero3f){
-                    auto ndl = dot(n,dir);
-                    if(ndl<ygl::epsf){continue;}
-
-                    vec3f ln;
-                    VResult lres;
-                    VRay wi = offsetted_ray(hit.wor_pos, wo, dir, wo.tmin, wo.tmax, n, hit.dist, 2.0f);
-                    auto lc = eval_light(scn, rng, wi, n, ln, lres);
-                    if (!cmpf(lc,zero3f) && lres.found()) {
-                        auto ndil = dot(ln,-wi.d);
-                        //if(ndil==0.0f) continue;
-                        auto light_pdf = ygl::distance_squared(hit.wor_pos,lres.wor_pos) / abs(ndil);
-                        auto brdf_pdf = eval_bsdfcos_pdf(material,wi,wo,n);
-                        auto mis_pdf = (brdf_pdf+light_pdf);
-                        if(mis_pdf>ygl::epsf) output+= (lc*eval_bsdfcos(material,wi,wo, n))/mis_pdf;
-                    }
-                }
-            }
-            if(n_lights>1) output /= n_lights;
-            return output;
-		}
-
-        //DEPRECATED
-		inline vec3f sample_direct_from_bsdf(const VScene& scn, ygl::rng_state& rng,const VRay& wi, const VRay& wo,const VResult& hit,const VMaterial& material, const ygl::vec3f& n){
-		    return zero3f; //TODO remove
-            if(wi.d!=zero3f){
-                auto ndl = dot(n,wi.d);
-                if(ndl<ygl::epsf){return zero3f;}
-
-                vec3f ln;
-                VResult lres;
-                auto lc = eval_light(scn, rng, wi, n, ln, lres);
-                if (!cmpf(lc,zero3f) && lres.found()) {
-                    auto ndil = dot(ln,-wi.d);
-                    //if(ndil<ygl::epsf) return zero3f;
-                    auto light_pdf = ygl::distance_squared(hit.wor_pos,lres.wor_pos) / abs(ndil);
-                    auto brdf_pdf = eval_bsdfcos_pdf(material,wi,wo,n);
-                    auto mis_pdf = (brdf_pdf+light_pdf);
-                    if(mis_pdf>ygl::epsf) return (lc*eval_bsdfcos(material,wi,wo, n))/mis_pdf;
-                }
-            }
-            return zero3f;
-		}
-        //DEPRECATED
-		inline vec3f eval_direct_mc(const VScene& scn, ygl::rng_state& rng,const VRay& wi, const VRay& wo,const VResult& hit,const VMaterial& material, const ygl::vec3f& n){
-		    if(material.is_delta()) return zero3f;
-            vec3f output = zero3f;
-            if(scn.emissive_hints.empty()) return sample_direct_from_bsdf(scn,rng,wi,wo,hit,material,n);
-            if(b_do_double_direct_sampling){
-                auto rnl = ygl::get_random_float(rng);
-                if(rnl>0.5f){ //prova prima light sampling
-                    output += sample_direct_from_light(scn,rng,wo,hit,material,n);
-                    if(cmpf(output,zero3f)){
-                        output += sample_direct_from_bsdf(scn,rng,wi,wo,hit,material,n);
-                    }
-                }else{ //prova prima bsdf sampling
-                    output += sample_direct_from_bsdf(scn,rng,wi,wo,hit,material,n);
-                    if(cmpf(output,zero3f)){
-                        output += sample_direct_from_light(scn,rng,wo,hit,material,n);
-                    }
-                }
-                output*=0.5f;
-            }else{ //MIS classico basato su random 1/2
-                auto rnl = ygl::get_random_float(rng);
-                if(rnl>0.5f){
-                    output += sample_direct_from_light(scn,rng,wo,hit,material,n);
-                }else{
-                    output += sample_direct_from_bsdf(scn,rng,wi,wo,hit,material,n);
-                }
-            }
-
-            return output;
-		}
-
 		inline bool isGathering(const VMaterial& m){
             return m.is_delta();
 		}
 
-		struct VPExSample{
-            VPExSample(): sample({}),w(zero3f),ge(true),b(0){};
-		    VPExSample(VSample samplev,vec3f wv,bool gev,int bv): sample(samplev),w(wv),ge(gev),b(bv){};
-            VSample sample;
-            vec3f w;
-            bool ge;
-            int b;
-		};
-
-		inline void branched_rays(vec3f w,int b,const VRay& wo,const vec3f& n,bool gather_ke,ygl::rng_state& rng,const VMaterial& material,const std::vector<VSample>& samples,std::vector<VPExSample>& s_queue){
-            for(int si=1;si<samples.size();si++){ // supporto al branched, se necessario
-                auto ss = samples[si];
-                auto wi = ss.ray;
-                if(wi.d==zero3f) continue;
-                auto pdf = eval_bsdfcos_pdf(material,wi,wo,n);
-                if(pdf<ygl::epsf) continue;
-                w*= eval_bsdfcos(material,wi,wo,n)/pdf;
-                if(is_zero_or_has_ltz(w)) continue;
-
-                if (b > 2 && !russian_roulette(rng,w)) continue; // && ss.type!=s_transmissive
-                s_queue.push_back(VPExSample(ss,w,gather_ke,b+1));
-            }
+		inline vec3f sample_hg_phase(float& pdf){
+            //TODO
 		}
 
+		inline vec3f sample_iso_phase(float& pdf){
+            //TODO
+		}
 
-		inline vec3f eval_pixel(const VScene& scn, ygl::rng_state& rng, const VRay& ray) {
+		inline float Mis2(float spdf,float o1pdf){
+            return spdf / (spdf+o1pdf);
+		}
 
-			ygl::vec3f output = ygl::zero3f;
-            std::vector<VPExSample> s_queue;
-            s_queue.reserve(100);
-            s_queue.push_back(VPExSample({ray,s_camera},one3f,true,0));
+		inline float Mis3(float spdf,float o1pdf,float o2pdf){
+            return spdf / (spdf+o1pdf+o2pdf);
+		}
 
-            while(!s_queue.empty()){
-                auto ex_sample = s_queue.back();
-                s_queue.pop_back();
+        enum VertexType{
+            SURFACE,
+            VOLUME,
+            EMISSIVE
+        };
 
-                auto sample = ex_sample.sample;
-                if(ex_sample.w==zero3f){continue;}
-                auto w = ex_sample.w;
-                auto gather_ke = ex_sample.ge;
-                auto b = ex_sample.b;
-                auto i_output = zero3f;
+		struct VVertex{
+		    struct VTroughput{
+		        vec3f w;
+                float e_power;
+                float e_temp;
+		    };
+            VResult hit;
+            VMaterial material;
+            VRay wi;
+            VTroughput troughput;
+            vec3f n;
+            VertexType type = SURFACE;
 
-                while(true){
-                    int n_iters = 0;
-                    auto poll = poll_volume(scn, rng, sample.ray);
-                    VResult hit = scn.INTERSECT_ALGO( sample.ray, n_max_march_iterations, n_iters);
-                    if (!hit.found() || !hit.valid()) {break; }
-
-                    if (b_debug_iterations) {
-                        return one3f*((float)n_iters)/((float)n_max_march_iterations);
-                    }
-
-                    if (b_debug_normals) {
-                        return scn.NORMALS_ALGO(hit,f_normal_eps);
-                    }
-
-                    if(poll.is_inside_transmissive()){
-                        w *= calc_beer_law(poll.emat,length(sample.ray.o-hit.wor_pos));
-                    }
-
-                    auto material = *hit.mat;
-                    auto n = scn.NORMALS_ALGO(hit, f_normal_eps);
-
-                    material.eval_mutator(rng, hit, n, material);
-                    if(n==zero3f){if(status.bDebugMode){std::cout<<"*<!>Main Loop--> Normal is zero\n";}break;}
-
-                    auto wo = -sample.ray;
-                    auto wi = sample.ray;
-
-                    if (material.is_emissive()) {
-                        if(gather_ke) i_output += w*eval_le(wi,material.e_power,material.e_temp);
-                        break;
-                    }
-
-                    gather_ke = isGathering(material);
-
-                    std::vector<VSample> samples;
-                    sample_bsdfcos(scn, rng, hit,material,wo,n,samples);
-                    if(samples.empty()) break;
-                    //if(!gather_ke){output += w*eval_direct_mc(scn, rng, samples[ygl::get_random_int(rng,samples.size())].ray, wo, hit, material, n);}
-                    //if(!b_do_gi && b>=2) break;
-
-                    for(int si=1;si<samples.size();si++){ // supporto al branched, se necessario
-                        auto ss = samples[si];
-                        auto wi = ss.ray;
-                        if(wi.d==zero3f) continue;
-
-                        vec3f sw = w;
-
-                        auto pdf = eval_bsdfcos_pdf(material,wi,wo,n);
-                        if(pdf<ygl::epsf) continue;
-                        sw*= eval_bsdfcos(material,wi,wo,n)/pdf;
-                        if(is_zero_or_has_ltz(sw)) continue;
-                        if(has_inf(sw)){std::cout<<"*<!>Main {branched} loop--> Not finite number detected\n";continue;}
-
-                        if (b > 2 && !russian_roulette(rng,sw)) continue;
-                        s_queue.push_back(VPExSample(ss,sw,gather_ke,b+1));
-                    }
-
-                    sample = samples[0];
-                    wi = sample.ray;
-                    if(wi.d==zero3f) break;
-
-                    auto pdf = eval_bsdfcos_pdf(material,wi,wo,n);
-                    auto brdf = eval_bsdfcos(material,wi,wo,n);
-
-                    if(!gather_ke){
-                        VRay lwi = {};
-                        float lpdf = 0.0f;
-
-                        if(scn.emissive_hints.size()>0){
-                            VResult point = sample_emissive_in_light(scn, rng, ygl::get_random_int(rng,scn.emissive_hints.size()));
-                            lwi = offsetted_ray(hit.wor_pos, wi, normalize(point.wor_pos-hit.wor_pos), wo.tmin, wo.tmax, n, hit.dist, 2.0f);
-                            lpdf = eval_bsdfcos_pdf(material,lwi,wo,n);
-                        }
-
-                        VResult lres;
-                        vec3f ln;
-                        if(pdf>0.0f && !is_zero_or_has_ltz(brdf)){
-                            auto lc = eval_light(scn, rng, wi, n, ln, lres);
-                            if(!cmpf(lc,zero3f)){
-                                auto dist = ygl::distance_squared(hit.wor_pos,lres.wor_pos);
-                                auto bpdf = pdf+((lpdf+dist)/abs(dot(ln,-wi.d)));
-                                if(bpdf>ygl::epsf) output+= (w*lc*brdf) / bpdf;
-                            }
-                        }
-                        //TODO, implement multiple lights pdf
-                        if(lpdf>0.0f && lwi.d!=zero3f){
-                            auto lbrdf = eval_bsdfcos(material,lwi,wo,n);
-                            if(!is_zero_or_has_ltz(lbrdf)){
-                                auto lc = eval_light(scn, rng, lwi, n, ln, lres);
-                                if(!cmpf(lc,zero3f)){
-                                    auto dist = ygl::distance_squared(hit.wor_pos,lres.wor_pos);
-                                    lpdf = pdf+((lpdf+dist)/abs(dot(ln,-lwi.d)));
-                                    if(lpdf>ygl::epsf) output+= (w*lc*lbrdf) / lpdf;
-                                }
-                            }
-                        }
-                    }
-
-                    if(pdf<ygl::epsf) break;
-                    w*= brdf/pdf;
-                    if(is_zero_or_has_ltz(w)) break;
-                    if(has_inf(w)){std::cout<<"*<!>Main loop--> Not finite number detected: pdf: "<<pdf<<"; w:"<<_p(w)<<"\n";break;}
-
-                    if (b > 2 && !russian_roulette(rng,w)) break;
-                    if(status.bDebugMode)std::cout<<"*<!>Main Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
-                    b++;
-                };
-                output += i_output;
-            }
-
-			return output;
+            float vc;
+            float vcm;
 		};
 
+		inline vec3f ConnectToEmissive(const VScene& scn,ygl::rng_state& rng,const VRay& wo,const VVertex& v1,const VResult& em){
+            auto dir = normalize(em.wor_pos-v1.hit.wor_pos);
+            auto to_em = offsetted_ray(v1.hit.wor_pos,wo,dir,f_ray_tmin,f_ray_tmax,v1.n,v1.hit.dist);
+            int n_iters = 0;
+            auto origin = to_em.o;
 
-		inline VRay eval_camera(const VScene& scn,int i, int j, int wd, int hd,vec2f crn, ygl::rng_state& rng)  {
-			auto camera = scn.camera;
+            vec3f brdf = zero3f;
+            float pdf = 0.0f;
 
-			auto lrn = ygl::zero2f;
-            vec2f uv;
-			if(e_aa_mode==aa_montecarlo){
-                crn = ygl::get_random_vec2f(rng);
-                uv = ygl::vec2f{ (i + crn.x) / (camera.aspect*hd), 1.0f - (j + crn.y) / hd };
-            }else{
-                uv = vec2f{
-                    (i+(crn.x+0.5f)/n_ssaa_samples)/wd,
-                    1.0f-(j+(crn.y+0.5f)/n_ssaa_samples)/hd
-                };
+            if(v1.type==VOLUME){
+                brdf = one3f;
+                pdf = 4*ygl::pif;
+            }else if(v1.type==SURFACE){
+                brdf = eval_bsdfcos(scn,rng,v1.hit,v1.material,to_em,wo,v1.n);
+                if(brdf==zero3f) return zero3f;
+                pdf = eval_bsdfcos_pdf(v1.material,to_em,wo,v1.n);
+                if(pdf<=0.0f) return zero3f;
             }
-			if (camera.aperture>ygl::epsf) {lrn = ygl::get_random_vec2f(rng);}
 
-			auto h = 2 * std::tan(camera.yfov / 2.0f);
-			auto w = h * camera.aspect;
+            float traveled_dist = 0.0f;
+            vec3f trw = one3f;
+            for(int b=0;;++b){
+                VVolumePoll poll = poll_volume(scn,rng,to_em);
+                VResult hit = scn.INTERSECT_ALGO(to_em,n_max_march_iterations,n_iters);
+                if(!hit.found()) return zero3f;
 
-			ygl::vec3f o;
-			float focus = 1.0f;
-			if (camera.aperture <= ygl::epsf) { o = ygl::vec3f{ lrn.x, lrn.y, 0.0f }; }
-			else { o = ygl::vec3f{ lrn.x * camera.aperture, lrn.y * camera.aperture, 0.0f };focus = camera.focus; }
+                VMaterial tmat = *hit.mat;
+                auto tn = scn.NORMALS_ALGO(hit,f_normal_eps);
+                tmat.eval_mutator(rng,hit,tn,tmat);
 
-			auto q = ygl::vec3f{ w * focus * (uv.x - 0.5f),h * focus * (uv.y - 0.5f), -focus };
-			return VRay{ transform_point(camera._frame, o), transform_direction(camera._frame, normalize(q - o)), f_ray_tmin, f_ray_tmax };
+                if(poll.is_inside_transmissive() && poll.emat.ka!=zero3f){
+                    trw *= exp(-poll.emat.ka*ygl::distance(to_em.o,hit.wor_pos));
+                }
+                traveled_dist = ygl::distance(origin,hit.wor_pos);
+
+                if(tmat.is_emissive()){
+                    auto lc = eval_le(to_em,tmat.e_power,tmat.e_temp);
+                    auto dsqr = traveled_dist*traveled_dist;
+                    auto pdf2 = dsqr / abs(dot(tn,-to_em.d));
+
+                    float mw = Mis2(pdf2,1.0f/pdf);
+                    if(mw>0.0f) return (mw / pdf2)*(trw*v1.troughput.w*lc*brdf);
+                    return zero3f;
+                }
+
+                if(!tmat.is_transmissive() || tmat.is_refractive()){break;}
+                if (b>2){if(!russian_roulette(rng,trw)) break;}
+
+                if(has_inf(trw)){std::cout<<"*<!>Connection loop--> Not finite number detected--> b:"<<b<<"--->"<<_p(trw)<<"\n";break;}
+                if(status.bDebugMode)std::cout<<"*<!>Connection Loop--> b:"<<b<<"--->"<<trw.x<<","<<trw.y<<","<<trw.z<<"\n";
+
+                //continue ray
+                auto offby = dot(to_em.d,tn) > 0 ? -tn : tn;
+                to_em = offsetted_ray(hit.wor_pos,to_em,to_em.d,f_ray_tmin,f_ray_tmax,-offby,hit.dist);
+            }
+            return zero3f;
+		}
+
+		inline void init_ray_physics(rng_state& rng,VRay& ray){
+            ray.wl = rand1f_r(rng,f_min_wl,f_max_wl);
+            ray.velocity = KC;
+            ray.frequency = ray.velocity / ray.wl;
+            ray.ior = 1.0f;
+		}
+
+		inline vec3f eval_pixel(const VScene& scn, ygl::rng_state& rng,image3f& img,const VCamera& camera, const VRay& ray) {
+			vec3f output = zero3f;
+			vec3f w = one3f;
+			bool gather_ke = true;
+			bool nee_hit = false;
+            VSample sample = {ray,s_undefined};
+			VResult hit = {};
+
+            for(int b=0;;b++){
+                int n_iters = 0;
+                VVolumePoll poll = poll_volume(scn, rng, sample.ray);
+
+                if(!nee_hit)hit = scn.INTERSECT_ALGO( sample.ray, n_max_march_iterations, n_iters);
+                nee_hit = false;
+
+                if (b_debug_iterations) {
+                    if (!hit.found() || !hit.valid()) {break; }
+                    return one3f*((float)n_iters)/((float)n_max_march_iterations);
+                }
+
+                if (b_debug_normals) {
+                    if (!hit.found() || !hit.valid()) {break; }
+                    return scn.NORMALS_ALGO(hit,f_normal_eps);
+                }
+
+                if(poll.emat.k_sca>ygl::epsf && poll.eres.vdist<0.0f){
+                    float tFar = 0.0f;
+                    if (!hit.found() || !hit.valid()) {tFar = sample.ray.tmax;}
+                    else {tFar = ygl::distance(sample.ray.o,hit.wor_pos);}
+                    auto vmt = poll.emat;
+
+                    float dist = -logf(1-ygl::get_random_float(rng)) / (vmt.k_sca);
+                    float pdf = exp(-(vmt.k_sca)*tFar);
+
+                    if(dist<tFar){
+                        auto incoming = sample.ray;
+                        sample.ray.o = sample.ray.o+(sample.ray.d*dist);
+
+                        poll = poll_volume_noray(scn, rng, sample.ray);
+
+                        if(!scn.emissive_hints.empty()){
+                            int idl = 0;
+                            auto emissive = sample_emissive(scn,rng,idl);
+                            VVertex ev = {poll.eres,poll.emat,sample.ray,{w,0.0f,0.0f},zero3f,VOLUME,0.0f,0.0f};
+                            output += ConnectToEmissive(scn,rng,sample.ray,ev,emissive);
+                            //VVertex lev = {emissive,{},{},{w,0.0f,0.0f},scn.NORMALS_ALGO(emissive,f_normal_eps),EMISSIVE,0.0f,0.0f};
+                            //output += ConnectVertex(scn,rng,ev,lev,incoming,pdf,1);
+                            //for(int vi = 0;vi<light_path_length; vi++){
+                                //output += ConnectVertex(scn,rng,ev,vertices[vi],incoming,pdf,light_path_length);
+                            //}
+                        }
+
+                        sample.ray.d =  ygl::sample_sphere_direction(ygl::get_random_vec2f(rng));
+
+                        w = (w*exp(-vmt.ka*dist))/(pdf+(4*ygl::pif));
+                        if(is_zero_or_has_ltz(w) || has_inf(w)) break;
+
+                        if(b>2){if(!russian_roulette(rng,w)){break;}}
+                        continue;
+                    }else{
+                        if (!hit.found() || !hit.valid()) {break; }
+                        w = w*exp(-vmt.ka*tFar)/(pdf);
+                    }
+                }else if(cmpf(poll.emat.k_sca,0.0f) && poll.eres.vdist<0.0f){
+                    if (!hit.found() || !hit.valid()) {break; }
+                    w = w*exp(-poll.emat.ka*ygl::distance(sample.ray.o,hit.wor_pos));
+                }else{
+                    if (!hit.found() || !hit.valid()) {break; }
+                }
+
+                auto material = *hit.mat;
+                auto n = scn.NORMALS_ALGO(hit, f_normal_eps);
+                material.eval_mutator(rng, hit, n, material);
+                //if(n==zero3f){if(status.bDebugMode){std::cout<<"*<!>Main Loop--> Normal is zero\n";}break;}
+                auto wo = sample.ray;
+                wo.d=-wo.d;
+                auto wi = sample.ray;
+
+                if (material.is_emissive()) {
+                    auto radiance = eval_le(wo,material.e_power,material.e_temp);
+                    if(gather_ke) output += w*radiance;
+                    break;
+                }
+
+                gather_ke = isGathering(material);
+
+                sample = sample_bsdfcos(scn, rng, hit, material, wo, n);
+                wi = sample.ray;
+                if(wi.d==zero3f) break;
+
+                auto pdf = eval_bsdfcos_pdf(material,wi,wo,n,sample.pdf_factor);
+                if(cmpf(pdf,0.0f)) break;
+                auto brdf = eval_bsdfcos(scn,rng,hit,material,wi,wo,n);
+                if(cmpf(brdf,zero3f)) break;
+
+                //DIRECT + NEE
+                if(!gather_ke){
+
+                    //TODO
+                    if(!scn.emissive_hints.empty()){
+                        int idl = 0;
+                        auto emissive = sample_emissive(scn,rng,idl);
+                        VVertex ev = {hit,material,wi,{w,0.0f,0.0f},n,SURFACE,0.0f,0.0f};
+                        output += ConnectToEmissive(scn,rng,wo,ev,emissive);
+                        //VVertex lev = {emissive,{},{},{w,0.0f,0.0f},scn.NORMALS_ALGO(emissive,f_normal_eps),EMISSIVE,0.0f,0.0f};
+                        //output += ConnectVertex(scn,rng,ev,lev,wo,pdf,1);
+                        //for(int vi = 0;vi<light_path_length; vi++){
+                            //output += ConnectVertex(scn,rng,ev,vertices[vi],wo,pdf,light_path_length);
+                        //}
+                    }
+
+                    { //SCOPE
+                        vec3f ln;
+                        VResult lres;
+                        auto lc = eval_light(scn, rng, wi, ln, lres);
+                        if(!cmpf(lc,zero3f)){
+                            auto dist = ygl::distance_squared(hit.wor_pos,lres.wor_pos);
+                            auto pdf2 = (dist) / abs(dot(ln,-wi.d));
+                            float mw = Mis2(pdf2,1.0f/pdf);
+                            if(mw>0.0f) output += (mw / pdf2) *(w*lc*brdf);
+                            break; // will hit an emissive as next event
+                        }else{nee_hit = true;hit = lres;}
+                    }
+
+                }
+
+                //
+
+                w*= brdf/pdf;
+                if (b>2 && sample.type!=s_transmitted && sample.type!=s_tr_reflected){if(!russian_roulette(rng,w)) break;}
+                if (is_zero_or_has_ltz(w) || has_inf(w)) break;
+
+
+                if(has_inf(w)){std::cout<<"*<!>Main loop--> Not finite number detected: pdf: "<<pdf<<"; w:"<<_p(w)<<"\n";break;}
+                if(status.bDebugMode)std::cout<<"*<!>Main Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
+            };
+
+			return output;
 		};
 
 		inline void eval_image(const VScene& scn, ygl::rng_state& rng, image3f& img, int width, int height, int j) {
 			for (int i = 0; i < width && !status.bStopped; i++) {
 				ygl::vec3f color = ygl::zero3f;
 
-				int nssa = n_ssaa_samples;
-				if(e_aa_mode!=aa_ssaa){nssa = 1;}
+                for (int s = 0; s < n_ray_samples; s++) {
+                    VRay ray = scn.camera.Cast(i,j,get_random_vec2f(rng));
+                    ray.tmin = f_ray_tmin;
+                    ray.tmax = f_ray_tmax;
+                    init_ray_physics(rng,ray);
 
-                for(int ssj = 0; ssj<nssa; ssj++){
-                    for(int ssi=0;ssi<nssa;ssi++){
-                        for (int s = 0; s < n_ray_samples; s++) {
-                            vnx::VRay ray = eval_camera(scn, i, j, width, height, vec2f{ssj,ssi}, rng);
-                            ray.wl = rand1f_r(rng,f_min_wl,f_max_wl); //380 / 780 (VALORI LIMITE PER LA FUNZIONE DI SPECTRAL SAMPLING)
-
-                            ray.velocity = KC;
-                            ray.frequency = ray.velocity / ray.wl;
-                            ray.ior = 1.0f;
-
-                            if(b_do_spectral) color += eval_pixel(scn, rng, ray)*spectral_to_rgb(ray.wl);
-                            else color += eval_pixel(scn, rng, ray);
-                        }
-                    }
+                    if(b_do_spectral) color += eval_pixel(scn, rng, img, scn.camera, ray)*spectral_to_rgb(ray.wl);
+                    else color += eval_pixel(scn, rng, img, scn.camera, ray);
                 }
-                if(nssa>1)color /= nssa*nssa;
 				auto& px = at(img,{i, j});
-				px.x += color.x / n_ray_samples;
-				px.y += color.y / n_ray_samples;
-				px.z += color.z / n_ray_samples;
+				px += color / n_ray_samples;
 			}
 		}
 

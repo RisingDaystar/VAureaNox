@@ -26,17 +26,15 @@ using namespace vnx;
 namespace vscndef {
 
 	void init_nested_scene(vnx::VScene& scn) {
-
-		scn.camera._frame = ygl::lookat_frame<float>({ 0, 0, 15.0f }, { 0, 0.1f, 0.0f }, vec3f{ 0, 1, 0 }); //diritto
-		scn.camera.focus = ygl::length(ygl::vec3f{ 0, 0.1f,45.0f } -ygl::vec3f{ 0, 1, 0 });
-		scn.camera.yfov = 15 * ygl::pif / 180;
-		scn.camera.aperture = 0.00f;
-
+        scn.camera.yfov = radians(45);
+        scn.camera.mOrigin = {0,0,15.0f};
+        scn.camera.mTarget = {0,0,0};
+        scn.camera.mUp = {0,1.0f,0};
 		scn.id = "nested";
 
 		auto emissive = scn.add_material("emissive");
 		emissive->e_temp = 6500;
-		emissive->e_power = 1;
+		emissive->e_power = 40;
 
 		auto diffuse = scn.add_material("diffuse");
 		diffuse->kr = {0.9f,0.95f,0.95f};
@@ -52,11 +50,15 @@ namespace vscndef {
 		transmissive->ior = 1.2f;
 
 		auto root = new vop_union("root", {
-            new vop_invert("sph_inv",new vvo_sd_sphere("dome",emissive,30.0f)),
-            new vvo_sd_sphere("sphere",diffuse,1.0f),
+            //new vop_invert("sph_inv",new vvo_sd_sphere("dome",emissive,30.0f)),
+            new vvo_sd_sphere("light",emissive,3.0f),
+            new vvo_sd_plane("plane",diffuse),
+            new vvo_sd_sphere("sphere",transmissive,1.0f),
 		});
 
 		scn.set_root(root);
+
+		scn.set_translation("light",{7,10.0f,2});
 	}
 
 }

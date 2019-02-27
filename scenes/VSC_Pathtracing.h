@@ -27,10 +27,10 @@ namespace vscndef {
 
 	void init_pathtracing_scene(vnx::VScene& scn) {
 		scn.id = "pathtracing";
-		scn.camera._frame = ygl::lookat_frame<float>({ 0.0, 1.2f, 30.0f }, { 0.0f, 0.1f, 0.0f }, { 0, 1, 0 }); //diritto
-		scn.camera.focus = ygl::length(ygl::vec3f{ 0, 3.1f,30.0f } -ygl::vec3f{ 0, 1, 0 });
-		scn.camera.yfov = 15 * ygl::pif / 180;
-		scn.camera.aperture = 0.00f;
+        scn.camera.yfov = radians(45);
+        scn.camera.mOrigin = {0,1.2f,10.0f};
+        scn.camera.mTarget = {0,0,0};
+        scn.camera.mUp = {0,1.0f,0};
 
 
 		auto emissive = scn.add_material("emissive");
@@ -59,7 +59,7 @@ namespace vscndef {
 		diffuse2->kr = vec3f{1.0f,0.3f,0.3f};
 
         auto diffuse3 = scn.add_material("diffuse3");
-		diffuse3->kr = vec3f{0.8f,0.0f,0.0f};
+		diffuse3->kr = vec3f{0.3f,0.3f,0.3f};
 
         auto metal = scn.add_material("metal");
         metal->type = conductor;
@@ -84,6 +84,10 @@ namespace vscndef {
 		glass->sm_c3 = 1.03560653e2;
 		glass->ka = {0.01f,0.01f,0.01f};
 
+		auto partecipating = scn.add_material("partecipating_material");
+        partecipating->ka = {0.1f,0.1f,0.1f};
+        partecipating->k_sca = 0.008f;
+
 
         auto room = new vop_invert("room",new vvo_sd_box("box",diffuse,60.0f));
         //auto room  = new vvo_sd_box("room",glass,60.0f);
@@ -91,7 +95,8 @@ namespace vscndef {
 
         auto box = new vvo_sd_box("box",diffuse2,{0.5f,2.0f,0.5f});
         auto sphere = new vvo_sd_sphere("sphere",metal,1.0f);
-        auto sphere2 = new vvo_sd_sphere("sphere2",glass,1.0f);
+        //auto sphere2 = new vvo_sd_sphere("sphere2",glass,1.0f);
+        auto sphere2 = new vvo_sd_diamond("sphere2",glass);
         //auto light2 = new vvo_sd_sphere("light2",emissive_dim,0.5f);
         auto slab = new vvo_sd_box("slab",mirror,{1.5f,0.1f,1.5f});
         auto ring = new vop_subtraction("ring",{
@@ -101,7 +106,10 @@ namespace vscndef {
         );
         auto ring_pedestal = new vvo_sd_box("slab2",diffuse3,{1.5f,0.1f,1.5f});
 
+        //auto partec = new vvo_sd_box("partecipating",partecipating,60.0f);
+
 		auto root = new vop_union("root", {
+            //partec,
             light,
             box,
             sphere,

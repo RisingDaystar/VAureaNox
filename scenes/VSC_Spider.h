@@ -299,12 +299,10 @@ namespace vscndef {
 
 	void init_spider_scene(VScene& scn) {
 		scn.id = "spider";
-
-		scn.camera._frame = ygl::lookat_frame<float>({ 0, 6.1f, 52.0f }, { 0, 6.1f, 0.0f }, { 0, 1, 0 }); //diritto
-		scn.camera.focus = ygl::length(ygl::vec3f{ 0, 6.1f, 52.0f } -ygl::vec3f{ 0, 1, 0 });
-		scn.camera.yfov = 15 * ygl::pif / 180;
-		scn.camera.aperture = 0.00f;
-
+        scn.camera.yfov = radians(45);
+        scn.camera.mOrigin = {0,6.1f,12.0f};
+        scn.camera.mTarget = {0,6.1f,0};
+        scn.camera.mUp = {0,1.0f,0};
 
 		auto grey_steel_material = scn.add_material("grey_steel_material");
 		grey_steel_material->type = conductor;
@@ -380,12 +378,12 @@ namespace vscndef {
 		grey_diffuse_no_refl_adv->ior = 1.35f;
 		grey_diffuse_no_refl_adv->kr = { 0.5f,0.5f,0.5f };
 		grey_diffuse_no_refl_adv->rs = 0.2f;
-		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
+		/*auto mtor = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
             if (std::abs(sin(hit.loc_pos.x*5)) < 0.07f || std::abs(sin(hit.loc_pos.z*5)) < 0.07f) {
                 mat.kr = zero3f;
             }
 		};
-		grey_diffuse_no_refl_adv->mutator = mtor;
+		grey_diffuse_no_refl_adv->mutator = mtor;*/
 
 		auto ftor = [](const ygl::vec3f& wor_pos, ygl::vec3f& loc_pos, const VNode* tref) {
 			loc_pos = ygl::transform_point_inverse(tref->_frame, wor_pos) / tref->scale;
@@ -605,7 +603,7 @@ namespace vscndef {
 		energy_ball->select("energy_e")->set_rotation_degs(45, 0, 0);
 		energy_ball->set_translation(0, -1.0f, -1.7f);
 
-		sc_root->select("arm_sx_0")->select("arm_sx_hand")->add_child(energy_ball);
+		//sc_root->select("arm_sx_0")->select("arm_sx_hand")->add_child(energy_ball);
 		sc_root->select("arm_dx_0")->select("arm_dx_hand")->add_child(sword);
 		sword->set_rotation_degs(35, 0, 270);
 		sword->set_translation(0.23f, -0.4f, 0);

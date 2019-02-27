@@ -27,13 +27,10 @@ using namespace vnx;
 namespace vscndef {
 
 	void init_gi_test_scene(vnx::VScene& scn) {
-
-		scn.camera._frame = ygl::lookat_frame<float>({ 0, 20.1f, 40.0f }, { 0, 0.0f, 0.0f }, { 0, 1, 0 }); //diritto
-		scn.camera.focus = ygl::length(ygl::vec3f{ 0, 20.1f,40.0f } -ygl::vec3f{ 0, 1, 0 });
-		scn.camera.yfov = 15 * ygl::pif / 180;
-		scn.camera.aperture = 0.0f;
-		//scn.camera.aspect = 4.0f / 3.0f;
-
+        scn.camera.yfov = radians(45);
+        scn.camera.mOrigin = {0,5,20.0f};
+        scn.camera.mTarget = {0,0,0};
+        scn.camera.mUp = {0,1.0f,0};
 		scn.id = "gi_test";
 
         auto emissive = scn.add_material("emissive");
@@ -55,7 +52,7 @@ namespace vscndef {
         carbon_diamond_material->k_sca = 0.0f;
 
 		auto partecipating_test = scn.add_material("partecipating_test");
-        partecipating_test->ka = {0.01f,0.01f,0.01f};
+        partecipating_test->ka = {0.81f,0.81f,0.51f};
         //partecipating_test->rs = 0.3f;
         partecipating_test->k_sca = 0.0f;
 		partecipating_test->sm_b1 = 1.03961212;
@@ -77,20 +74,21 @@ namespace vscndef {
 
         auto diffuse_mat = scn.add_material("diffuse");
         diffuse_mat->ior_type = non_wl_dependant;
-        diffuse_mat->ior = 1.1f;
+        diffuse_mat->ior = 1.8f;
         diffuse_mat->kr = {0.8f,0.8f,0.8f};
         diffuse_mat->rs = 0.15f;
 		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
 			if (std::abs(sin(hit.loc_pos.x)) < 0.03f || std::abs(sin(hit.loc_pos.z)) < 0.03f) {
                     mat.type = conductor;
-                    mat.kr = {0.2f,0.2f,0.2f};
-                    mat.rs = 0.3f;
+                    mat.kr = {0.4f,0.4f,0.5f};
+                    mat.rs = 0.9f;
             }
 		};
 		diffuse_mat->mutator = mtor;
 
 		auto diffuse_pure = scn.add_material("diffuse_pure");
 		diffuse_pure->kr = {0,1.0f,0};
+		diffuse_pure->rs = 0.9f;
 
 		auto diffuse_sand = scn.add_material("diffuse_sand");
 		diffuse_sand->kr = {0.7f,0.6f,0.4f};
@@ -102,7 +100,8 @@ namespace vscndef {
         steel->type = conductor;
         steel->ior_type = non_wl_dependant;
         steel->kr = {0.8f,0.8f,0.9f};
-        steel->rs = 0.2f;
+        steel->rs = 0.05f;
+        steel->ior = 2.6f;
 
         auto sp_mat = scn.add_material("sp_mat");
         sp_mat->type = dielectric;
@@ -126,14 +125,14 @@ namespace vscndef {
                 }),
                 ring,
                 new vop_union("sph_group",0.0f,{
-                    new vvo_sd_sphere("coat",partecipating_test,1.5f),
-                    new vvo_sd_box("sph",diffuse_pure,0.5f),
+                    //new vvo_sd_sphere("coat",partecipating_test,1.5f),
+                    new vvo_sd_sphere("sph",steel,0.5f),
                 }),
             }),
 
-           new vop_union("sph2_group",0.0f,{
-              new vvo_sd_sphere("coat2",partecipating_test,1.8f),
-              new vvo_sd_box("sph2",diffuse_pure,0.5f),
+           new vop_cut("sph2_group",{1,1,1},zero3f,0.1f,{
+              //new vvo_sd_sphere("coat2",partecipating_test,1.8f),
+              new vop_onion("sph2_o",0.2f,new vvo_sd_sphere("sph2",steel,3.5f)),
            }),
            new vvo_sd_sphere("light",emissive,80.5f),
         });
@@ -157,7 +156,7 @@ namespace vscndef {
         scn.set_scale("ring",{2.0f,1.0f,1.0f});
 
         //scn.set_scale("coat",{3.0f,3.0f,3.0f});
-        scn.set_rotation_degs("sph2_group",{0,0,25});
+        scn.set_rotation_degs("sph2_group",{25,25,25});
 
 	}
 
