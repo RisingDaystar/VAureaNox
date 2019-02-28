@@ -1,0 +1,4 @@
+./*.ppm
+*.cbp
+_Release/
+_Debug/
