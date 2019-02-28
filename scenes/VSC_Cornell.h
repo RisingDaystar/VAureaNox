@@ -144,11 +144,11 @@ namespace vscndef {
                 //new vvo_sd_sphere("glass_ball",borosilicate_glass_material,2.5f),
 
 
-                /*new vop_union("glass",{
+                new vop_union("glass",{
                     new vop_cut("glass_cylinder",{0,1,0},{0,-1.8f,0},0.0f,new vop_onion("_gc_eo",0.15f,new vvo_sd_cylinder("_gc_e",borosilicate_glass_material,{1.3f,2.3f}))),
                     new vvo_sd_cylinder("inner_water",water_material,{0.99f,1.0f}),
                     new vop_twist("obs",Z,0.8f,new vvo_sd_box("obs_t",diff_white,{0.1f,3.0f,0.1f})),
-                }),*/
+                }),
 
 
 

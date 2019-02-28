@@ -286,7 +286,7 @@ namespace vnx {
 
 		inline ygl::vec3f eval_light(const VScene& scn,ygl::rng_state& rng,VRay rr,ygl::vec3f& ln,VResult& lres) {
 			ygl::vec3f w = one3f;
-			while(true){
+			for(int b=0;;b++){
                 int i = 0;
                 auto old_rr = rr;
                 auto poll = poll_volume(scn, rng, rr);
@@ -305,6 +305,10 @@ namespace vnx {
                     return w*eval_le(rr,hmat.e_power,hmat.e_temp);
                 }
                 if(hmat.is_transmissive() && !cmpf(old_rr.ior,rr.ior)){
+                    if(b>2){if(!russian_roulette(rng,w)) break;}
+                    if(has_inf(w)){std::cout<<"*<!>Eval light loop--> Not finite number detected--> b:"<<b<<"--->"<<_p(trw)<<"\n";break;}
+                    if(status.bDebugMode)std::cout<<"*<!>Eval light Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
+
                     bool outside = dot(rr.d,ln) > 0;
                     vec3f offBy = outside ? -ln : ln;
                     rr = offsetted_ray(lres.wor_pos,rr,rr.d,rr.tmin,rr.tmax,offBy,lres.dist);
@@ -813,7 +817,7 @@ namespace vnx {
                 //
 
                 w*= brdf/pdf;
-                if (b>2 && sample.type!=s_transmitted && sample.type!=s_tr_reflected){if(!russian_roulette(rng,w)) break;}
+                if (b>2){if(!russian_roulette(rng,w)) break;}
                 if (is_zero_or_has_ltz(w) || has_inf(w)) break;
 
 
