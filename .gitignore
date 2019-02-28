@@ -1,6 +1,7 @@
 /*.ppm
 *.cbp
 *.depend
+*.save-failed
 *.layout
 _Release/
 _Debug/
