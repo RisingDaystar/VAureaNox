@@ -1,4 +1,6 @@
-./*.ppm
+/*.ppm
 *.cbp
+*.depend
+*.layout
 _Release/
 _Debug/
