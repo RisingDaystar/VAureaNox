@@ -37,13 +37,13 @@ For this purpose i use a double distance system (dist and vdist) [TODO: explain]
 
 //Images
 
-4096 spp
+4096 spp , spectral rendering
 
 ![4096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096.jpg)
 
-128 spp, not yet converged
+4096 spp , spectral rendering, partecipating sorrounding volume
 
-![128spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_pathtracing_648x480_PathTracer_spec_spp128.jpg)
+![4096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096_2.jpg)
 
 When it still was a raytracer (Final image for the course)
 
