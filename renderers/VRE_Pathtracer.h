@@ -375,14 +375,15 @@ namespace vnx {
                 return VSample{iray,s_tr_reflected,{0,1.0f}};
             }else{
                 //auto rn_ks = get_random_float(rng);
-                if(get_random_float(rng)>F){ //TODO : re-test with 0.5f
+                const float rv = F;
+                if(get_random_float(rng)>rv){ //TODO : re-test with 0.5f
                     auto refr_dir = refract(wi.d,wh,wi.ior,ior);
                     auto iray = offsetted_ray(hit.wor_pos,wi,refr_dir,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
-                    return VSample{iray,s_transmitted,{0,1.0f-F}};
+                    return VSample{iray,s_transmitted,{0,1.0f-rv}};
                 }else{
                     auto refl_dir = ygl::reflect(wo.d,outside ? wh : -wh);
                     auto iray = offsetted_ray(hit.wor_pos,wi,refl_dir,wi.tmin,wi.tmax,-offBy,hit.dist);
-                    return VSample{iray,s_tr_reflected,{0,F}};
+                    return VSample{iray,s_tr_reflected,{0,rv}};
                 }
             }
 		}

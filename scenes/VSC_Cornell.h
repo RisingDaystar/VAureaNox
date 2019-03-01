@@ -27,7 +27,7 @@ namespace vscndef {
 
 	void init_cornell_scene(vnx::VScene& scn) {
         scn.camera.yfov = radians(45);
-        scn.camera.mOrigin = {0,10,15.0f};
+        scn.camera.mOrigin = {0,0,15.0f};
         scn.camera.mTarget = {0,0,0};
         scn.camera.mUp = {0,1.0f,0};
 		scn.id = "cornell";
@@ -74,7 +74,7 @@ namespace vscndef {
         highior_material->k_sca = 0.0f;
 
         auto partecipating = scn.add_material("partecipating");
-        partecipating->ka = {0.05f,0.05f,0.05f};
+        partecipating->ka = {0.02f,0.02f,0.02f};
         partecipating->k_sca = 0.01f;
 
         auto borosilicate_glass_material = scn.add_material("borosilicate_glass_material");
@@ -91,7 +91,6 @@ namespace vscndef {
 		borosilicate_glass_material->sm_c2 = 2.00179144e-2;
 		borosilicate_glass_material->sm_c3 = 1.03560653e2;
 		borosilicate_glass_material->k_sca = 0.0f;
-        //borosilicate_glass_material->rs = 0.05f;
 
 
         auto no_refr_media = scn.add_material("no_refr_media");
@@ -163,11 +162,12 @@ namespace vscndef {
 
 
                 //new vvo_sd_box("box1",diff_white,{1.0f,3.0f,1.0f}),
-                new vvo_sd_box("box_partecipating",partecipating,8.5f),
+                new vvo_sd_tri_prism("box_repeated",borosilicate_glass_material,one2f*2.0f),
+                //new vvo_sd_box("box_partecipating",partecipating,8.0f),
                 //new vvo_sd_box("box_occ",diff_white,{5.5,0.1f,5.5f}),
                 //new vvo_sd_hex_prism("sph",borosilicate_glass_material,one2f),
                 //new vvo_sd_tri_prism("box_tr2",borosilicate_glass_material,{1.0f,2.0f}),
-                new vvo_sd_diamond("box_tr",carbon_diamond_material),
+                //new vvo_sd_diamond("box_tr",carbon_diamond_material),
 
 
                 new vop_cut("mirror",{0,1,1},{0,0,0},0.1f,new vop_onion("mirror_o",0.06f,new vvo_sd_sphere("mirror_i",sp_mat))),
@@ -195,7 +195,8 @@ namespace vscndef {
 		scn.set_translation("box_occ",{0,2.2f,0.0f});
 
 		scn.set_rotation_degs("box_tr",{180,45,45});
-		scn.set_rotation_degs("box_partecipating",{0,0,0});
+		scn.set_rotation_degs("box_repeated",{45,0,0});
+
 
 		scn.set_rotation_degs("box1",{0,45,0});
 		scn.set_rotation_degs("box2",{0,45,0});
