@@ -27,7 +27,7 @@ namespace vscndef {
 
 	void init_cornell_scene(vnx::VScene& scn) {
         scn.camera.yfov = radians(45);
-        scn.camera.mOrigin = {0,0,14.0f};
+        scn.camera.mOrigin = {0,10,15.0f};
         scn.camera.mTarget = {0,0,0};
         scn.camera.mUp = {0,1.0f,0};
 		scn.id = "cornell";
@@ -74,8 +74,8 @@ namespace vscndef {
         highior_material->k_sca = 0.0f;
 
         auto partecipating = scn.add_material("partecipating");
-        partecipating->ka = {0.8f,0.8f,0.8f};
-        partecipating->k_sca = 0.08f;
+        partecipating->ka = {0.05f,0.05f,0.05f};
+        partecipating->k_sca = 0.01f;
 
         auto borosilicate_glass_material = scn.add_material("borosilicate_glass_material");
         /*borosilicate_glass_material->ka = vec3f{0.51f,0.51f,0.51f};
@@ -133,22 +133,22 @@ namespace vscndef {
 			}),
             */
             new vop_union("cornell_union",0.0f,{
-                new vop_subtraction("cornell",0.0f,{
-                    new vvo_sd_box("box",cornell_composite_mat,4.0f),
+                new vop_subtraction("cornell",0.00f,{
+                    new vvo_sd_box("box",cornell_composite_mat,{4.2f,4.2f,4.0f}),
                     new vvo_sd_box("box_subtr",cornell_composite_mat,3.95f),
-                    new vvo_sd_box("box_subtr_ceil",cornell_composite_mat,{1.0f,0.08f,1.0f}),
+                    new vvo_sd_box("box_subtr_ceil",cornell_composite_mat,{1.0f,0.5f,1.0f}),
                 }),
                 new vvo_sd_box("light",material_emissive,{ 0.8f,0.03f,0.8f }),
                 //new vvo_sd_sphere("light",material_emissive,0.4f),
                 //new vvo_sd_box("occlusion",diff_white_lowks,{2.0f,0.1f,5.0f}),
                 //new vvo_sd_sphere("glass_ball",borosilicate_glass_material,2.5f),
 
-
+                /*
                 new vop_union("glass",{
                     new vop_cut("glass_cylinder",{0,1,0},{0,-1.8f,0},0.0f,new vop_onion("_gc_eo",0.15f,new vvo_sd_cylinder("_gc_e",borosilicate_glass_material,{1.3f,2.3f}))),
                     new vvo_sd_cylinder("inner_water",water_material,{0.99f,1.0f}),
                     new vop_twist("obs",Z,0.8f,new vvo_sd_box("obs_t",diff_white,{0.1f,3.0f,0.1f})),
-                }),
+                }),*/
 
 
 
@@ -163,7 +163,7 @@ namespace vscndef {
 
 
                 //new vvo_sd_box("box1",diff_white,{1.0f,3.0f,1.0f}),
-                new vvo_sd_box("box_partecipating",partecipating,1.5f),
+                new vvo_sd_box("box_partecipating",partecipating,8.5f),
                 //new vvo_sd_box("box_occ",diff_white,{5.5,0.1f,5.5f}),
                 //new vvo_sd_hex_prism("sph",borosilicate_glass_material,one2f),
                 //new vvo_sd_tri_prism("box_tr2",borosilicate_glass_material,{1.0f,2.0f}),
@@ -211,7 +211,7 @@ namespace vscndef {
 
         scn.set_translation("glass",0,-1.8f,0);
         scn.set_translation("inner",0,0.6f,0);
-        scn.set_translation("inner_water",0,-2.0f,0);
+        scn.set_translation("inner_water",0,-1.0f,0);
 
         scn.set_translation("obs",{-0.4f,1.1f,0});
         scn.set_rotation_degs("obs",{0,45,20});

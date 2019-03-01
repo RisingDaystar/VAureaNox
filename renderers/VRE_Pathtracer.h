@@ -306,7 +306,8 @@ namespace vnx {
                 }
                 if(hmat.is_transmissive() && !cmpf(old_rr.ior,rr.ior)){
                     if(b>2){if(!russian_roulette(rng,w)) break;}
-                    if(has_inf(w)){std::cout<<"*<!>Eval light loop--> Not finite number detected--> b:"<<b<<"--->"<<_p(trw)<<"\n";break;}
+
+                    if(has_inf(w)){std::cout<<"*<!>Eval light loop--> Not finite number detected--> b:"<<b<<"--->"<<_p(w)<<"\n";break;}
                     if(status.bDebugMode)std::cout<<"*<!>Eval light Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
 
                     bool outside = dot(rr.d,ln) > 0;
@@ -374,14 +375,14 @@ namespace vnx {
                 return VSample{iray,s_tr_reflected,{0,1.0f}};
             }else{
                 //auto rn_ks = get_random_float(rng);
-                if(get_random_float(rng)>0.5f){
+                if(get_random_float(rng)>F){ //TODO : re-test with 0.5f
                     auto refr_dir = refract(wi.d,wh,wi.ior,ior);
                     auto iray = offsetted_ray(hit.wor_pos,wi,refr_dir,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
-                    return VSample{iray,s_transmitted,{0,0.5f}};
+                    return VSample{iray,s_transmitted,{0,1.0f-F}};
                 }else{
                     auto refl_dir = ygl::reflect(wo.d,outside ? wh : -wh);
                     auto iray = offsetted_ray(hit.wor_pos,wi,refl_dir,wi.tmin,wi.tmax,-offBy,hit.dist);
-                    return VSample{iray,s_tr_reflected,{0,0.5f}};
+                    return VSample{iray,s_tr_reflected,{0,F}};
                 }
             }
 		}
