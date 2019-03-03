@@ -162,7 +162,7 @@ namespace vscndef {
 
 
                 //new vvo_sd_box("box1",diff_white,{1.0f,3.0f,1.0f}),
-                new vvo_sd_tri_prism("box_repeated",borosilicate_glass_material,one2f*2.0f),
+                new vvo_sd_hex_prism("box_repeated",borosilicate_glass_material,one2f*2.0f),
                 //new vvo_sd_box("box_partecipating",partecipating,8.0f),
                 //new vvo_sd_box("box_occ",diff_white,{5.5,0.1f,5.5f}),
                 //new vvo_sd_hex_prism("sph",borosilicate_glass_material,one2f),
