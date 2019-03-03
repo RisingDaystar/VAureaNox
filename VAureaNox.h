@@ -889,8 +889,6 @@ namespace vnx {
 	};
 
 	struct VCamera{
-        //frame3f _frame = identity_frame3f;
-        //float aspect = 1.0f;
         float focus = 1.0f;
         float aperture = 0.0f;
         float yfov = 1.0f;
@@ -940,6 +938,7 @@ namespace vnx {
         }
 
         inline VRay Cast(float x,float y,const vec2f& uv) const{
+
             vec3f raster_point = {x+uv.x,y+uv.y,0.0f};
             vec3f view_dir = transform_point(mRasterToWorld,raster_point);
 

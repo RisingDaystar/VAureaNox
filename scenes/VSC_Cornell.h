@@ -195,7 +195,9 @@ namespace vscndef {
 		scn.set_translation("box_occ",{0,2.2f,0.0f});
 
 		scn.set_rotation_degs("box_tr",{180,45,45});
-		scn.set_rotation_degs("box_repeated",{45,0,0});
+		scn.set_translation("box_repeated",{2.0,-2.0f,0});
+		scn.set_rotation_degs("box_repeated",{0,45,0});
+		scn.set_rotation_order("box_repeated",RO_YXZ);
 
 
 		scn.set_rotation_degs("box1",{0,45,0});
