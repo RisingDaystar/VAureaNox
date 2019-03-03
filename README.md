@@ -37,11 +37,15 @@ For this purpose i use a double distance system (dist and vdist) [TODO: explain]
 
 //Images
 
-4096 spp , spectral rendering
+4096 spp , dispersion enabled
 
 ![4096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096.jpg)
 
-4096 spp , spectral rendering, partecipating sorrounding volume
+8096 spp , dispersion enabled
+
+![8096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp8192.jpg)
+
+4096 spp , dispersion enabled, partecipating sorrounding volume
 
 ![4096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096_2.jpg)
 
