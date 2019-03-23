@@ -16,8 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "VVolumes.h"
-#include "VOperators.h"
+#include "VSceneParser.h"
 
 #include "scenes\VSC_Spider.h"
 #include "scenes\VSC_Pathtracing.h"
@@ -75,25 +74,38 @@ namespace vnx {
 	void init(VScene& scn, VRenderer** renderer, image3f& img, const VConfigurable& config) {
 
 		auto renderer_type = config.try_get("renderer_type", "");
-		auto render_scene = config.try_get("render_scene", "spider");
+		auto scn_to_render = config.try_get("render_scene", "cornell");
 
-		if (stricmp(render_scene,"cornell")) { vscndef::init_cornell_scene(scn); }
-		else if (stricmp(render_scene,"spider")) { vscndef::init_spider_scene(scn); }
-		else if (stricmp(render_scene,"pathtracing")) { vscndef::init_pathtracing_scene(scn); }
-		else if (stricmp(render_scene,"gi_test")) { vscndef::init_gi_test_scene(scn); }
-		else if (stricmp(render_scene,"nested")){vscndef::init_nested_scene(scn);}
-		else{ throw VException("Invalid Scene."); }
 
+		if(scn_to_render.substr(scn_to_render.find_last_of(".") + 1) == "vnxs"){
+            printf("**Loading external Scene : \"%s\"...\n",scn_to_render.c_str());
+            VSceneParser sparser;
+            scn_to_render = "scene_files/"+scn_to_render;
+            sparser.parse(scn,scn_to_render);
+		}else{
+		    printf("**Loading internal Scene : \"%s\"...\n",scn_to_render.c_str());
+            if (stricmp(scn_to_render,"cornell")) { vscndef::init_cornell_scene(scn); }
+            else if (stricmp(scn_to_render,"spider")) { vscndef::init_spider_scene(scn); }
+            else if (stricmp(scn_to_render,"pathtracing")) { vscndef::init_pathtracing_scene(scn); }
+            else if (stricmp(scn_to_render,"gi_test")) { vscndef::init_gi_test_scene(scn); }
+            else if (stricmp(scn_to_render,"nested")){vscndef::init_nested_scene(scn);}
+            else{ throw VException("Invalid Scene."); }
+		}
+        std::cout<<"**Loaded Scene, id =  \""<<scn.id<<"\"\n";
+
+        printf("**Loading Renderer...\n");
 		if (stricmp(renderer_type,"pathtracer")) {
 			*renderer = new vnx::VRE_Pathtracer("configs/VRE_Pathtracer.ini");
 		}
 		if (renderer == nullptr) { throw VException("Invalid Renderer."); }
         (*renderer)->init();
+        std::cout<<"**Loaded Renderer : \""<<(*renderer)->type()<<"\"\n";
 
 		int w = config.try_get("i_image_width", 648);
 		int h = config.try_get("i_image_height", 480);
 		if (w <= 0 || h <= 0) { throw VException("Invalid image dimensions."); }
 		init_image(img,{w, h});
+		std::cout<<"**Output resolution:  \""<<img.size.x<<"\" x \""<<img.size.y<<"\"\n";
 		scn.camera.Setup(vec2f{float(w),float(h)});
 	}
 
@@ -134,7 +146,7 @@ namespace vnx {
 
             if(k == 27){ //ESC
                 mtx.lock();
-                    std::cout<<"\n***Termination Requested***\n\n";
+                    printf("\n***Termination Requested***\n\n");
                     renderer->status.bStopped = true;
                 mtx.unlock();
             }else if(k == '1'){
@@ -142,13 +154,13 @@ namespace vnx {
                     auto fname = "VAureaNox_"+scn.id+"_"+std::to_string(img.size.x) + "x" + std::to_string(img.size.y) + ("_"+renderer->type())+renderer->img_affix(scn)+"_PREVIEW";
                     printf("\n*Saving Preview image \"%s\" \n", fname.c_str());
                     vnx::save_ppm(fname, img);
-                    std::cout<<"*Preview Saved\n\n";
+                    printf("*Preview Saved\n\n");
                 mtx.unlock();
             }else if(k=='2'){
                 mtx.lock();
                     renderer->status.bDebugMode = !renderer->status.bDebugMode;
-                    if(renderer->status.bDebugMode) std::cout<<"\n*Debug enabled {TODO}\n\n";
-                    else std::cout<<"\n*Debug disabled {TODO}\n\n";
+                    if(renderer->status.bDebugMode) printf("\n*Debug enabled {TODO}\n\n");
+                    else printf("\n*Debug disabled {TODO}\n\n");
                 mtx.unlock();
             }
         }
@@ -156,8 +168,6 @@ namespace vnx {
 	}
 
 };
-
-
 
 
 
@@ -174,8 +184,9 @@ int main() {
 	bool b_start_monitor = false;
 	VStatus status;
 
+
 	try {
-		printf("<--- VAureaNox - Distance Fields Renderer - v: %s --->\n", vnx::version);
+		printf("<--- VAureaNox - Distance Fields Renderer - v: %s --->\n\n", vnx::version);
 		config.parse();
 		init(scn, &renderer, img, config);
 
@@ -190,16 +201,14 @@ int main() {
             renderer->print();
         }
 
-        printf("\n**Preparing scene : \"%s\"\n\n",scn.id.c_str());
-        printf("**Transforming nodes coordinates... **\n");
+        printf("\n**Preparing scene...\n");
+        printf("**Transforming nodes coordinates...\n");
 		apply_transforms(scn.root);
-		printf("**Calculating emissive hints... **\n");
-		populate_emissive_hints(scn, n_em_evals, renderer->try_get("f_ray_tmin",0.001f), renderer->try_get("f_normal_eps",0.0001f),config.try_get("b_verbose_precalc",false));
-        int n_emiss = 0;
+		printf("**Calculating emissive hints...\n");
+		auto lc_stats = populate_emissive_hints(scn, n_em_evals, renderer->try_get("f_ray_tmin",0.001f), renderer->try_get("f_normal_eps",0.0001f),config.try_get("b_verbose_precalc",false));
         int n_lights = scn.emissive_hints.size();
-        for (auto ep : scn.emissive_hints) {n_emiss += ep.size();}
-		printf("**Calculated : \"%d\" lights -> \"%d\" emissive hints **\n\n",n_lights,n_emiss);
-        printf("**Selected renderer : \"%s\" **\n",renderer->type().c_str());
+        //for (auto ep : scn.emissive_hints) {n_emiss += ep.size();}
+		printf("**Calculated : \"%d\" lights -> \"%d\" emissive hints --> (\"%d\" misses)\n\n",n_lights,lc_stats.x,lc_stats.y);
 		renderer->post_init(scn);
 	}
 	catch (std::exception& ex) {
@@ -209,9 +218,6 @@ int main() {
 		return -1;
 	}
 
-
-
-
 	int n_max_threads = config.try_get("n_max_threads", 0);
 	int nThreads = std::thread::hardware_concurrency();
 	if (n_max_threads>0) nThreads = std::min(nThreads, n_max_threads);
@@ -220,12 +226,12 @@ int main() {
 
 	std::thread* monitor = nullptr;
 
-	printf("**Rendering \"%s\" using \"%d\" threads **\n", scn.id.c_str(),  std::max(1,nThreads));
+	printf("**Rendering \"%s\" using \"%d\" threads\n", scn.id.c_str(),  std::max(1,nThreads));
 	if(b_start_monitor){
         monitor = new std::thread(monitor_task, std::ref(mtx), std::ref(scn), renderer, std::ref(img));
         printf("**Monitor Thread started\n");
 	}
-	printf("\n");
+	printf("\n<----    Rendering Log    ---->\n\n");
 
 	if (nThreads > 1) {
         ygl::rng_state rng[nThreads];

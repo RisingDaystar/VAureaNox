@@ -22,13 +22,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "yocto\ygl.h"
 #include <map>
 #include <vector>
-#include <queue>
+//#include <queue>
 #include <fstream>
 #include <exception>
 #include <thread>
 #include <mutex>
 #include <atomic>
-#include <stack>
+//#include <stack>
 #include <iostream>
 #include <math.h>
 #include <sstream>
@@ -52,6 +52,8 @@ namespace vnx {
 	struct VRay;
 	struct VScene;
 
+	struct VSceneParser;
+
 
 	typedef float (*displ_ftor)(const ygl::vec3f&);
 	typedef void (*mtlm_ftor)(ygl::rng_state& rng,const VResult&,const ygl::vec3f&, VMaterial&);
@@ -74,26 +76,19 @@ namespace vnx {
         }
 	};
 
-    struct VMemory{
-        std::vector<void*> memory;
+    struct VEntry{
+        VEntry(){}
+        VEntry(std::vector<std::string> tks){for(auto tk : tks)tokens.push_back(tk);}
+        void add_token(std::string tk){tokens.push_back(tk);}
+        std::string try_at(int idx) const{if(idx>=tokens.size())return std::string(); return tokens[idx];}
+        std::string& at(int idx){return tokens[idx];}
+        bool empty(){return tokens.empty();}
+        int size(){return tokens.size();}
+        bool allocated(){return ptr!=nullptr;}
 
-        VMemory(){
-            memory.reserve(8);
-        }
 
-        template<typename T> T* New(T* ptr){
-            memory.push_back(ptr);
-            return ptr;
-        }
-
-        ~VMemory(){
-            //std::cout<<"Dtor called\n";
-            for(void* mptr : memory){
-                if(mptr) delete mptr;
-                mptr = nullptr;
-            }
-            memory.clear();
-        }
+        std::vector<std::string> tokens;
+        void* ptr = nullptr;
     };
 
     template<class T> struct VScopedPtr{
@@ -123,13 +118,13 @@ namespace vnx {
     inline vec3f toVec3f(float v){return {v,v,v};}
     inline vec2f toVec2f(float v){return {v,v};}
 
-    enum ro_axis{
-        RO_XYZ,
-        RO_XZY,
-        RO_YXZ,
-        RO_YZX,
-        RO_ZXY,
-        RO_ZYX,
+    enum VRotationOrder{
+        VRO_XYZ,
+        VRO_XZY,
+        VRO_YXZ,
+        VRO_YZX,
+        VRO_ZXY,
+        VRO_ZYX,
     };
 
     enum VMaterialType{
@@ -142,31 +137,127 @@ namespace vnx {
         non_wl_dependant
     };
 
-	const char* version = "0.06s";
+	const char* version = "0.07";
 
 	constexpr float minf = mint<float>();
 
-	const float KC = 299792e3;
-    const double KH = 6.63e-34;
-    const double KB = 1.38066e-23;
-    const double KSB = 5.670373e-8;
-    const double KWD = 2.8977721e-3;
+	constexpr float KC = 299792e3;
+    constexpr double KH = 6.63e-34;
+    constexpr double KB = 1.38066e-23;
+    constexpr double KSB = 5.670373e-8;
+    constexpr double KWD = 2.8977721e-3;
 
-	const ygl::vec3f one3f = ygl::vec3f{ 1.0f,1.0f,1.0f };
-	const ygl::vec2f one2f = ygl::vec2f{ 1.0f,1.0f };
-	const ygl::vec3f mone3f = ygl::vec3f{ -1.0f,-1.0f,-1.0f };
-	const ygl::vec2f mone2f = ygl::vec2f{ -1.0f,-1.0f };
+	constexpr ygl::vec3f one3f = ygl::vec3f{ 1.0f,1.0f,1.0f };
+	constexpr ygl::vec2f one2f = ygl::vec2f{ 1.0f,1.0f };
+	constexpr ygl::vec3f mone3f = ygl::vec3f{ -1.0f,-1.0f,-1.0f };
+	constexpr ygl::vec2f mone2f = ygl::vec2f{ -1.0f,-1.0f };
 
-    const ygl::vec3f nv1 = { 1.0, -1.0, -1.0 };
-    const ygl::vec3f nv2 = { -1.0, -1.0, 1.0 };
-    const ygl::vec3f nv3 = { -1.0, 1.0, -1.0 };
-    const ygl::vec3f nv4 = { 1.0, 1.0, 1.0 };
+    constexpr ygl::vec3f nv1 = { 1.0, -1.0, -1.0 };
+    constexpr ygl::vec3f nv2 = { -1.0, -1.0, 1.0 };
+    constexpr ygl::vec3f nv3 = { -1.0, 1.0, -1.0 };
+    constexpr ygl::vec3f nv4 = { 1.0, 1.0, 1.0 };
 
 	inline bool stricmp(std::string str1, std::string str2) {
 		return std::equal(str1.begin(), str1.end(), str2.begin(), [](const char& a, const char& b) {
 			return (std::tolower(a) == std::tolower(b));
 		});
 	}
+
+    inline bool strIsGroup(const std::string& ss){
+        return ss[0]=='{' && ss[ss.length()-1]=='}';
+    }
+
+    inline std::vector<std::string> strDeGroup(const std::string& ss){
+        if(!strIsGroup(ss)) return {""};
+        int idx = 0;
+        std::vector<std::string> tokens = {""};
+        for(int i=1;i<ss.length()-1;i++){
+            char c = ss[i];
+            if(c==','){tokens.push_back("");idx++;continue;}
+            tokens[idx]+=c;
+        }
+        return tokens;
+    }
+
+    inline VMaterialType try_strToMaterialType(const std::string& ss,VMaterialType def){
+        if(ss=="") return def;
+        if(stricmp(ss,"d")) return VMaterialType::dielectric;
+        if(stricmp(ss,"c")) return VMaterialType::conductor;
+        return def;
+    }
+
+    inline VIorType try_strToIorType(const std::string& ss,VIorType def){
+        if(ss=="") return def;
+        if(stricmp(ss,"wl")) return VIorType::wl_dependant;
+        if(stricmp(ss,"nwl")) return VIorType::non_wl_dependant;
+        return def;
+    }
+
+    inline VRotationOrder try_strToRotationOrder(const std::string& ss,VRotationOrder def){
+        if(ss=="") return def;
+        if(stricmp(ss,"xyz")) return VRO_XYZ;
+        if(stricmp(ss,"xzy")) return VRO_XZY;
+        if(stricmp(ss,"yxz")) return VRO_YXZ;
+        if(stricmp(ss,"yzx")) return VRO_YZX;
+        if(stricmp(ss,"zxy")) return VRO_ZXY;
+        if(stricmp(ss,"zyx")) return VRO_ZYX;
+        return def;
+    }
+
+    inline float try_strToFloat(const std::string& ss,float def){
+        if(ss.empty()) return def;
+        return std::atof(ss.c_str());
+    }
+
+    inline float try_strToInt(const std::string& ss,int def){
+        if(ss.empty()) return def;
+        return std::atoi(ss.c_str());
+    }
+
+
+    inline vec4f try_strToVec4f(const std::string& ss,vec4f def){
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            if(cpnts.size()==4){
+                return vec4f{std::atof(cpnts[0].c_str()),std::atof(cpnts[1].c_str()),std::atof(cpnts[2].c_str()),std::atof(cpnts[3].c_str())};
+            }
+            return zero4f;
+        }else{
+            auto cpnt = std::atof(ss.c_str());
+            return vec4f{cpnt,cpnt,cpnt,cpnt};
+        }
+    }
+    inline vec3f try_strToVec3f(const std::string& ss,vec3f def){
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            if(cpnts.size()==3){
+                auto v = vec3f{std::atof(cpnts[0].c_str()),std::atof(cpnts[1].c_str()),std::atof(cpnts[2].c_str())};
+                return v;
+            }
+            return zero3f;
+        }else{
+            auto cpnt = std::atof(ss.c_str());
+            return vec3f{cpnt,cpnt,cpnt};
+        }
+    }
+    inline vec2f try_strToVec2f(const std::string& ss,vec2f def){
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            if(cpnts.size()==2){
+                return vec2f{std::atof(cpnts[0].c_str()),std::atof(cpnts[1].c_str())};
+            }
+            return zero2f;
+        }else{
+            auto cpnt = std::atof(ss.c_str());
+            return vec2f{cpnt,cpnt};
+        }
+    }
 
 	inline void print_hhmmss(long long seconds) {
 		int min = seconds / 60;
@@ -213,91 +304,15 @@ namespace vnx {
 		return x - std::floor(x);
 	}
 
+    //SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
 	inline float gl_mod(float x,float y){
         return x - y * floor(x/y);
 	}
-	//
 
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
 	inline float hash(float seed){
 		return gl_fract(sin(seed)*43758.5453f);
 	}
-	//
-
-	template <typename T> inline ygl::mat<T,4,4> scaling_matrix(const ygl::vec<T,3>& v){
-        return mat<T,4,4>{
-            vec<T,4>{v.x,T(0),T(0),T(0)},
-            vec<T,4>{T(0),v.y,T(0),T(0)},
-            vec<T,4>{T(0),T(0),v.z,T(0)},
-            vec<T,4>{T(0),T(0),T(0),T(1)}
-        };
-	}
-
-
-	template <typename T> inline ygl::mat<T,4,4> translation_matrix(const ygl::vec<T,3>& v){
-        return mat<T,4,4>{
-            vec<T,4>{T(1),T(0),T(0),v.x},
-            vec<T,4>{T(0),T(1),T(0),v.y},
-            vec<T,4>{T(0),T(0),T(1),v.z},
-            vec<T,4>{T(0),T(0),T(0),T(1)}
-        };
-	}
-
-
-
-    template<typename T> inline ygl::mat<T,4,4> perspective_matrix(T fov,T aspect, T near, T far) {
-        fov = clamp(fov,ygl::epsf,180.0f-ygl::epsf);
-        near = max(near,0.0f);
-        far = max(far,near+ygl::epsf);
-
-        auto scale = tan(fov*0.5f*ygl::pi<T> / 180.0f)* near;
-        auto r = aspect * scale;
-        auto l = -r;
-        auto t = scale;
-        auto b = -t;
-
-        mat<T,4,4> matrix = {
-            vec<T,4>{(2*near)/(r-l),0, (r+l)/(r-l), 0},
-            vec<T,4>{0,(2*near)/(t-b),(t+b)/(t-b),0},
-            vec<T,4>{0,0, -((far+near)/(far-near)), -((2*far*near)/(far-near))},
-            vec<T,4>{0,0,0,1},
-        };
-        return matrix;
-    }
-
-    template<typename T> inline ygl::mat<T,4,4> perspective_matrix_rtrace(T fov,T aspect) {
-        fov = clamp(fov,ygl::epsf,180.0f-ygl::epsf);
-        const T n = 0.01f;
-        const T f = 1000.0f;
-        T yScale = 1.0f / tan( fov * 0.5f );
-        T xScale = yScale / aspect;
-        mat<T,4,4> m{
-                vec<T,4>{xScale , 0.0f , 0.0f , 0.0f} ,
-                vec<T,4>{0.0f , yScale , 0.0f , 0.0f} ,
-                vec<T,4>{0.0f , 0.0f , f/(f-n) , -f*n/(f-n)},
-                vec<T,4>{0.0f , 0.0f , 1.0f , 0.0f}
-                };
-        return m;
-    }
-
-
-    template <typename T> inline mat<T,4,4> lookAt(const vec<T,3>& from, const vec<T,3>& to, const vec<T,3>& tmp = vec<T,3>{0,1,0}){
-        vec<T,3> xaxis = normalize(from - to);
-        vec<T,3> yaxis = cross(normalize(tmp), xaxis);
-        vec<T,3> zaxis = cross(xaxis, yaxis);
-
-
-        mat<T,4,4> viewMatrix = {
-            vec<T,4>{      xaxis.x,            yaxis.x,            zaxis.x,       0 },
-            vec<T,4>{      xaxis.y,            yaxis.y,            zaxis.y,       0 },
-            vec<T,4>{      xaxis.z,            yaxis.z,            zaxis.z,       0 },
-            vec<T,4>{-dot( xaxis, from ), -dot( yaxis, from ), -dot( zaxis, from ),  1 }
-        };
-
-
-
-        return viewMatrix;
-    }
 
 	template <typename T> inline T max_element(const ygl::vec<T, 3>& v) { return std::max(v.x, std::max(v.y, v.z)); }
 	template <typename T> inline T max_element(const ygl::vec<T, 2>& v) { return std::max(v.x, v.y); }
@@ -351,6 +366,12 @@ namespace vnx {
 
     inline bool cmpf(const vec3f& a,const vec3f& b){
         return cmpf(a.x,b.x) == cmpf(a.y,b.y) == cmpf(a.z,b.z);
+    }
+    inline bool cmpf(const vec2f& a,const vec2f& b){
+        return cmpf(a.x,b.x) == cmpf(a.y,b.y);
+    }
+    inline bool cmpf(const vec4f& a,const vec4f& b){
+        return cmpf(a.x,b.x) == cmpf(a.y,b.y) == cmpf(a.z,b.z) == cmpf(a.w,b.w);
     }
 
     inline bool has_nan(const vec3f& a){
@@ -539,25 +560,6 @@ namespace vnx {
 		return ygl::lerp(a, b, h) + k*h*(1.0 - h);
 	}
 
-
-    /*
-	inline ygl::vec3f spectral_color(float l) // RGB <0,1> <- lambda l <400,700> [nm]
-	{
-		double t; double r = 0.0; double g = 0.0; double b = 0.0;
-		if ((l >= 400.0) && (l<410.0)) { t = (l - 400.0) / (410.0 - 400.0); r = +(0.33*t) - (0.20*t*t); }
-		else if ((l >= 410.0) && (l<475.0)) { t = (l - 410.0) / (475.0 - 410.0); r = 0.14 - (0.13*t*t); }
-		else if ((l >= 545.0) && (l<595.0)) { t = (l - 545.0) / (595.0 - 545.0); r = +(1.98*t) - (t*t); }
-		else if ((l >= 595.0) && (l<650.0)) { t = (l - 595.0) / (650.0 - 595.0); r = 0.98 + (0.06*t) - (0.40*t*t); }
-		else if ((l >= 650.0) && (l<700.0)) { t = (l - 650.0) / (700.0 - 650.0); r = 0.65 - (0.84*t) + (0.20*t*t); }
-		if ((l >= 415.0) && (l<475.0)) { t = (l - 415.0) / (475.0 - 415.0); g = +(0.80*t*t); }
-		else if ((l >= 475.0) && (l<590.0)) { t = (l - 475.0) / (590.0 - 475.0); g = 0.8 + (0.76*t) - (0.80*t*t); }
-		else if ((l >= 585.0) && (l<639.0)) { t = (l - 585.0) / (639.0 - 585.0); g = 0.84 - (0.84*t); }
-		if ((l >= 400.0) && (l<475.0)) { t = (l - 400.0) / (475.0 - 400.0); b = +(2.20*t) - (1.50*t*t); }
-		else if ((l >= 475.0) && (l<560.0)) { t = (l - 475.0) / (560.0 - 475.0); b = 0.7 - (t)+(0.30*t*t); }
-		return {r,g,b};
-	}
-	*/
-
     ///Credits : http://bl.ocks.org/benjaminabel/4355926 ///
 	inline ygl::vec3f spectral_to_rgb(float w) // RGB <0,1> <- lambda w <380,780> [nm]
 	{
@@ -659,7 +661,6 @@ namespace vnx {
 		float tmax = 1000.0f;
 		float ior = 1.0f;
 
-		//float owl = 0.0f;
 		float wl = 0.0f;
 		float frequency = 0.0f;
 		float velocity = 0.0f;
@@ -672,7 +673,7 @@ namespace vnx {
           rr.tmin = tmin;
           rr.tmax = tmax;
           rr.ior = ior;
-          //rr.owl = owl;
+
           rr.wl = wl;
           rr.frequency = frequency;
           rr.velocity = velocity;
@@ -710,6 +711,23 @@ namespace vnx {
 		float sm_c2 = 0.0f;
 		float sm_c3 = 0.0f;
 
+		inline void Relate(VEntry* entry){
+            entry->ptr = this;
+            type = try_strToMaterialType(entry->try_at(1),type);
+            ior_type = try_strToIorType(entry->try_at(2),ior_type);
+            kr = try_strToVec3f(entry->try_at(3),kr);
+            ka = try_strToVec3f(entry->try_at(4),ka);
+
+            k_sca = try_strToFloat(entry->try_at(5),k_sca);
+
+            e_temp = try_strToFloat(entry->try_at(6),e_temp);
+            e_power = try_strToFloat(entry->try_at(7),e_power);
+
+            ior = try_strToFloat(entry->try_at(8),ior);
+            rs = try_strToFloat(entry->try_at(9),rs);
+            //vmaterial("light_mat",d,nwl,0.0,0.0,-1.0,6000,120)
+		}
+
 		inline bool is_dielectric() const {return type==dielectric;}
 		inline bool is_conductor()const {return type==conductor;}
 
@@ -746,16 +764,26 @@ namespace vnx {
 		vec3f translation = zero3f;
 		vec4f rotation = identity_quat4f;
 		vec3f scale = one3f;
-
-		ro_axis rotation_order = RO_XYZ;
-
+		VRotationOrder rotation_order = VRO_XYZ;
 		displ_ftor displacement = nullptr;
+
+
+		VNode(std::string idv): id(idv) ,
+		_frame(identity_frame3f),
+		scale(one3f),
+		rotation(identity_quat4f),
+		translation(zero3f),
+		rotation_order(VRO_XYZ),
+		displacement(nullptr){}
 
 		virtual ~VNode() {};
 
+		void Relate(VEntry* entry){entry->ptr = this;DoRelate(entry);}
+		virtual void DoRelate(const VEntry* entry) = 0;
+
 		virtual std::vector<VNode*> get_childs() = 0;
 		virtual VNode* add_child(VNode* child) = 0;
-		virtual void add_childs(std::initializer_list<VNode*> chs) = 0;
+		virtual void add_childs(std::vector<VNode*> chs) = 0;
 
 		virtual inline const char* type() = 0;
 
@@ -776,7 +804,7 @@ namespace vnx {
 		inline void mod_rotation_degs(const ygl::vec3f& a) { rotation.x += vnx::radians(a.x), rotation.y += vnx::radians(a.y); rotation.z += vnx::radians(a.z); }
 		inline void mod_rotation_degs(float x, float y, float z) { rotation.x += vnx::radians(x), rotation.y += vnx::radians(y); rotation.z += vnx::radians(z); }
 
-		inline void set_rotation_order(ro_axis ro){rotation_order = ro;}
+		inline void set_rotation_order(VRotationOrder ro){rotation_order = ro;}
 
         inline void set_scale(float s){ if (s <= ygl::epsf) { scale = one3f; return; }  scale = {s,s,s}; }
 		inline void set_scale(const ygl::vec3f& a) { if (min_element(a) <= ygl::epsf) { scale = one3f; return; }  scale = a; }
@@ -816,21 +844,22 @@ namespace vnx {
 	struct VVolume : public VNode {
 		VMaterial* material;
 
-		~VVolume() {
-			auto chs = get_childs();
-			if (chs.empty()) { return; }
-			for (auto child : chs) {
-				delete child;
-			}
-		};
+		~VVolume() {};
 
-		virtual std::vector<VNode*> get_childs() {
+		inline vec3f eval_ep(const vec3f& p){
+		    return transform_point_inverse(_frame, p);// / scale;
+		}
+
+		VVolume(std::string idv) :VNode(idv){
+		}
+
+		std::vector<VNode*> get_childs() {
 			auto child = std::vector<VNode*>();
 			child.resize(0);
 			return child;
 		}
-		virtual VNode* add_child(VNode* child) { return nullptr; };
-		virtual void add_childs(std::initializer_list<VNode*> chs) {};
+		VNode* add_child(VNode* child) { return nullptr; };
+		void add_childs(std::vector<VNode*> chs) {};
 	};
 
 	struct VOperator : public VNode {
@@ -842,14 +871,12 @@ namespace vnx {
 			for (auto child : chs) {
 				delete child;
 			}
-		};
-
-		VOperator(std::string idv) {
-			id = idv;
+		}
+		VOperator(std::string idv) :VNode(idv){
 			childs = std::vector<VNode*>();
 			childs.resize(0);
 		}
-		VOperator(std::string idv,std::initializer_list<VNode*> chs) :VOperator(idv){
+		VOperator(std::string idv,std::vector<VNode*> chs) :VOperator(idv){
 			add_childs(chs);
 		}
 
@@ -859,9 +886,9 @@ namespace vnx {
 		virtual VNode* add_child(VNode* child) {
 			childs.push_back(child);
 			return child;
-		};
-		virtual void add_childs(std::initializer_list<VNode*> chs) {
-			if (chs.size() == 0) { return; }
+		}
+		virtual void add_childs(std::vector<VNode*> chs) {
+			if (chs.empty()) { return; }
 			for (auto child : chs) {
 				childs.push_back(child);
 			}
@@ -891,7 +918,7 @@ namespace vnx {
 	struct VCamera{
         float focus = 1.0f;
         float aperture = 0.0f;
-        float yfov = 1.0f;
+        float yfov = 45.0f;
 
         vec3f mOrigin = zero3f;
         vec3f mTarget = zero3f;
@@ -910,6 +937,13 @@ namespace vnx {
         mat4f mCameraToWorld = identity_mat4f;
         mat4f mRasterToWorld = identity_mat4f;
         mat4f mRasterToCamera = identity_mat4f;
+
+        void Relate(const VEntry* entry){
+            yfov = radians(try_strToFloat(entry->try_at(1),45.0f));
+            mOrigin = try_strToVec3f(entry->try_at(2),mOrigin);
+            mTarget = try_strToVec3f(entry->try_at(3),mTarget);
+            mUp = try_strToVec3f(entry->try_at(4),mUp);
+        }
 
         inline void Setup(const vec2f& resolution){
             mResolution = resolution;
@@ -938,7 +972,6 @@ namespace vnx {
         }
 
         inline VRay Cast(float x,float y,const vec2f& uv) const{
-
             vec3f raster_point = {x+uv.x,y+uv.y,0.0f};
             vec3f view_dir = transform_point(mRasterToWorld,raster_point);
 
@@ -1018,7 +1051,7 @@ namespace vnx {
 			return true;
 		}
 
-		bool set_rotation_order(const std::string& idv, ro_axis ro){
+		bool set_rotation_order(const std::string& idv, VRotationOrder ro){
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
 			node->set_rotation_order(ro);
@@ -1057,10 +1090,10 @@ namespace vnx {
 			return res;
 		}
 		inline void eval(const vec3f& p,VResult& res) const {
-			if (root != nullptr) {root->eval(p,res);res.wor_pos = p;} // ensure wor_pos i set to worl coord
+			if (root != nullptr) {root->eval(p,res);res.wor_pos = p;} // ensure wor_pos is set to world coord
 		}
 
-		inline virtual ygl::vec3f eval_normals_tht(const VResult& vre,float eps) const {
+		inline ygl::vec3f eval_normals_tht(const VResult& vre,float eps) const {
             if(!cmpf(vre.norm,zero3f)){return vre.norm;}
 			const auto p = vre.wor_pos;
                 VResult res;
@@ -1075,7 +1108,7 @@ namespace vnx {
                 return normalize(n);
 		}
 
-		inline virtual ygl::vec3f eval_normals_cnt(const VResult& vre,float eps) const {
+		inline ygl::vec3f eval_normals_cnt(const VResult& vre,float eps) const {
             if(!cmpf(vre.norm,zero3f)){return vre.norm;}
 			const auto p = vre.wor_pos;
 			VResult res;
@@ -1312,61 +1345,63 @@ namespace vnx {
         return (v>=vref-eps) && (v<=vref+eps);
 	}
 
-	void apply_transforms(VNode* node, const ygl::frame3f& parent = ygl::identity_frame3f) {
-		if (node == nullptr) { return; }
-		auto fr = parent *ygl::translation_frame(node->translation);
-            /* *ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x)*
-			ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y)*
-			ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z);
-			*/
-			//ni don't apply scaling here, i consider it as a deformation in nodes evals
+	frame3f calculate_frame(const VNode* node,const ygl::frame3f& parent = ygl::identity_frame3f){
+		if (node == nullptr) { return ygl::identity_frame3f; }
+		auto fr = parent*ygl::translation_frame(node->translation);
+
 			switch(node->rotation_order){
-            case RO_XYZ:
+            case VRO_XYZ:
                 fr=fr*ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x)*
                     ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y)*
                     ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z);
                 break;
-            case RO_XZY:
+            case VRO_XZY:
                 fr=fr*ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x)*
                     ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z)*
                     ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y);
                 break;
-            case RO_YXZ:
+            case VRO_YXZ:
                 fr=fr*ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y)*
                     ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x)*
                     ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z);
                 break;
-            case RO_YZX:
+            case VRO_YZX:
                 fr=fr*ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y)*
                     ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z)*
                     ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x);
                 break;
-            case RO_ZXY:
+            case VRO_ZXY:
                 fr=fr*ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z)*
                     ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x)*
                     ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y);
                 break;
-            case RO_ZYX:
+            case VRO_ZYX:
                 fr=fr*ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z)*
                     ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y)*
                     ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x);
                 break;
 			}
+			return fr*scaling_frame(one3f/node->scale);
+	}
 
-		node->_frame = fr;
+	void apply_transforms(VNode* node, const ygl::frame3f& parent = ygl::identity_frame3f) {
+		node->_frame = calculate_frame(node,parent);
 		auto chs = node->get_childs();
 		if (chs.empty()) { return; }
-		for (auto child : chs) { apply_transforms(child, fr); }
+		for (auto child : chs) { apply_transforms(child, node->_frame); }
 	}
 
     //TODO : FIX
-    inline precalc_emissive_hints_rejection(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,float ieps,float neps,bool verbose){
-		if (ptr == nullptr) { return 0; }
-		int n = 0;
+    inline vec2i precalc_emissive_hints_rejection(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,float ieps,float neps,bool verbose,frame3f parent_frame = ygl::identity_frame3f){
+		if (ptr == nullptr) { return {0,0}; }
+		vec2i stats = {0,0};
 
 		std::string id = p_prefix+ptr->id;
 		VResult vre;
-        ptr->eval(transform_point(ptr->_frame,zero3f),vre);
+        auto fr = calculate_frame(ptr,parent_frame); //HACK : risultato esatto , TODO test
+        auto epv = transform_point(fr, zero3f);
+        scn.eval(epv,vre);
+
         vre._found = true;
         if(vre.vsur!=nullptr && ptr->get_childs().empty() && vre.vsur->id == ptr->id){
             if(emap.find(id)==emap.end()){
@@ -1377,7 +1412,7 @@ namespace vnx {
                 };
                 if (vre.vdist<0.0f && vre_material.is_emissive()) {
                     std::vector<VResult>* epoints = &emap[id];
-                    epoints->push_back(vre); n++;
+                    epoints->push_back(vre); stats.x++;
 
                     float r = 1.0f;
                     float step = 0.1f;
@@ -1388,7 +1423,7 @@ namespace vnx {
                         for(int s=0;s<ceil(n_em_e*(r/4.0f));s++){
                             auto p = rand3f_r(rng,-r,r);
                             VResult er;
-                            scn.eval(transform_point(ptr->_frame,p),er);
+                            scn.eval(transform_point(fr,p),er);
                             if(er.vdist<0.0f && er.vsur->id == vre.vsur->id){
                                 auto er_material = *er.vmat;
                                 if(er_material.mutator!=nullptr){
@@ -1406,7 +1441,7 @@ namespace vnx {
                         }
                         if(points.empty()){break; }
                         old_points = points;
-                        for(auto point : old_points){epoints->push_back(point);n++;}
+                        for(auto point : old_points){epoints->push_back(point);stats.x++;}
                         step+=step;
                         //step = min_dist;
                         r+=step;
@@ -1416,20 +1451,23 @@ namespace vnx {
             }
         }
 		auto chs = ptr->get_childs();
-		if (chs.empty()) { return n; }
+		if (chs.empty()) { return stats; }
 		for (auto node : chs) {
-			n+=precalc_emissive_hints_rejection(scn, rng, emap, node,id, n_em_e, ieps, neps, verbose);
+			stats+=precalc_emissive_hints_rejection(scn, rng, emap, node,id, n_em_e, ieps, neps, verbose, fr);
 		}
-        return n;
+        return stats;
     }
 
-    inline int precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,float ieps,float neps,bool verbose) {
-		if (ptr == nullptr) { return 0; }
-		int n = 0;
+    inline vec2i precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,float ieps,float neps,bool verbose,frame3f parent_frame = ygl::identity_frame3f) {
+		if (ptr == nullptr) { return {0,0}; }
+		vec2i stats = {0,0};
 
 		//std::string id = p_prefix+ptr->id;
         VResult vre;
-        scn.eval(transform_point(ptr->_frame,zero3f),vre);
+        auto fr = calculate_frame(ptr,parent_frame); //HACK : risultato esatto , TODO test
+        auto epv = transform_point(fr, zero3f);
+        scn.eval(epv,vre);
+
         vre._found = true;
         auto vre_material = *vre.mat;
         ygl::vec3f norm = scn.NORMALS_ALGO(vre, neps);
@@ -1441,45 +1479,17 @@ namespace vnx {
             vre_vmaterial.eval_mutator(rng, vre, norm, vre_vmaterial);
         };
         if(vre_vmaterial.is_emissive() || vre_material.is_emissive()){
-            /*
-            vec3f dir = normalize(rand3f_r(rng,-1.0f,1.0f));
-            VResult er = vre;
-            VRay ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
-
-            if(er.dist<0.0f || er.vdist<0.0f){
-                if (vre_material.is_emissive()) {
-                    std::vector<VResult>* epoints = &emap[er.sur->id];
-                    er._found = true;
-                    epoints->push_back(er); n++;
-                    if(verbose) std::cout<<"EM ( light: "<<er.sur->id<<" ) : {"<<er.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
-                }else if(vre_vmaterial.is_emissive()){
-                    std::vector<VResult>* epoints = &emap[er.vsur->id];
-                    er._found = true;
-                    epoints->push_back(er); n++;
-                    if(verbose) std::cout<<"EM ( light: "<<er.vsur->id<<" ) : {"<<er.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
-                }
-            }*/
             auto dir = ygl::sample_sphere_direction(ygl::get_random_vec2f(rng));
-            auto ray = VRay{vre.wor_pos,dir,ieps,1000.0f};
+            auto ray = VRay{epv,dir,ieps,1000.0f};
             VResult fvre = vre;
             for (int i=0; i < n_em_e; i++) {
                 int n_iters = 0;
                 vre = scn.INTERSECT_ALGO(ray,512,n_iters);
 
-                //int jj = 0;
-                /*auto new_er = scn.INTERSECT_ALGO(ray, 512,jj);
-                if(!new_er.found()){
-                    dir = normalize(rand3f_r(rng,-1.0f,1.0f));
-                    ray = offsetted_ray(er.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
-                    if(verbose) std::cout<<"Er not found.\n";
-                    continue;
-                }
-                auto new_norm = scn.NORMALS_ALGO(new_er, neps);
-                */
-
                 if(!vre.found()){
                     dir = normalize(rand3f_r(rng,-1.0f,1.0f));
                     ray = offsetted_ray(fvre.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
+                    stats.y++;
                     continue;
                 }
 
@@ -1487,7 +1497,7 @@ namespace vnx {
 
                 ///ggx,  for internal emissive bounces
                 auto rn = ygl::get_random_vec2f(rng);
-                auto fp = dot(ray.d,norm) >= 0.0f ? ygl::make_frame_fromz(zero3f, norm) : ygl::make_frame_fromz(zero3f, -norm);
+                auto fp = dot(ray.d,norm) > 0.0f ? ygl::make_frame_fromz(zero3f, -norm) : ygl::make_frame_fromz(zero3f, norm); // TEST -norm && norm
                 auto tan2 = 0.1f * 0.1f * rn.y / (1 - rn.y);
                 auto rz = std::sqrt(1 / (tan2 + 1)), rr = std::sqrt(1 - rz * rz), rphi = 2 * ygl::pif * rn.x;
                 auto wh_local = ygl::vec3f{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
@@ -1495,7 +1505,7 @@ namespace vnx {
                 ///
 
                 dir = -ygl::reflect(ray.d,dir);
-                ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)>=0 ? norm : -norm,vre.dist);
+                ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)>0 ? -norm : norm,vre.dist); //TEST -norm && norm
 
                 auto er_material = *vre.mat;
                 if(er_material.mutator!=nullptr){
@@ -1509,34 +1519,34 @@ namespace vnx {
                     if (er_material.is_emissive()) {
                         std::vector<VResult>* epoints = &emap[vre.sur->id];
                         vre._found = true;
-                        epoints->push_back(vre); n++;
+                        epoints->push_back(vre); stats.x++;
                         if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
                     }else if(er_vmaterial.is_emissive()){
                         std::vector<VResult>* epoints = &emap[vre.vsur->id];
                         vre._found = true;
-                        epoints->push_back(vre); n++;
+                        epoints->push_back(vre); stats.x++;
                         if(verbose) std::cout<<"EM ( light: "<<vre.vsur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
                     }
                 }
             }
         }
 		auto chs = ptr->get_childs();
-		if (chs.empty()) { return n; }
+		if (chs.empty()) { return stats; }
 		for (auto node : chs) {
-			n+=precalc_emissive_hints(scn, rng, emap, node,ptr->id, n_em_e, ieps, neps, verbose);
+			stats+=precalc_emissive_hints(scn, rng, emap, node,ptr->id, n_em_e, ieps, neps, verbose,fr);
 		}
 
-		return n;
+		return stats;
 	}
 
-	inline int populate_emissive_hints(VScene& scn,int n_em_e,float ieps,float neps,bool verbose = false) {
+	inline vec2i populate_emissive_hints(VScene& scn,int n_em_e,float ieps,float neps,bool verbose = false) {
 	    auto rng = ygl::make_rng(ygl::get_time());
 		std::map<std::string, std::vector<VResult>> tmpMap;
-		int n = LIGHT_PRECALC_ALGO(scn, rng, tmpMap, scn.root, "", n_em_e, ieps, neps, verbose);
+		vec2i stats = LIGHT_PRECALC_ALGO(scn, rng, tmpMap, scn.root, "", n_em_e, ieps, neps, verbose);
 		for (auto ceh : tmpMap) {
             scn.emissive_hints.push_back(ceh.second);
 		}
-		return n;
+		return stats;
 	}
 
 	///Procedural patterns utilities

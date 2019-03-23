@@ -84,6 +84,14 @@ namespace vscndef {
 		glass->sm_c3 = 1.03560653e2;
 		glass->ka = {0.01f,0.01f,0.01f};
 
+		auto carbon_diamond_material = scn.add_material("diamond_material");
+        carbon_diamond_material->ka = vec3f{0.01f,0.01f,0.01f};
+        carbon_diamond_material->sm_b1 = 0.3306f;
+        carbon_diamond_material->sm_c1 = 0.1750f;
+        carbon_diamond_material->sm_b2 = 4.3356f;
+        carbon_diamond_material->sm_c2 = 0.1060f;
+        carbon_diamond_material->k_sca = 0.0f;
+
 		auto partecipating = scn.add_material("partecipating_material");
         partecipating->ka = {0.1f,0.1f,0.1f};
         partecipating->k_sca = 0.008f;
@@ -96,7 +104,7 @@ namespace vscndef {
         auto box = new vvo_sd_box("box",diffuse2,{0.5f,2.0f,0.5f});
         auto sphere = new vvo_sd_sphere("sphere",metal,1.0f);
         //auto sphere2 = new vvo_sd_sphere("sphere2",glass,1.0f);
-        auto sphere2 = new vvo_sd_diamond("sphere2",glass);
+        auto diamond = new vvo_sd_diamond("diamond",carbon_diamond_material);
         //auto light2 = new vvo_sd_sphere("light2",emissive_dim,0.5f);
         auto slab = new vvo_sd_box("slab",mirror,{1.5f,0.1f,1.5f});
         auto ring = new vop_subtraction("ring",{
@@ -113,7 +121,7 @@ namespace vscndef {
             light,
             box,
             sphere,
-            sphere2,
+            diamond,
             slab,
             new vop_union("ring_group",{ring,ring_pedestal}),
             room,
@@ -128,7 +136,8 @@ namespace vscndef {
 		scn.set_translation("box",{0,1.8f,0});
 		scn.set_rotation_degs("box",{0,45,0});
 		scn.set_translation("sphere",{2.0f,1.0f,0});
-		scn.set_translation("sphere2",{-2.0f,1.5f,0});
+		scn.set_translation("diamond",{-2.0f,1.5f,0});
+		scn.set_rotation_degs("diamond",{-45,45,0});
         scn.set_translation("slab",{-2.0f,0,5.0f});
         scn.set_rotation_degs("slab",{0,25,0});
 

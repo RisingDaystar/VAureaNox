@@ -153,7 +153,7 @@ namespace vscndef {
             return (sin(f*p.x)*sin(f*p.y)*sin(f*p.z))/fd; //18= 1/20 + 1/20 + 1/20 ///limiti della funzione sin (e cos...)
         };
         scn.set_displacement("plane_sub_t",ftor3);
-        scn.set_scale("ring",{2.0f,1.0f,1.0f});
+        scn.set_scale("ring",{1.2f,1.0f,1.2f});
 
         //scn.set_scale("coat",{3.0f,3.0f,3.0f});
         scn.set_rotation_degs("sph2_group",{25,25,25});

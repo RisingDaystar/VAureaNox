@@ -137,19 +137,19 @@ namespace vscndef {
                     new vvo_sd_box("box_subtr",cornell_composite_mat,3.95f),
                     new vvo_sd_box("box_subtr_ceil",cornell_composite_mat,{1.0f,0.5f,1.0f}),
                 }),
-                new vvo_sd_box("light",material_emissive,{ 0.8f,0.03f,0.8f }),
+                new vvo_sd_box("light",material_emissive,{ 1.f,0.03f,1.f }),
                 //new vvo_sd_sphere("light",material_emissive,0.4f),
                 //new vvo_sd_box("occlusion",diff_white_lowks,{2.0f,0.1f,5.0f}),
                 //new vvo_sd_sphere("glass_ball",borosilicate_glass_material,2.5f),
 
-                /*
+
                 new vop_union("glass",{
                     new vop_cut("glass_cylinder",{0,1,0},{0,-1.8f,0},0.0f,new vop_onion("_gc_eo",0.15f,new vvo_sd_cylinder("_gc_e",borosilicate_glass_material,{1.3f,2.3f}))),
                     new vvo_sd_cylinder("inner_water",water_material,{0.99f,1.0f}),
                     new vop_twist("obs",Z,0.8f,new vvo_sd_box("obs_t",diff_white,{0.1f,3.0f,0.1f})),
-                }),*/
+                }),
 
-
+                //new vop_repeat("repeater",{5.0f,5.0f,5.0f},new vvo_sd_box("boxolo",diff_white,vec3f{1.0f,1.0f,1.0f}/3.0f)),
 
                 //new vop_cut("mirror",{0,1,1},{0,0,0},0.1f,new vop_onion("mirror_o",0.06f,new vvo_sd_sphere("mirror_i",sp_mat))),
 
@@ -162,7 +162,7 @@ namespace vscndef {
 
 
                 //new vvo_sd_box("box1",diff_white,{1.0f,3.0f,1.0f}),
-                new vvo_sd_hex_prism("box_repeated",borosilicate_glass_material,one2f*2.0f),
+                //new vvo_sd_hex_prism("box_repeated",borosilicate_glass_material,one2f*2.0f),
                 //new vvo_sd_box("box_partecipating",partecipating,8.0f),
                 //new vvo_sd_box("box_occ",diff_white,{5.5,0.1f,5.5f}),
                 //new vvo_sd_hex_prism("sph",borosilicate_glass_material,one2f),
@@ -184,6 +184,8 @@ namespace vscndef {
 
 		scn.set_root(root);
 
+		scn.set_rotation_degs("repeater",{0,45,0});
+
 		scn.set_translation("box1",{-2.0f,-2.0f,-2.0f});
 		scn.set_translation("box_tr",{-1.0f,-1.8f,1.0f});
 		scn.set_scale("box_tr",2.0f);
@@ -197,7 +199,7 @@ namespace vscndef {
 		scn.set_rotation_degs("box_tr",{180,45,45});
 		scn.set_translation("box_repeated",{2.0,-2.0f,0});
 		scn.set_rotation_degs("box_repeated",{0,45,0});
-		scn.set_rotation_order("box_repeated",RO_YXZ);
+		scn.set_rotation_order("box_repeated",VRO_YXZ);
 
 
 		scn.set_rotation_degs("box1",{0,45,0});

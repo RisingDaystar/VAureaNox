@@ -277,7 +277,7 @@ namespace vscndef {
 		return leg;
 	}
 
-	vnx::VNode* make_hood(const std::string& name, vnx::VMaterial* mat1, vnx::VMaterial* mat2) {
+	vnx::VNode* make_hood(const std::string& name,vnx::VMaterial* mat1,vnx::VMaterial* mat2) {
 		using namespace vnx;
 		auto hood = new vop_subtraction(name, 0.2f, false, {
 			new vop_union(name + "_u",{
@@ -300,25 +300,27 @@ namespace vscndef {
 	void init_spider_scene(VScene& scn) {
 		scn.id = "spider";
         scn.camera.yfov = radians(45);
-        scn.camera.mOrigin = {0,6.1f,12.0f};
-        scn.camera.mTarget = {0,6.1f,0};
+        scn.camera.mOrigin = {0,30.1f,68.0f};
+        scn.camera.mTarget = {0,5.1f,0};
         scn.camera.mUp = {0,1.0f,0};
 
 		auto grey_steel_material = scn.add_material("grey_steel_material");
 		grey_steel_material->type = conductor;
 		grey_steel_material->kr = { 0.541931f,0.496791f,0.449419f }; //titanium
-		grey_steel_material->rs = 0.02f;
+		grey_steel_material->rs = 0.2f;
 
 		auto red_ks_material = scn.add_material("red_ks_material");
-		red_ks_material->type = conductor;
-		red_ks_material->rs = 0.05f;
+		red_ks_material->type = dielectric;
+		red_ks_material->ior_type = non_wl_dependant;
+		red_ks_material->ior = 1.8f;
+		red_ks_material->rs = 0.85f;
 		red_ks_material->kr = { 0.9f,0.1f,0.1f };
 
 		auto red_diff_material = scn.add_material("red_diff_material");
-		red_ks_material->type = dielectric;
-		red_ks_material->ior = 1.5f;
-		red_ks_material->rs = 0.05f;
-		red_ks_material->kr = { 0.9f,0.1f,0.1f };
+		red_diff_material->ior_type = non_wl_dependant;
+		red_diff_material->ior = 1.1f;
+		red_diff_material->rs = 0.05f;
+		red_diff_material->kr = { 0.9f,0.1f,0.1f };
 
 		auto black_cheratin_material = scn.add_material("black_cheratin_material");
 		black_cheratin_material->ior_type = non_wl_dependant;
@@ -332,13 +334,14 @@ namespace vscndef {
 		grey_material->kr = { 0.5f,0.5f,0.5f };
 		grey_material->rs = 0.2f;
 		auto red_material = scn.add_material("red_material");
-
 		red_material->kr = { 0.55f,0.0f,0.0f };
+
+
 		auto black_material = scn.add_material("black_material");
 		black_material->ior_type = non_wl_dependant;
 		black_material->ior = 1.05f;
-		black_material->kr = { 0.1f,0.1f,0.1f };
-		black_material->rs = 0.1f;
+		black_material->kr = { 0.2f,0.2f,0.2f };
+		black_material->rs = 0.4f;
 
 		auto green_material = scn.add_material("green_material");
 		green_material->kr = { 0.0f,0.2f,0.0f };
@@ -352,15 +355,15 @@ namespace vscndef {
 		grey_diffuse_no_refl->kr = { 0.5f,0.5f,0.5f };
 		grey_diffuse_no_refl->rs = 0.15f;
 
-		auto blue_diffuse_transparent = scn.add_material("blue_diffuse_transparent");
-		blue_diffuse_transparent->k_sca = 0.0f;
-		blue_diffuse_transparent->ka = { 0.9f,0.9f,0.01f };
-		blue_diffuse_transparent->sm_b1 = 1.03961212;
-		blue_diffuse_transparent->sm_b2 = 0.231792344;
-		blue_diffuse_transparent->sm_b3 = 1.01046945;
-		blue_diffuse_transparent->sm_c1 = 6.00069867e-3;
-		blue_diffuse_transparent->sm_c2 = 2.00179144e-2;
-		blue_diffuse_transparent->sm_c3 = 1.03560653e2;
+		auto blue_partecipating = scn.add_material("blue_partecipating");
+		blue_partecipating->k_sca = 0.2f;
+		blue_partecipating->ka = { 0.9f,0.9f,0.01f };
+
+		auto sea_material = scn.add_material("sea_material");
+		sea_material->k_sca = 0.0f;
+		sea_material->ka = { 0.02f,0.02f,0.002f };
+		sea_material->ior = 1.5f;
+		sea_material->ior_type = non_wl_dependant;
 
 
 		auto emissive = scn.add_material("emissive");
@@ -396,22 +399,22 @@ namespace vscndef {
 		auto base_plane_v = new vvo_sd_plane("base_plane_v", grey_diffuse_no_refl_adv);
 
 
-		auto ftor2 = [](const ygl::vec3f& wor_pos, ygl::vec3f& loc_pos, const VNode* tref) {
-			loc_pos = ygl::transform_point_inverse(tref->_frame, wor_pos) / tref->scale;
+		auto ftor2 = [](const ygl::vec3f& wor_pos,const ygl::vec3f& loc_pos, const VNode* tref) {
+			//loc_pos = ygl::transform_point_inverse(tref->_frame, wor_pos);
 			float dv = ygl::dot(loc_pos, ygl::normalize(ygl::vec3f{ 0,1,0 }));
 
 			dv += sin(wor_pos.x / 6.0f)*sin(wor_pos.z / 6.0f)*0.8f;
 
 			return dv*(1.0f / 2.0f);
 		};
-		//auto sea = new vvo_shadered("sea", blue_diffuse_transparent, ftor2);
+		//auto sea = new vvo_shadered("sea", sea_material, ftor2);
 
 		main_light->set_translation(0.0f, 50.0f, 40.0f);
 		base_plane->set_translation(0.0f, -1.0f, 0.0f);
-		//sea->set_translation(0.0f, 3.0f, 0.0f);
+		//sea->set_translation(0.0f, 124.0f, 0.0f);
 
 		auto sword = new vop_union("sword", 0.05f, {
-			new vop_intersection("lama",{
+			new vop_intersection("lama",0.1f,{
 				new vvo_sd_ellipsoid("lama_e",grey_steel_material,{ 0.25f,4.0f,0.035f }),
 				new vvo_sd_box("lama_ei",grey_steel_material,{ 2.0f,2.0f,2.0f }),
 			}),
@@ -438,9 +441,9 @@ namespace vscndef {
 		});
 		//sword->set_translation(5.0f, 5.0f, 0);
 		sword->select("hilt")->set_translation(0, 0.5f, 0);
-		sword->select("lama")->set_translation(0, -1.2f, 0);
+		sword->select("lama")->set_translation(0, 0.0f, 0);
 		sword->select("lama")->set_scale(1.0f, 1.6f, 1.0f);
-		sword->select("lama_ei")->set_translation(0, 3.0f, 0);
+		sword->select("lama_ei")->set_translation(0, 5.0f, 0);
 
 		sword->select("jewel_left")->set_translation(0.7f, 0, 0);
 		sword->select("jewel_right")->set_translation(-0.7f, 0, 0);
@@ -448,7 +451,7 @@ namespace vscndef {
 
 		auto root_union = new vop_union("root", {
 			//sea,
-			new vop_union("robot_root",{
+			new vop_repeat("rrep",{19.0,5.0,39.0},{true,false,true},new vop_union("robot_root",{
 				new vop_union("top_root",{
 					new vop_union("sc_head_root",0.3f,{
 						new vvo_sd_ellipsoid("sc_neck",black_material,{ 0.8f,0.5f,0.5f }),
@@ -507,8 +510,8 @@ namespace vscndef {
 						}),
 					}),
 				}),
-			}),
-
+			})
+),
 
 			new vop_union("base_plane_group",20.0f,{
 				base_plane,
@@ -520,8 +523,9 @@ namespace vscndef {
 
 
 		auto sc_root = scn.select("robot_root");
-		sc_root->set_translation(0.0f, 11.0f, -5.0f);
-		sc_root->set_rotation_degs(0.0f, 45, 0.0f);
+		sc_root->set_translation(0.0f, 9.0f, -5.0f);
+		sc_root->set_rotation_degs(0, 45, 0.0f);
+		sc_root->set_rotation_order(VRO_YXZ);
 
 		scn.set_translation("body_rear_gem_root", { 0,0.5f,-0.2f });
 
@@ -596,14 +600,14 @@ namespace vscndef {
 
 		auto energy_ball = new vop_twist("energy",Y, 5.0f,
 			new vop_union("energy_e", {
-				new vvo_sd_box("ball",blue_diffuse_transparent,0.5f),
-				new vvo_sd_box("ball_em",emissive_dim,0.3f),
+				new vvo_sd_box("ball",blue_partecipating,0.5f),
+				//new vvo_sd_box("ball_em",emissive_dim,0.3f),
 			})
 			);
 		energy_ball->select("energy_e")->set_rotation_degs(45, 0, 0);
 		energy_ball->set_translation(0, -1.0f, -1.7f);
 
-		//sc_root->select("arm_sx_0")->select("arm_sx_hand")->add_child(energy_ball);
+		sc_root->select("arm_sx_0")->select("arm_sx_hand")->add_child(energy_ball);
 		sc_root->select("arm_dx_0")->select("arm_dx_hand")->add_child(sword);
 		sword->set_rotation_degs(35, 0, 270);
 		sword->set_translation(0.23f, -0.4f, 0);
@@ -618,14 +622,14 @@ namespace vscndef {
 		scn.set_translation("leg_dx_mid_0", { -1.1f,0,0.15f });
 		scn.set_translation("leg_dx_rear_0", { -0.9f,0.1f,-0.6f });
 
-		scn.set_rotation_degs("leg_sx_frontmost_0", { 0,-20,135 });
-		scn.set_rotation_degs("leg_sx_front_0", { 0,-10,135 });
-		scn.set_rotation_degs("leg_sx_mid_0", { 0,0,135 });
+		scn.set_rotation_degs("leg_sx_frontmost_0", { 0,-20,155 });
+		scn.set_rotation_degs("leg_sx_front_0", { 0,-10,125 });
+		scn.set_rotation_degs("leg_sx_mid_0", { 0,0,125 });
 		scn.set_rotation_degs("leg_sx_rear_0", { 0,20,135 });
 
-		scn.set_rotation_degs("leg_dx_frontmost_0", { 0,20,-135 });
-		scn.set_rotation_degs("leg_dx_front_0", { 0,10,-135 });
-		scn.set_rotation_degs("leg_dx_mid_0", { 0,0,-135 });
+		scn.set_rotation_degs("leg_dx_frontmost_0", { 0,20,-155 });
+		scn.set_rotation_degs("leg_dx_front_0", { 0,10,-125 });
+		scn.set_rotation_degs("leg_dx_mid_0", { 0,0,-125 });
 		scn.set_rotation_degs("leg_dx_rear_0", { 0,-20,-135 });
 
 		//rotazioni individuali

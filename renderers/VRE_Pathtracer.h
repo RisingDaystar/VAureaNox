@@ -26,11 +26,6 @@ namespace vnx {
 
 	struct VRE_Pathtracer : VRenderer {
 
-		enum v_aa_mode {
-			aa_montecarlo,
-			aa_ssaa
-		};
-
 		enum v_sample_type{
             s_undefined,
 		    s_reflected,
@@ -76,7 +71,6 @@ namespace vnx {
 		bool b_debug_iterations = false;
 
 		int n_ray_samples = 1;
-		int n_ssaa_samples = 1;
 		int n_max_march_iterations = 512;
 
 		float f_ray_tmin = 0.001f;
@@ -86,22 +80,11 @@ namespace vnx {
 		float f_min_wl = 400;
 		float f_max_wl = 700;
 
-		v_aa_mode e_aa_mode = aa_montecarlo;
-
 		VRE_Pathtracer(std::string cf) : VRenderer(cf) {} ///TODO inizializzazione stile c++
 
 		inline std::string type() const {return "PathTracer";}
 
 		using VRenderer::try_get; //permette di vedere gli altri overload
-
-		v_aa_mode try_get(std::string k, v_aa_mode dVal) const {
-			auto match = params.find(k);
-			if (match == params.end()) { return dVal; }
-
-			if (stricmp(match->second, "montecarlo")) { return aa_montecarlo; }
-			if (stricmp(match->second, "ssaa")) { return aa_ssaa; }
-			return aa_ssaa;
-		};
 
 		inline void init(){
             parse();
@@ -110,9 +93,6 @@ namespace vnx {
 
 			n_ray_samples = try_get("n_ray_samples", n_ray_samples);
 			if (n_ray_samples <= 0) { throw VException("n_ray_samples <= 0"); }
-
-			n_ssaa_samples = try_get("n_ssaa_samples", n_ssaa_samples);
-			if (n_ssaa_samples <= 0) { throw VException("n_ssaa_samples <= 0"); }
 
 			n_max_march_iterations = try_get("n_max_march_iterations", n_max_march_iterations);
 			if (n_max_march_iterations <= 0) { throw VException("n_max_march_iterations < 0"); }
@@ -138,13 +118,10 @@ namespace vnx {
 			b_debug_normals = try_get("b_debug_normals", b_debug_normals);
 
 			b_debug_iterations = try_get("b_debug_iterations", b_debug_iterations);
-
-			e_aa_mode = try_get("e_aa_mode",e_aa_mode);
-
 		};
 
         inline void post_init(VScene& scn){
-            std::cout<<"**Using : "<<n_ray_samples<<" samples per pixel**\n";
+            std::cout<<"**Using : "<<n_ray_samples<<" samples per pixel\n";
         }
 
 		/*inline bool russian_roulette(ygl::rng_state& rng,ygl::vec3f& w){
@@ -763,7 +740,9 @@ namespace vnx {
                 auto material = *hit.mat;
                 auto n = scn.NORMALS_ALGO(hit, f_normal_eps);
                 material.eval_mutator(rng, hit, n, material);
+
                 //if(n==zero3f){if(status.bDebugMode){std::cout<<"*<!>Main Loop--> Normal is zero\n";}break;}
+
                 auto wo = sample.ray;
                 wo.d=-wo.d;
                 auto wi = sample.ray;
@@ -831,6 +810,7 @@ namespace vnx {
 		};
 
 		inline void eval_image(const VScene& scn, ygl::rng_state& rng, image3f& img, int width, int height, int j) {
+		    const float f_ray_samples = (float)n_ray_samples;
 			for (int i = 0; i < width && !status.bStopped; i++) {
 				ygl::vec3f color = ygl::zero3f;
 
@@ -840,11 +820,11 @@ namespace vnx {
                     ray.tmax = f_ray_tmax;
                     init_ray_physics(rng,ray);
 
-                    if(b_do_spectral) color += eval_pixel(scn, rng, img, scn.camera, ray)*spectral_to_rgb(ray.wl);
-                    else color += eval_pixel(scn, rng, img, scn.camera, ray);
+                    if(b_do_spectral) color += (eval_pixel(scn, rng, img, scn.camera, ray)/ f_ray_samples)*spectral_to_rgb(ray.wl);
+                    else color += eval_pixel(scn, rng, img, scn.camera, ray)/ f_ray_samples;
                 }
 				auto& px = at(img,{i, j});
-				px += color / n_ray_samples;
+				px += color; // / f_ray_samples;
 			}
 		}
 
@@ -852,10 +832,6 @@ namespace vnx {
 		    std::string ss = "";
 		    if(b_do_spectral)ss+="_spec";
 		    ss += std::string("_spp")+std::to_string(n_ray_samples);
-		    if(e_aa_mode==aa_ssaa && n_ssaa_samples>1){
-                std::string ssaa_s = std::to_string(n_ssaa_samples);
-                ss+=std::string("_ssaa")+ssaa_s+"x"+ssaa_s;
-		    }
 		    return ss;
 		}
 
