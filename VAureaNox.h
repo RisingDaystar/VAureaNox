@@ -846,7 +846,7 @@ namespace vnx {
 	};
 
 	struct VVolume : public VNode {
-		VMaterial* material = nullptr;
+		VMaterial* mMaterial = nullptr;
 
 		~VVolume() {};
 
@@ -854,8 +854,8 @@ namespace vnx {
 		    return transform_point_inverse(_frame, p);// / scale;
 		}
 
-		VVolume(std::string idv):VNode(idv),material(nullptr){}
-		VVolume(std::string idv,VMaterial* mtl) :VNode(idv),material(mtl){}
+		VVolume(std::string idv):VNode(idv),mMaterial(nullptr){}
+		VVolume(std::string idv,VMaterial* mtl) :VNode(idv),mMaterial(mtl){}
 
 		std::vector<VNode*> get_childs() {
 			auto child = std::vector<VNode*>();
