@@ -27,8 +27,8 @@ using namespace vnx;
 //Personalizzabile
 
 struct vvo_shadered : public VVolume {
-	std::function<float(const ygl::vec3f& p, ygl::vec3f& ep, const VNode* tref) > mShader = nullptr;
-	vvo_shadered(std::string ids, VMaterial* mtl, std::function<float(const ygl::vec3f& p, ygl::vec3f& ep, const VNode* tref) > ftor): VVolume(ids,mtl),mShader(ftor) { }
+	std::function<float(const ygl::vec3f& p, ygl::vec3f& ep, const VNode* tref) > shader = nullptr;
+	vvo_shadered(std::string ids, VMaterial* mat, std::function<float(const ygl::vec3f& p, ygl::vec3f& ep, const VNode* tref) > ftor): VVolume(ids) { material = mat; shader = ftor; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -44,20 +44,19 @@ struct vvo_shadered : public VVolume {
 
 
 		float dv = ygl::maxf;
-		if (mShader != nullptr) { dv = mShader(p, ep, this); }
+		if (shader != nullptr) { dv = shader(p, ep, this); }
 		dv+=eval_displacement(ep);
-		//dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		dv*=min_element(scale);
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 
 ///
 
 struct vvo_sd_plane : public VVolume {
-    const vec3f mDispo = {0,1,0};
-    float mOffset = 1.0f;
-	vvo_sd_plane(std::string ids, VMaterial* mtl): VVolume(ids,mtl),mOffset(1.0f){}
-	vvo_sd_plane(std::string ids, VMaterial* mtl,float offset): VVolume(ids,mtl),mOffset(offset){}
+	ygl::vec4f n = ygl::vec4f{ 0,1,0,1 };
+	vvo_sd_plane(std::string ids, VMaterial* mat): VVolume(ids) {material = mat; }
+	vvo_sd_plane(std::string ids, VMaterial* mat, ygl::vec4f nv): VVolume(ids) {material = mat; n = nv; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -71,16 +70,23 @@ struct vvo_sd_plane : public VVolume {
 	inline void eval(const ygl::vec3f& p,VResult& res) {
         ygl::vec3f ep = eval_ep(p);
 
-		float dv = ygl::dot(ep,mDispo) + (1.0f / mOffset);
+        //DUAL NUMBERS
+        /*
+        auto da_dom = dual3Dom<float>(ep);
+        auto da = (dot(da_dom,dual3Dom<float>({n.x,n.y,n.z})) - dual3<float>(1.0f/n.w))*dual3<float>(std::min(scale.x, std::min(scale.y, scale.z)));
+        return VResult{this,material,da.real,da.dual,p,ep};
+        */
+
+		float dv = ygl::dot(ep, ygl::normalize(ygl::vec3f{ n.x,n.y,n.z })) + (1.0 / n.w);
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 struct vvo_sd_sphere : public VVolume {
-	float mRadius = 1.0f;
-	vvo_sd_sphere(std::string ids, VMaterial* mtl): VVolume(ids,mtl),mRadius(1.0f) {}
-	vvo_sd_sphere(std::string ids, VMaterial* mtl, float radius): VVolume(ids,mtl),mRadius(radius) {}
+	float r = 1.0f;
+	vvo_sd_sphere(std::string ids, VMaterial* mat): VVolume(ids) {material = mat; }
+	vvo_sd_sphere(std::string ids, VMaterial* mat, float rv): VVolume(ids) {material = mat; r = rv; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -94,17 +100,17 @@ struct vvo_sd_sphere : public VVolume {
 	inline void eval(const ygl::vec3f& p,VResult& res) {
         ygl::vec3f ep = eval_ep(p);
 
-		float dv = ygl::length(ep) - mRadius;
+		float dv = ygl::length(ep) - r;
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 struct vvo_sd_box : public VVolume {
-	ygl::vec3f mDims = one3f;
-	vvo_sd_box(std::string ids, VMaterial* mtl): VVolume(ids,mtl) {}
-	vvo_sd_box(std::string ids, VMaterial* mtl, ygl::vec3f dims): VVolume(ids,mtl),mDims(dims) {}
-	vvo_sd_box(std::string ids, VMaterial* mtl, float dims): VVolume(ids,mtl),mDims({dims,dims,dims}) {}
+	ygl::vec3f b = one3f;
+	vvo_sd_box(std::string ids, VMaterial* mat): VVolume(ids) { material = mat; }
+	vvo_sd_box(std::string ids, VMaterial* mat, ygl::vec3f bv): VVolume(ids) { material = mat; b = bv; }
+	vvo_sd_box(std::string ids, VMaterial* mat, float bv): VVolume(ids) { material = mat; b = {bv,bv,bv}; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -118,17 +124,17 @@ struct vvo_sd_box : public VVolume {
 	inline void eval(const ygl::vec3f& p,VResult& res) {
         ygl::vec3f ep = eval_ep(p);
 
-        vec3f d = abs(ep) - mDims;
-        float dv = length(vnx::vgt(d,zero3f)) + std::min(std::max(mDims.x,std::max(mDims.y,mDims.z)),0.0f);
+        vec3f d = abs(ep) - b;
+        float dv = length(vnx::vgt(d,zero3f)) + std::min(std::max(d.x,std::max(d.y,d.z)),0.0f);
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 struct vvo_sd_ellipsoid : public VVolume {
-	ygl::vec3f mSizes = one3f;
-	vvo_sd_ellipsoid(std::string ids, VMaterial* mtl): VVolume(ids,mtl),mSizes(one3f) {}
-	vvo_sd_ellipsoid(std::string ids, VMaterial* mtl, ygl::vec3f sizes): VVolume(ids,mtl),mSizes(sizes) {}
+	ygl::vec3f r = one3f;
+	vvo_sd_ellipsoid(std::string ids, VMaterial* mat): VVolume(ids) {material = mat; }
+	vvo_sd_ellipsoid(std::string ids, VMaterial* mat, ygl::vec3f rv): VVolume(ids) { material = mat; r = rv; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -142,16 +148,16 @@ struct vvo_sd_ellipsoid : public VVolume {
 	inline void eval(const ygl::vec3f& p,VResult& res) {
         ygl::vec3f ep = eval_ep(p);
 
-		float dv = (length(ep / mSizes) - 1.0f) * std::min(std::min(mSizes.x, mSizes.y), mSizes.z);
+		float dv = (length(ep / r) - 1.0) * std::min(std::min(r.x, r.y), r.z);
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 struct vvo_sd_cylinder : public VVolume {
-	ygl::vec2f mDims = one2f;
-	vvo_sd_cylinder(std::string ids, VMaterial* mtl): VVolume(ids,mtl),mDims(one2f) {}
-	vvo_sd_cylinder(std::string ids, VMaterial* mtl, ygl::vec2f dims): VVolume(ids,mtl),mDims(dims) {}
+	ygl::vec2f h = one2f;
+	vvo_sd_cylinder(std::string ids, VMaterial* mat): VVolume(ids) {material = mat; }
+	vvo_sd_cylinder(std::string ids, VMaterial* mat, ygl::vec2f hv): VVolume(ids) {material = mat; h = hv; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -165,19 +171,19 @@ struct vvo_sd_cylinder : public VVolume {
 	inline void eval(const ygl::vec3f& p,VResult& res) {
         ygl::vec3f ep = eval_ep(p);
 
-		ygl::vec2f d = vabs(ygl::vec2f{length(ygl::vec2f{ ep.x,ep.z }), ep.y}) - mDims;
+		ygl::vec2f d = vabs(ygl::vec2f{length(ygl::vec2f{ ep.x,ep.z }), ep.y}) - h;
 		float dv = std::min(std::max(d.x, d.y), 0.0f) + length(vnx::vgt(d, ygl::zero2f));
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 struct vvo_sd_capsule : public VVolume {
-	float mBaseRadius = 1.0f;
-	ygl::vec3f mA = one3f;
-	ygl::vec3f mB = one3f;
-	vvo_sd_capsule(std::string ids, VMaterial* mtl): VVolume(ids,mtl),mBaseRadius(1.0f),mA(one3f),mB(one3f) {}
-	vvo_sd_capsule(std::string ids, VMaterial* mtl, float baseRadius, ygl::vec3f a, ygl::vec3f b): VVolume(ids,mtl),mBaseRadius(baseRadius),mA(a),mB(b) {}
+	float r = 1.0f;
+	ygl::vec3f a = one3f;
+	ygl::vec3f b = one3f;
+	vvo_sd_capsule(std::string ids, VMaterial* mat): VVolume(ids) {r = 1.0f; a = one3f; b = one3f; }
+	vvo_sd_capsule(std::string ids, VMaterial* mat, float rv, ygl::vec3f av, ygl::vec3f bv): VVolume(ids) {r = rv; a = av; b = bv; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -191,18 +197,18 @@ struct vvo_sd_capsule : public VVolume {
 	inline void eval(const ygl::vec3f& p,VResult& res) {
         ygl::vec3f ep = eval_ep(p);
 
-		ygl::vec3f pa = ep - mA, ba = mB - mA;
+		ygl::vec3f pa = ep - a, ba = b - a;
 		float h = ygl::clamp(dot(pa, ba) / dot(ba, ba), 0.0f, 1.0f);
-		float dv = length(pa - ba*h) - mBaseRadius;
+		float dv = length(pa - ba*h) - r;
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 struct vvo_sd_hex_prism : public VVolume {
-	ygl::vec2f mDims = one2f;
-	vvo_sd_hex_prism(std::string ids, VMaterial* mtl): VVolume(ids,mtl),mDims(one2f) {}
-	vvo_sd_hex_prism(std::string ids, VMaterial* mtl, ygl::vec2f dims): VVolume(ids,mtl),mDims(dims) {}
+	ygl::vec2f h = one2f;
+	vvo_sd_hex_prism(std::string ids, VMaterial* mat): VVolume(ids) {material = mat; }
+	vvo_sd_hex_prism(std::string ids, VMaterial* mat, ygl::vec2f hv): VVolume(ids) {material = mat; h = hv; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -217,16 +223,16 @@ struct vvo_sd_hex_prism : public VVolume {
         ygl::vec3f ep = eval_ep(p);
 
 		ygl::vec3f q = vabs(ep);
-		auto dv = std::max(q.z - mDims.y, std::max((q.x*0.866025f + q.y*0.5f), q.y) - mDims.x);
+		auto dv = std::max(q.z - h.y, std::max((q.x*0.866025f + q.y*0.5f), q.y) - h.x);
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 struct vvo_sd_tri_prism : public VVolume {
-	ygl::vec2f mDims = one2f;
-	vvo_sd_tri_prism(std::string ids, VMaterial* mtl): VVolume(ids,mtl),mDims(one2f) {}
-	vvo_sd_tri_prism(std::string ids, VMaterial* mtl, ygl::vec2f dims): VVolume(ids,mtl),mDims(dims) {}
+	ygl::vec2f h = one2f;
+	vvo_sd_tri_prism(std::string ids, VMaterial* mat): VVolume(ids) {material = mat; }
+	vvo_sd_tri_prism(std::string ids, VMaterial* mat, ygl::vec2f hv): VVolume(ids) {material = mat; h = hv; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -241,16 +247,16 @@ struct vvo_sd_tri_prism : public VVolume {
         ygl::vec3f ep = eval_ep(p);
 
 		ygl::vec3f q = vabs(ep);
-		auto dv = std::max(q.z - mDims.y, std::max(q.x*0.866025f + ep.y*0.5f, -ep.y) - mDims.x*0.5f);
+		auto dv = std::max(q.z - h.y, std::max(q.x*0.866025f + ep.y*0.5f, -ep.y) - h.x*0.5f);
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 struct vvo_sd_capped_cone : public VVolume {
-	ygl::vec3f mDims = one3f;
-	vvo_sd_capped_cone(std::string ids, VMaterial* mtl): VVolume(ids,mtl),mDims(one3f) { }
-	vvo_sd_capped_cone(std::string ids, VMaterial* mtl, ygl::vec3f dims): VVolume(ids,mtl),mDims(dims) {}
+	ygl::vec3f c = one3f;
+	vvo_sd_capped_cone(std::string ids, VMaterial* mat): VVolume(ids) {material = mat; }
+	vvo_sd_capped_cone(std::string ids, VMaterial* mat, ygl::vec3f cv): VVolume(ids) {material = mat; c = cv; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -265,7 +271,7 @@ struct vvo_sd_capped_cone : public VVolume {
         ygl::vec3f ep = eval_ep(p);
 
 		ygl::vec2f q = ygl::vec2f{ygl::length(ygl::vec2f{ ep.x,ep.z }), ep.y};
-		ygl::vec2f v = ygl::vec2f{mDims.z*mDims.y / mDims.x, -mDims.z};
+		ygl::vec2f v = ygl::vec2f{c.z*c.y / c.x, -c.z};
 		ygl::vec2f w = v - q;
 		ygl::vec2f vv = ygl::vec2f{dot(v, v), v.x*v.x};
 		ygl::vec2f qv = ygl::vec2f{dot(v, w), v.x*w.x};
@@ -273,15 +279,15 @@ struct vvo_sd_capped_cone : public VVolume {
 		auto dv = sqrt(dot(w, w) - std::max(d.x, d.y)) * sign(std::max(q.y*v.x - q.x*v.y, w.y));
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 
 
 struct vvo_sd_pyramid4 : public VVolume {
-    ygl::vec3f mDims = one3f;
-	vvo_sd_pyramid4(std::string ids, VMaterial* mtl): VVolume(ids,mtl),mDims(one3f) {}
-	vvo_sd_pyramid4(std::string ids, VMaterial* mtl, ygl::vec3f dims): VVolume(ids,mtl),mDims(dims) {}
+    ygl::vec3f h = {1,1,1};
+	vvo_sd_pyramid4(std::string ids, VMaterial* mat): VVolume(ids) {material = mat; }
+	vvo_sd_pyramid4(std::string ids, VMaterial* mat, ygl::vec3f hv): VVolume(ids) {material = mat; h = hv; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -295,26 +301,26 @@ struct vvo_sd_pyramid4 : public VVolume {
 	inline void eval(const ygl::vec3f& p,VResult& res) {
         ygl::vec3f ep = eval_ep(p);
 
-        ygl::vec3f d = vabs(ep - vec3f{0,-2.0*mDims.z,0}) - vec3f{2.0*mDims.z,2.0*mDims.z,2.0*mDims.z};
+        ygl::vec3f d = vabs(ep - vec3f{0,-2.0*h.z,0}) - vec3f{2.0*h.z,2.0*h.z,2.0*h.z};
 		auto bdv = std::min(vnx::max_element<float>(d), 0.0f) + ygl::length(vgt(d, ygl::zero3f));
 
         float dv = 0.0;
-        dv = std::max( dv, std::abs( dot(ep, vec3f{ -mDims.x, mDims.y, 0 }) ));
-        dv = std::max( dv, std::abs( dot(ep, vec3f{  mDims.x, mDims.y, 0 }) ));
-        dv = std::max( dv, std::abs( dot(ep, vec3f{  0, mDims.y, mDims.x }) ));
-        dv = std::max( dv, std::abs( dot(ep, vec3f{  0, mDims.y,-mDims.x }) ));
-        float octa = dv - mDims.z;
+        dv = std::max( dv, std::abs( dot(ep, vec3f{ -h.x, h.y, 0 }) ));
+        dv = std::max( dv, std::abs( dot(ep, vec3f{  h.x, h.y, 0 }) ));
+        dv = std::max( dv, std::abs( dot(ep, vec3f{  0, h.y, h.x }) ));
+        dv = std::max( dv, std::abs( dot(ep, vec3f{  0, h.y,-h.x }) ));
+        float octa = dv - h.z;
         dv = std::max(-bdv,octa);
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 
 };
 
 struct vvo_sd_diamond : public VVolume {
 
-	vvo_sd_diamond(std::string ids, VMaterial* mtl): VVolume(ids,mtl) {}
+	vvo_sd_diamond(std::string ids, VMaterial* mat): VVolume(ids) {material = mat; }
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(2),translation));
@@ -378,7 +384,7 @@ struct vvo_sd_diamond : public VVolume {
 
 		dv+=eval_displacement(ep);
         //dv*=min_element(scale);
-		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+		res = VResult{ this,this,material,material,dv,dv,p,ep };
 	}
 };
 

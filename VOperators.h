@@ -38,18 +38,18 @@ struct vop_union : public VOperator {
 	inline const char* type(){return "vop_union";}
 
 	inline void eval(const vec3f& p,VResult& res) {
-		if (childs.empty()) { return; }
+		if (mChilds.empty()) { return; }
 		//ygl::vec3f ep = p;
 		//eval_ep(ep);
 
 		VResult vre;
-		childs[0]->eval(p,res);
+		mChilds[0]->eval(p,res);
 		auto vdist = res.vdist;
 		auto vmat = res.vmat;
 		auto vsur = res.vsur;
 		if (mBlendFactor < ygl::epsf) {
-			for (int i = 1; i < childs.size(); i++) {
-				childs[i]->eval(p,vre);
+			for (int i = 1; i < mChilds.size(); i++) {
+				mChilds[i]->eval(p,vre);
 
                 if(abs(vre.dist)<abs(res.dist)){res = vre;}
 				if (vre.vdist<vdist) {vdist = vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
@@ -59,8 +59,8 @@ struct vop_union : public VOperator {
 		else {
             auto sdist = res.dist;
             auto vsdist = res.vdist;
-			for (int i = 1; i < childs.size(); i++) {
-				childs[i]->eval(p,vre);
+			for (int i = 1; i < mChilds.size(); i++) {
+				mChilds[i]->eval(p,vre);
 				sdist = smin(sdist, vre.dist, mBlendFactor);
 				vsdist = smin(vsdist,vre.vdist, mBlendFactor);
 
@@ -107,22 +107,22 @@ struct vop_intersection : public VOperator {
 	inline const char* type(){return "vop_intersection";}
 
 	inline void eval(const vec3f& p,VResult& res) {
-		if (childs.empty()) { return; }
+		if (mChilds.empty()) { return; }
 		//ygl::vec3f ep = p;
 		//eval_ep(ep);
 
 		VResult vre;
 		VMaterial* mtl = nullptr;
 		VMaterial* vmtl = nullptr;
-        childs[0]->eval(p,res);
+        mChilds[0]->eval(p,res);
         mtl = res.mat;
         vmtl = res.vmat;
         auto vdist = res.vdist;
         auto vmat = res.vmat;
         auto vsur = res.vsur;
 		if (mBlendFactor < ygl::epsf) {
-			for (int i = 1; i < childs.size(); i++) {
-				childs[i]->eval(p,vre);
+			for (int i = 1; i < mChilds.size(); i++) {
+				mChilds[i]->eval(p,vre);
 				if (vre.dist > res.dist) { res = vre; }
 				if(vre.vdist>vdist) {vdist = vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
 			}
@@ -130,8 +130,8 @@ struct vop_intersection : public VOperator {
 		else {
             auto sdist = res.dist;
             auto vsdist = res.vdist;
-			for (int i = 1; i < childs.size(); i++) {
-				childs[i]->eval(p,vre);
+			for (int i = 1; i < mChilds.size(); i++) {
+				mChilds[i]->eval(p,vre);
 				sdist = smax(sdist, vre.dist, mBlendFactor);
 				vsdist = smax(vsdist, vre.vdist, mBlendFactor);
 
@@ -177,22 +177,22 @@ struct vop_subtraction : public VOperator {
 	inline const char* type(){return "vop_subtraction";}
 
 	inline void eval(const vec3f& p,VResult& res) {
-		if (childs.empty()) { return; }
+		if (mChilds.empty()) { return; }
 		//ygl::vec3f ep = p;
 		//eval_ep(ep);
 
 		VResult vre;
 		VMaterial* mtl = nullptr;
 		VMaterial* vmtl = nullptr;
-        childs[0]->eval(p,res);
+        mChilds[0]->eval(p,res);
         mtl = res.mat;
         vmtl = res.vmat;
         auto vdist = res.vdist;
         auto vmat = res.vmat;
         auto vsur = res.vsur;
 		if (mBlendFactor < ygl::epsf) {
-			for (int i = 1; i < childs.size(); i++) {
-				childs[i]->eval(p,vre);
+			for (int i = 1; i < mChilds.size(); i++) {
+				mChilds[i]->eval(p,vre);
 
 				if (-vre.dist > res.dist) { res = vre;res.dist = -vre.dist; }
 				if(-vre.vdist > vdist) {vdist = -vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
@@ -201,8 +201,8 @@ struct vop_subtraction : public VOperator {
 		else {
             auto sdist = res.dist;
             auto vsdist = res.vdist;
-			for (int i = 1; i < childs.size(); i++) {
-				childs[i]->eval(p,vre);
+			for (int i = 1; i < mChilds.size(); i++) {
+				mChilds[i]->eval(p,vre);
 				sdist = smax(sdist,-vre.dist, mBlendFactor);
 				vsdist = smax(vsdist,-vre.vdist, mBlendFactor);
 
@@ -246,7 +246,7 @@ struct vop_twist : public VOperator {
 	inline const char* type(){return "vop_twist";}
 
 	inline void eval(const ygl::vec3f& p,VResult& res) {
-        if (childs.empty()) { return; }
+        if (mChilds.empty()) { return; }
         ygl::vec3f ep  = transform_point_inverse(_frame, p);
 		//ygl::vec3f ep = transform_point_inverse(_frame, p) / scale;
 		//eval_ep(ep);
@@ -262,7 +262,7 @@ struct vop_twist : public VOperator {
 			auto mres = m*ygl::vec2f{ ep.y,ep.z };
 			ygl::vec3f  q = ygl::vec3f{mres.x, mres.y, ep.x};
 			q = ygl::transform_point(_frame, q);
-			childs[0]->eval(q,res);
+			mChilds[0]->eval(q,res);
 		}
 		else if (mAxis == Y) {
 			float c = cos(mAmount*ep.y);
@@ -271,7 +271,7 @@ struct vop_twist : public VOperator {
 			auto mres = m*ygl::vec2f{ ep.x,ep.z };
 			ygl::vec3f  q = ygl::vec3f{mres.x, mres.y, ep.y};
 			q = ygl::transform_point(_frame, q);
-			childs[0]->eval(q,res);
+			mChilds[0]->eval(q,res);
 		}
 		else if (mAxis == Z) {
 			float c = cos(mAmount*ep.z);
@@ -280,7 +280,7 @@ struct vop_twist : public VOperator {
 			auto mres = m*ygl::vec2f{ ep.x,ep.y };
 			ygl::vec3f  q = ygl::vec3f{mres.x, mres.y, ep.z};
 			q = ygl::transform_point(_frame, q);
-			childs[0]->eval(q,res);
+			mChilds[0]->eval(q,res);
 		}
 
 		res.wor_pos = p;
@@ -314,7 +314,7 @@ struct vop_repeat : public VOperator {
 	inline const char* type(){return "vop_repeat";}
 
 	inline void eval(const ygl::vec3f& p,VResult& res) {
-	    if (childs.empty()) { return; }
+	    if (mChilds.empty()) { return; }
 		ygl::vec3f ep  = transform_point_inverse(_frame, p);
 		//eval_ep(ep);
 
@@ -327,7 +327,7 @@ struct vop_repeat : public VOperator {
         if(mAxis.z) ep.z = mep.z;
 
         ep  = transform_point(_frame, ep);
-        childs[0]->eval(ep,res);
+        mChilds[0]->eval(ep,res);
 
 		res.wor_pos = p;
 		auto dspm = eval_displacement(ep);
@@ -353,11 +353,11 @@ struct vop_invert : public VOperator {
 	inline const char* type(){return "vop_invert";}
 
 	inline void eval(const ygl::vec3f& p,VResult& res) {
-	    if (childs.empty()) { return; }
+	    if (mChilds.empty()) { return; }
 		//ygl::vec3f ep = p;
 		//eval_ep(ep);
 
-		childs[0]->eval(p,res);
+		mChilds[0]->eval(p,res);
 		res.wor_pos = p;
 
 		auto dspm = eval_displacement(p);
@@ -392,11 +392,11 @@ struct vop_onion : public VOperator {
 	inline const char* type(){return "vop_onion";}
 
 	inline void eval(const ygl::vec3f& p,VResult& res) {
-	    if (childs.empty()) { return; }
+	    if (mChilds.empty()) { return; }
 		//ygl::vec3f ep = p;
 		//eval_ep(ep);
 
-        childs[0]->eval(p,res);
+        mChilds[0]->eval(p,res);
 
 
         if(mPreserveVolume){
@@ -437,11 +437,11 @@ struct vop_cut : public VOperator {
 	inline const char* type(){return "vop_cut";}
 
 	inline void eval(const ygl::vec3f& p,VResult& res) {
-	    if (childs.empty()) { return; }
+	    if (mChilds.empty()) { return; }
 		//ygl::vec3f ep = p;
 		//eval_ep(ep);
 
-        childs[0]->eval(p,res);
+        mChilds[0]->eval(p,res);
         auto epe = transform_point_inverse(_frame, p+mOffset);
 
         auto dist = res.dist;
@@ -449,23 +449,23 @@ struct vop_cut : public VOperator {
         if(mBlendFactor<ygl::epsf){
 
             if(mAxis.x!=0){
-                auto f = mAxis.x*epe.x;
+                float f = mAxis.x*epe.x;
                 dist = std::max(dist,f);
                 vdist = std::max(vdist,f);
             }
             if(mAxis.y!=0){
-                auto f = mAxis.y*epe.y;
+                float f = mAxis.y*epe.y;
                 dist = std::max(dist,f);
                 vdist = std::max(vdist,f);
             }
             if(mAxis.z!=0){
-                auto f = mAxis.z*epe.z;
+                float f = mAxis.z*epe.z;
                 dist = std::max(dist,f);
                 vdist = std::max(vdist,f);
             }
         }else{
             if(mAxis.x!=0){
-                auto f = mAxis.x*epe.x;
+                float f = mAxis.x*epe.x;
                 dist = smax(dist,f,mBlendFactor);
                 vdist = smax(vdist,f,mBlendFactor);
             }

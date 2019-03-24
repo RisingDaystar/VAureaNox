@@ -846,7 +846,7 @@ namespace vnx {
 	};
 
 	struct VVolume : public VNode {
-		VMaterial* mMaterial;
+		VMaterial* material = nullptr;
 
 		~VVolume() {};
 
@@ -854,8 +854,8 @@ namespace vnx {
 		    return transform_point_inverse(_frame, p);// / scale;
 		}
 
-		VVolume(std::string idv) :VNode(idv){}
-		VVolume(std::string idv,VMaterial* mtl) :VNode(idv),mMaterial(mtl){}
+		VVolume(std::string idv):VNode(idv),material(nullptr){}
+		VVolume(std::string idv,VMaterial* mtl) :VNode(idv),material(mtl){}
 
 		std::vector<VNode*> get_childs() {
 			auto child = std::vector<VNode*>();
@@ -867,34 +867,34 @@ namespace vnx {
 	};
 
 	struct VOperator : public VNode {
-		std::vector<VNode*> childs;
+		std::vector<VNode*> mChilds;
 
 		~VOperator() {
 			auto chs = get_childs();
 			if (chs.empty()) { return; }
 			for (auto child : chs) {
-				delete child;
+				if(child)delete child;
 			}
 		}
 		VOperator(std::string idv) :VNode(idv){
-			childs = std::vector<VNode*>();
-			childs.resize(0);
+			mChilds = std::vector<VNode*>();
+			mChilds.resize(0);
 		}
-		VOperator(std::string idv,std::vector<VNode*> chs) :VOperator(idv){
+		VOperator(std::string idv,std::vector<VNode*> chs) :VNode(idv){
 			add_childs(chs);
 		}
 
 		virtual std::vector<VNode*> get_childs() {
-			return childs;
+			return mChilds;
 		}
 		virtual VNode* add_child(VNode* child) {
-			childs.push_back(child);
+			mChilds.push_back(child);
 			return child;
 		}
 		virtual void add_childs(std::vector<VNode*> chs) {
 			if (chs.empty()) { return; }
 			for (auto child : chs) {
-				childs.push_back(child);
+				mChilds.push_back(child);
 			}
 		}
 	};

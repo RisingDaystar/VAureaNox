@@ -137,7 +137,7 @@ namespace vscndef {
                     new vvo_sd_box("box_subtr",cornell_composite_mat,3.95f),
                     new vvo_sd_box("box_subtr_ceil",cornell_composite_mat,{1.0f,0.5f,1.0f}),
                 }),
-                new vvo_sd_box("light",material_emissive,{ 1.f,0.03f,1.f }),
+                new vvo_sd_box("light",material_emissive,{ 0.9f,0.03f,0.9f }),
                 //new vvo_sd_sphere("light",material_emissive,0.4f),
                 //new vvo_sd_box("occlusion",diff_white_lowks,{2.0f,0.1f,5.0f}),
                 //new vvo_sd_sphere("glass_ball",borosilicate_glass_material,2.5f),
@@ -185,6 +185,8 @@ namespace vscndef {
 		scn.set_root(root);
 
 		scn.set_rotation_degs("repeater",{0,45,0});
+
+		//scn.set_rotation_degs("cornell",{0,45,0});
 
 		scn.set_translation("box1",{-2.0f,-2.0f,-2.0f});
 		scn.set_translation("box_tr",{-1.0f,-1.8f,1.0f});
