@@ -847,7 +847,6 @@ namespace vnx {
 
 	struct VVolume : public VNode {
 		VMaterial* mMaterial = nullptr;
-
 		~VVolume() {};
 
 		inline vec3f eval_ep(const vec3f& p){
