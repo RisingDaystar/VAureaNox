@@ -1506,7 +1506,7 @@ namespace vnx {
                 ///
 
                 dir = -ygl::reflect(ray.d,dir);
-                ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)>0 ? -norm : norm,vre.dist); //TEST -norm && norm
+                ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)>0.0f ? -norm : norm,vre.dist); //TEST -norm && norm
 
                 auto er_material = *vre.mat;
                 if(er_material.mutator!=nullptr){
@@ -1516,7 +1516,7 @@ namespace vnx {
                 if(er_vmaterial.mutator!=nullptr){
                     er_vmaterial.eval_mutator(rng, vre, norm, er_vmaterial);
                 }
-                if(vre.dist<0.0f && vre.vdist<0.0f){
+                //if(vre.dist<0.0f && vre.vdist<0.0f){
                     if (er_material.is_emissive()) {
                         std::vector<VResult>* epoints = &emap[vre.sur->id];
                         vre._found = true;
@@ -1528,7 +1528,7 @@ namespace vnx {
                         epoints->push_back(vre); stats.x++;
                         if(verbose) std::cout<<"EM ( light: "<<vre.vsur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
                     }
-                }
+                //}
             }
         }
 		auto chs = ptr->get_childs();
