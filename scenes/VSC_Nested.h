@@ -27,38 +27,63 @@ namespace vscndef {
 
 	void init_nested_scene(vnx::VScene& scn) {
         scn.camera.yfov = radians(45);
-        scn.camera.mOrigin = {0,0,15.0f};
+        scn.camera.mOrigin = {0,10,15.0f};
         scn.camera.mTarget = {0,0,0};
         scn.camera.mUp = {0,1.0f,0};
 		scn.id = "nested";
 
 		auto emissive = scn.add_material("emissive");
-		emissive->e_temp = 6500;
-		emissive->e_power = 40;
+		emissive->e_temp = 4000;
+		emissive->e_power = 300;
 
 		auto diffuse = scn.add_material("diffuse");
 		diffuse->kr = {0.9f,0.95f,0.95f};
 		//diffuse->kr = one3f;
 
-		auto diffuse2 = scn.add_material("diffuse2");
-		diffuse2->kr = {0.8f,0.3f,0.3f};
-		diffuse2->type = conductor;
+
 
 		auto transmissive = scn.add_material("transmissive");
-		transmissive->k_sca = 0.0f;
-		transmissive->ior_type = non_wl_dependant;
-		transmissive->ior = 1.2f;
+        transmissive->ka = {0.1f,0.1f,0.1f};
+		/*transmissive->sm_b1 = 1.03961212;
+		transmissive->sm_b2 = 0.231792344;
+		transmissive->sm_b3 = 1.01046945;
+		transmissive->sm_c1 = 6.00069867e-3;
+		transmissive->sm_c2 = 2.00179144e-2;
+		transmissive->sm_c3 = 1.03560653e2;
+		transmissive->k_sca = 0.0f;*/
+
+        transmissive->ka = vec3f{0.01f,0.01f,0.01f};
+        transmissive->sm_b1 = 0.3306f;
+        transmissive->sm_c1 = 0.1750f;
+        transmissive->sm_b2 = 4.3356f;
+        transmissive->sm_c2 = 0.1060f;
+        transmissive->k_sca = 0.0f;
+
+        auto diffuse2 = scn.add_material("diffuse2");
+		diffuse2->kr = {0.8f,0.8f,0.8f};
+        auto mtor = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
+            if (std::abs(sin(hit.wor_pos.x*5)) < 0.07f || std::abs(sin(hit.wor_pos.z*5)) < 0.07f) {
+                mat.kr = zero3f;
+            }
+		};
+		diffuse2->mutator = mtor;
+
 
 		auto root = new vop_union("root", {
-            //new vop_invert("sph_inv",new vvo_sd_sphere("dome",emissive,30.0f)),
-            new vvo_sd_sphere("light",emissive,3.0f),
-            new vvo_sd_plane("plane",diffuse),
-            new vvo_sd_sphere("sphere",transmissive,1.0f),
+            new vop_invert("sph_inv",new vvo_sd_sphere("dome",diffuse2,50.0f)),
+            new vvo_sd_sphere("light",emissive,0.5f),
+            new vvo_sd_plane("plane",diffuse2),
+            new vvo_sd_diamond("entity",transmissive),
 		});
 
 		scn.set_root(root);
 
-		scn.set_translation("light",{7,10.0f,2});
+        scn.set_translation("entity",{0,2.0f,0});
+        scn.set_rotation_degs("entity",{45,45,0});
+        scn.set_scale("entity",3.0f);
+        scn.set_rotation_order("entity",VRO_YXZ);
+		scn.set_translation("light",{5,0.5f,0});
+		//scn.set_translation("plane",{0,-1.0f,0});
 	}
 
 }

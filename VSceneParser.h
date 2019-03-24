@@ -63,8 +63,7 @@ namespace vnx{
 
                 char c = line[i];
                 if(c=='\n' || c=='\r' || c=='\0') break;
-                if(c==' ' || c=='\t') continue;
-                if(c=='"') continue;
+                if(c==' ' || c=='\t' || c=='"') continue;
 
                 if(mode==-1) {
                     scn_name += c;
@@ -116,7 +115,7 @@ namespace vnx{
             if(type=="vmaterial"){
                 auto e = new VMaterial(id);
                 e->Relate(entry);
-                //TODO add to scn.materials
+                scn.materials[id] = e;
             }else if(stricmp(type,"vop_union") ||
                      stricmp(type,"vop_intersection") ||
                      stricmp(type,"vop_subtraction") ||
@@ -148,6 +147,7 @@ namespace vnx{
                 //if(!e) throw VException("Unerecognized Operator \""+type+"\""); //NON NECESSARIO
 
                 e->Relate(entry);
+                scn.nodes.push_back(e);
             }else{ //VOLUMI
                 auto mtl_id = entry->try_at(1);
                 link(scn,mtl_id,data,"vmaterial");
@@ -170,6 +170,7 @@ namespace vnx{
 
                 if(!e) throw VException("Unerecognized Entity \""+type+"\"");
                 e->Relate(entry);
+                scn.nodes.push_back(e);
             }
 
         }

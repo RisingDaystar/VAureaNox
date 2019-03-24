@@ -24,9 +24,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace vnx;
 
 struct vop_union : public VOperator {
-	float blend_factor = 0.0f;
-	vop_union(std::string idv, float bfactor, std::vector<VNode*> chs) : VOperator(idv, chs), blend_factor(bfactor){}
-	vop_union(std::string idv, std::vector<VNode*> chs) : VOperator(idv, chs), blend_factor(0.0f) {}
+	float mBlendFactor = 0.0f;
+	vop_union(std::string idv, float bfactor, std::vector<VNode*> chs) : VOperator(idv, chs), mBlendFactor(bfactor){}
+	vop_union(std::string idv, std::vector<VNode*> chs) : VOperator(idv, chs), mBlendFactor(0.0f) {}
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(1),translation));
@@ -47,12 +47,11 @@ struct vop_union : public VOperator {
 		auto vdist = res.vdist;
 		auto vmat = res.vmat;
 		auto vsur = res.vsur;
-		if (blend_factor < ygl::epsf) {
+		if (mBlendFactor < ygl::epsf) {
 			for (int i = 1; i < childs.size(); i++) {
 				childs[i]->eval(p,vre);
 
-
-                if(abs(vre.dist)<abs(res.dist)){res = vre;} //per abilitare i nested : usare std::abs nel confronto
+                if(abs(vre.dist)<abs(res.dist)){res = vre;}
 				if (vre.vdist<vdist) {vdist = vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
 
 			}
@@ -62,10 +61,10 @@ struct vop_union : public VOperator {
             auto vsdist = res.vdist;
 			for (int i = 1; i < childs.size(); i++) {
 				childs[i]->eval(p,vre);
-				sdist = smin(sdist, vre.dist, blend_factor);
-				vsdist = smin(vsdist,vre.vdist, blend_factor);
+				sdist = smin(sdist, vre.dist, mBlendFactor);
+				vsdist = smin(vsdist,vre.vdist, mBlendFactor);
 
-				if (vre.dist < res.dist) { res = vre; } ////per abilitare i nested : usare std::abs nel confronto
+				if (vre.dist < res.dist) { res = vre; }
 				if (vre.vdist<vdist) {vdist = vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
 
 			}
@@ -82,8 +81,6 @@ struct vop_union : public VOperator {
 		//auto sfct = min_element(scale);
 		res.dist += dspm;
 		//res.dist *= sfct;
-
-
 		res.vdist += dspm;
 		//res.vdist *= sfct;
 	};
@@ -91,13 +88,13 @@ struct vop_union : public VOperator {
 
 
 struct vop_intersection : public VOperator {
-	float blend_factor = 0.0f;
-	bool preserve_material = false;
+	float mBlendFactor = 0.0f;
+	bool mPreserveMtl = false;
 
-	vop_intersection(std::string idv, float bfactor, bool pmaterial, std::vector<VNode*> chs) : VOperator(idv,chs), blend_factor(bfactor), preserve_material(pmaterial) {}
-	vop_intersection(std::string idv, float bfactor, std::vector<VNode*> chs) : VOperator(idv,chs), blend_factor(bfactor), preserve_material(false) {}
-	vop_intersection(std::string idv, bool pmaterial, std::vector<VNode*> chs) : VOperator(idv,chs), blend_factor(0.0f), preserve_material(pmaterial) {}
-	vop_intersection(std::string idv, std::vector<VNode*> chs) : VOperator(idv,chs), blend_factor(0.0f), preserve_material(false) {}
+	vop_intersection(std::string idv, float bfactor, bool pMtl, std::vector<VNode*> chs) : VOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(pMtl) {}
+	vop_intersection(std::string idv, float bfactor, std::vector<VNode*> chs) : VOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(false) {}
+	vop_intersection(std::string idv, bool pMtl, std::vector<VNode*> chs) : VOperator(idv,chs), mBlendFactor(0.0f), mPreserveMtl(pMtl) {}
+	vop_intersection(std::string idv, std::vector<VNode*> chs) : VOperator(idv,chs), mBlendFactor(0.0f), mPreserveMtl(false) {}
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(1),translation));
@@ -123,7 +120,7 @@ struct vop_intersection : public VOperator {
         auto vdist = res.vdist;
         auto vmat = res.vmat;
         auto vsur = res.vsur;
-		if (blend_factor < ygl::epsf) {
+		if (mBlendFactor < ygl::epsf) {
 			for (int i = 1; i < childs.size(); i++) {
 				childs[i]->eval(p,vre);
 				if (vre.dist > res.dist) { res = vre; }
@@ -135,8 +132,8 @@ struct vop_intersection : public VOperator {
             auto vsdist = res.vdist;
 			for (int i = 1; i < childs.size(); i++) {
 				childs[i]->eval(p,vre);
-				sdist = smax(sdist, vre.dist, blend_factor);
-				vsdist = smax(vsdist, vre.vdist, blend_factor);
+				sdist = smax(sdist, vre.dist, mBlendFactor);
+				vsdist = smax(vsdist, vre.vdist, mBlendFactor);
 
 				if (vre.dist > res.dist) { res = vre; }
 				if(vre.vdist>vdist) {vdist = vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
@@ -155,19 +152,19 @@ struct vop_intersection : public VOperator {
 
 		res.vdist += dspm;
 		//res.vdist *= sfct;
-		if (preserve_material) { res.mat = mtl;res.vmat = vmtl; }
+		if (mPreserveMtl) { res.mat = mtl;res.vmat = vmtl; }
 		else{res.vmat = vmat;}
 	};
 };
 
 struct vop_subtraction : public VOperator {
-	float blend_factor = 0.0f;
-	bool preserve_material = false;
+	float mBlendFactor = 0.0f;
+	bool mPreserveMtl = false;
 
-	vop_subtraction(std::string idv, float bfactor, bool pmaterial, std::vector<VNode*> chs) : VOperator(idv,chs), blend_factor(bfactor), preserve_material(pmaterial) {}
-	vop_subtraction(std::string idv, float bfactor, std::vector<VNode*> chs) : VOperator(idv,chs), blend_factor(bfactor), preserve_material(false) {}
-	vop_subtraction(std::string idv, bool pmaterial, std::vector<VNode*> chs) : VOperator(idv,chs), blend_factor(0.0f), preserve_material(pmaterial) {}
-	vop_subtraction(std::string idv, std::vector<VNode*> chs) : VOperator(idv,chs), blend_factor(0.0f), preserve_material(false) {}
+	vop_subtraction(std::string idv, float bfactor, bool pMtl, std::vector<VNode*> chs) : VOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(pMtl) {}
+	vop_subtraction(std::string idv, float bfactor, std::vector<VNode*> chs) : VOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(false) {}
+	vop_subtraction(std::string idv, bool pMtl, std::vector<VNode*> chs) : VOperator(idv,chs), mBlendFactor(0.0f), mPreserveMtl(pMtl) {}
+	vop_subtraction(std::string idv, std::vector<VNode*> chs) : VOperator(idv,chs), mBlendFactor(0.0f), mPreserveMtl(false) {}
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(1),translation));
@@ -193,12 +190,12 @@ struct vop_subtraction : public VOperator {
         auto vdist = res.vdist;
         auto vmat = res.vmat;
         auto vsur = res.vsur;
-		if (blend_factor < ygl::epsf) {
+		if (mBlendFactor < ygl::epsf) {
 			for (int i = 1; i < childs.size(); i++) {
 				childs[i]->eval(p,vre);
 
 				if (-vre.dist > res.dist) { res = vre;res.dist = -vre.dist; }
-				if(-vre.vdist>vdist) {vdist = -vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
+				if(-vre.vdist > vdist) {vdist = -vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
 			}
 		}
 		else {
@@ -206,11 +203,11 @@ struct vop_subtraction : public VOperator {
             auto vsdist = res.vdist;
 			for (int i = 1; i < childs.size(); i++) {
 				childs[i]->eval(p,vre);
-				sdist = smax(sdist,-vre.dist, blend_factor);
-				vsdist = smax(vsdist,-vre.vdist, blend_factor);
+				sdist = smax(sdist,-vre.dist, mBlendFactor);
+				vsdist = smax(vsdist,-vre.vdist, mBlendFactor);
 
 				if (-vre.dist > res.dist) { res = vre;res.dist = -vre.dist; }
-				if(-vre.vdist>vdist) {vdist = -vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
+				if(-vre.vdist > vdist) {vdist = -vre.vdist;vmat = vre.vmat;vsur = vre.vsur;}
 			}
             res.dist = sdist;
             vdist = vsdist;
@@ -225,19 +222,19 @@ struct vop_subtraction : public VOperator {
 
 		res.vdist += dspm;
 		//res.vdist *= sfct;
-		if (preserve_material) { res.mat = mtl;res.vmat = vmtl; }
+		if (mPreserveMtl) { res.mat = mtl;res.vmat = vmtl; }
 		else{res.vmat = vmat;}
 	};
 };
 
 struct vop_twist : public VOperator {
-	e_axis axis = X;
-	float amount = 1.0f;
+	e_axis mAxis = X;
+	float mAmount = 1.0f;
 
-	vop_twist(std::string idv, VNode* chs) : VOperator(idv, { chs }), axis(X), amount(1.0f) {}
-	vop_twist(std::string idv, float am, VNode* chs) : VOperator(idv, { chs }), axis(X), amount(am) {}
-	vop_twist(std::string idv, e_axis ax, VNode* chs) : VOperator(idv, { chs }), axis(ax), amount(1.0f) {}
-	vop_twist(std::string idv, e_axis ax, float am, VNode* chs) : VOperator(idv, { chs }), axis(ax), amount(am) {}
+	vop_twist(std::string idv, VNode* chs) : VOperator(idv, { chs }), mAxis(X), mAmount(1.0f) {}
+	vop_twist(std::string idv, float am, VNode* chs) : VOperator(idv, { chs }), mAxis(X), mAmount(am) {}
+	vop_twist(std::string idv, e_axis ax, VNode* chs) : VOperator(idv, { chs }), mAxis(ax), mAmount(1.0f) {}
+	vop_twist(std::string idv, e_axis ax, float am, VNode* chs) : VOperator(idv, { chs }), mAxis(ax), mAmount(am) {}
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(1),translation));
@@ -258,27 +255,27 @@ struct vop_twist : public VOperator {
         //ep = transform_point(_frame, ep);
 
 		VResult vre;
-		if (axis == X) {
-			float c = cos(amount*ep.x);
-			float s = sin(amount*ep.x);
+		if (mAxis == X) {
+			float c = cos(mAmount*ep.x);
+			float s = sin(mAmount*ep.x);
 			ygl::mat2f  m = ygl::mat2f{{ c, -s }, { s, c }};
 			auto mres = m*ygl::vec2f{ ep.y,ep.z };
 			ygl::vec3f  q = ygl::vec3f{mres.x, mres.y, ep.x};
 			q = ygl::transform_point(_frame, q);
 			childs[0]->eval(q,res);
 		}
-		else if (axis == Y) {
-			float c = cos(amount*ep.y);
-			float s = sin(amount*ep.y);
+		else if (mAxis == Y) {
+			float c = cos(mAmount*ep.y);
+			float s = sin(mAmount*ep.y);
 			ygl::mat2f  m = ygl::mat2f{{ c, -s }, { s, c }};
 			auto mres = m*ygl::vec2f{ ep.x,ep.z };
 			ygl::vec3f  q = ygl::vec3f{mres.x, mres.y, ep.y};
 			q = ygl::transform_point(_frame, q);
 			childs[0]->eval(q,res);
 		}
-		else if (axis == Z) {
-			float c = cos(amount*ep.z);
-			float s = sin(amount*ep.z);
+		else if (mAxis == Z) {
+			float c = cos(mAmount*ep.z);
+			float s = sin(mAmount*ep.z);
 			ygl::mat2f  m = ygl::mat2f{{ c, -s }, { s, c }};
 			auto mres = m*ygl::vec2f{ ep.x,ep.y };
 			ygl::vec3f  q = ygl::vec3f{mres.x, mres.y, ep.z};
@@ -300,12 +297,12 @@ struct vop_twist : public VOperator {
 };
 
 struct vop_repeat : public VOperator {
-    ygl::vec3f cells = {1.0f,1.0f,1.0f};
-    ygl::vec<bool,3> axis = {true,true,true};
+    ygl::vec3f mCells = one3f;
+    ygl::vec<bool,3> mAxis = {true,true,true};
 
-	vop_repeat(std::string idv, VNode* chs) : VOperator(idv, { chs }), cells(one3f),axis({true,true,true}) {}
-	vop_repeat(std::string idv,const vec3f& cs, VNode* chs) : VOperator(idv, { chs }), cells(cs),axis({true,true,true}) {}
-	vop_repeat(std::string idv,const vec3f& cs,const vec<bool,3>& ax, VNode* chs) : VOperator(idv, { chs }), cells(cs),axis(ax) {}
+	vop_repeat(std::string idv, VNode* chs) : VOperator(idv, { chs }), mCells(one3f),mAxis({true,true,true}) {}
+	vop_repeat(std::string idv,const vec3f& cells, VNode* chs) : VOperator(idv, { chs }), mCells(cells),mAxis({true,true,true}) {}
+	vop_repeat(std::string idv,const vec3f& cells,const vec<bool,3>& axis, VNode* chs) : VOperator(idv, { chs }), mCells(cells),mAxis(axis) {}
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(1),translation));
@@ -322,12 +319,12 @@ struct vop_repeat : public VOperator {
 		//eval_ep(ep);
 
 
-		auto hs = (0.5f*cells);
-        auto mep = gl_mod(ep+hs,cells)-hs;
+		auto hs = (0.5f*mCells);
+        auto mep = gl_mod(ep+hs,mCells)-hs;
 
-        if(axis.x) ep.x = mep.x;
-        if(axis.y) ep.y = mep.y;
-        if(axis.z) ep.z = mep.z;
+        if(mAxis.x) ep.x = mep.x;
+        if(mAxis.y) ep.y = mep.y;
+        if(mAxis.z) ep.z = mep.z;
 
         ep  = transform_point(_frame, ep);
         childs[0]->eval(ep,res);
@@ -344,12 +341,7 @@ struct vop_repeat : public VOperator {
 };
 
 struct vop_invert : public VOperator {
-	e_axis axis = X;
-	float amount = 5.0f;
-
-	vop_invert(std::string idv, VNode* chs) : VOperator(idv, { chs }), axis(X), amount(5.0f) {}
-	vop_invert(std::string idv, VNode* chs, e_axis ax) : VOperator(idv, { chs }), axis(ax), amount(5.0f) {}
-	vop_invert(std::string idv, VNode* chs, e_axis ax, float am) : VOperator(idv, { chs }), axis(ax), amount(am) {}
+	vop_invert(std::string idv, VNode* chs) : VOperator(idv, { chs }){}
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(1),translation));
@@ -383,9 +375,12 @@ struct vop_invert : public VOperator {
 
 
 struct vop_onion : public VOperator {
-    float thickness = 0.2f;
-	vop_onion(std::string idv, VNode* chs) : VOperator(idv, { chs }), thickness(0.2f) {}
-	vop_onion(std::string idv, float tk, VNode* chs) : VOperator(idv, { chs }), thickness(tk){}
+    float mThickness = 0.2f;
+    bool mPreserveVolume = true;
+
+	vop_onion(std::string idv, VNode* chs) : VOperator(idv, { chs }), mThickness(0.2f),mPreserveVolume(true) {}
+	vop_onion(std::string idv, float thickness, VNode* chs) : VOperator(idv, { chs }), mThickness(thickness),mPreserveVolume(true){}
+	vop_onion(std::string idv, float thickness,bool preserve, VNode* chs) : VOperator(idv, { chs }), mThickness(thickness),mPreserveVolume(preserve){}
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(1),translation));
@@ -402,10 +397,17 @@ struct vop_onion : public VOperator {
 		//eval_ep(ep);
 
         childs[0]->eval(p,res);
-		res.wor_pos = p;
 
-        res.dist = abs(res.dist+thickness)-thickness; //abs(dist+thickness) ->added +thickness to preserve volume
-        res.vdist = abs(res.vdist+thickness)-thickness; //abs(dist+thickness) ->added +thickness to preserve volume
+
+        if(mPreserveVolume){
+            res.dist = abs(res.dist+mThickness)-mThickness;
+            res.vdist = abs(res.vdist+mThickness)-mThickness;
+        }else{
+            res.dist = abs(res.dist)-mThickness;
+            res.vdist = abs(res.vdist)-mThickness;
+        }
+
+        res.wor_pos = p;
 
 		auto dspm = eval_displacement(p);
 		//auto sfct = min_element(scale);
@@ -418,11 +420,12 @@ struct vop_onion : public VOperator {
 };
 
 struct vop_cut : public VOperator {
-    vec<short,3> axis = {0,1,0};
-    vec3f offset = zero3f;
-    float blend_factor = 0.0f;
-	vop_cut(std::string idv, VNode* chs) : VOperator(idv, { chs }),axis({0,1,0}),offset(zero3f),blend_factor(0.0f) {}
-	vop_cut(std::string idv,const vec<short,3>& ax,const vec3f& off,float bf, VNode* chs) : VOperator(idv, { chs }),axis(ax),offset(off),blend_factor(bf) {}
+    vec<short,3> mAxis = {0,1,0};
+    vec3f mOffset = zero3f;
+    float mBlendFactor = 0.0f;
+
+	vop_cut(std::string idv, VNode* chs) : VOperator(idv, { chs }),mAxis({0,1,0}),mOffset(zero3f),mBlendFactor(0.0f) {}
+	vop_cut(std::string idv,const vec<short,3>& axis,const vec3f& offset,float bfactor, VNode* chs) : VOperator(idv, { chs }),mAxis(axis),mOffset(offset),mBlendFactor(bfactor) {}
 
 	void DoRelate(const VEntry* entry){
         set_translation(try_strToVec3f(entry->try_at(1),translation));
@@ -439,35 +442,42 @@ struct vop_cut : public VOperator {
 		//eval_ep(ep);
 
         childs[0]->eval(p,res);
-        auto epe = transform_point_inverse(_frame, p+offset);
+        auto epe = transform_point_inverse(_frame, p+mOffset);
 
         auto dist = res.dist;
         auto vdist = res.vdist;
-        if(blend_factor<ygl::epsf){
-            if(axis.x!=0){
-                dist = std::max(dist,axis.x*epe.x);
-                vdist = std::max(vdist,axis.x*epe.x);
+        if(mBlendFactor<ygl::epsf){
+
+            if(mAxis.x!=0){
+                auto f = mAxis.x*epe.x;
+                dist = std::max(dist,f);
+                vdist = std::max(vdist,f);
             }
-            if(axis.y!=0){
-                dist = std::max(dist,axis.y*epe.y);
-                vdist = std::max(vdist,axis.y*epe.y);
+            if(mAxis.y!=0){
+                auto f = mAxis.y*epe.y;
+                dist = std::max(dist,f);
+                vdist = std::max(vdist,f);
             }
-            if(axis.z!=0){
-                dist = std::max(dist,axis.z*epe.z);
-                vdist = std::max(vdist,axis.z*epe.z);
+            if(mAxis.z!=0){
+                auto f = mAxis.z*epe.z;
+                dist = std::max(dist,f);
+                vdist = std::max(vdist,f);
             }
         }else{
-            if(axis.x!=0){
-                dist = smax(dist,axis.x*epe.x,blend_factor);
-                vdist = smax(vdist,axis.x*epe.x,blend_factor);
+            if(mAxis.x!=0){
+                auto f = mAxis.x*epe.x;
+                dist = smax(dist,f,mBlendFactor);
+                vdist = smax(vdist,f,mBlendFactor);
             }
-            if(axis.y!=0){
-                dist = smax(dist,axis.y*epe.y,blend_factor);
-                vdist = smax(vdist,axis.y*epe.y,blend_factor);
+            if(mAxis.y!=0){
+                auto f = mAxis.y*epe.y;
+                dist = smax(dist,f,mBlendFactor);
+                vdist = smax(vdist,f,mBlendFactor);
             }
-            if(axis.z!=0){
-                dist = smax(dist,axis.z*epe.z,blend_factor);
-                vdist = smax(vdist,axis.z*epe.z,blend_factor);
+            if(mAxis.z!=0){
+                auto f = mAxis.z*epe.z;
+                dist = smax(dist,f,mBlendFactor);
+                vdist = smax(vdist,f,mBlendFactor);
             }
         }
         res.dist = dist;

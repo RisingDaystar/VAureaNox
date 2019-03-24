@@ -406,6 +406,7 @@ namespace vnx {
 	/////
 	/////
 
+
 	template<typename T> struct dual3{
         dual3<T>(){
             real = T(0);
@@ -430,6 +431,19 @@ namespace vnx {
 
         T real;
         vec<T,3> dual;
+	};
+
+	template<typename T> struct dual3Dom{
+
+	    dual3Dom<T>(const vec3f& p){
+            x = dual3<T>(p.x,{1.0f,0.0f,0.0f});
+            y = dual3<T>(p.y,{0.0f,1.0f,0.0f});
+            z = dual3<T>(p.z,{0.0f,0.0f,1.0f});
+	    }
+
+        dual3<T> x;
+        dual3<T> y;
+        dual3<T> z;
 	};
 
 	template <typename T> inline dual3<T> operator +(const dual3<T>& a, const dual3<T>& b){
@@ -520,27 +534,17 @@ namespace vnx {
         //return sqrt(dot(x,dot(y,z)));
 	}
 
-	template<typename T> struct dual3Dom{
-
-	    dual3Dom<T>(const vec3f& p){
-            x = dual3<T>(p.x,{1.0f,0.0f,0.0f});
-            y = dual3<T>(p.y,{0.0f,1.0f,0.0f});
-            z = dual3<T>(p.z,{0.0f,0.0f,1.0f});
-	    }
-
-        dual3<T> x;
-        dual3<T> y;
-        dual3<T> z;
-	};
-
-
 	template<typename T> inline dual3<T> dot(const dual3Dom<T>& a, const dual3Dom<T>& b){
-
 	    dual3<T> t0 = a.x*b.x;
 	    dual3<T> t1 = a.y*b.y;
 	    dual3<T> t2 = a.z*b.z;
 	    return t0+t1+t2;
 	}
+
+
+
+
+
 
 	/////
 	/////
@@ -842,7 +846,7 @@ namespace vnx {
 	};
 
 	struct VVolume : public VNode {
-		VMaterial* material;
+		VMaterial* mMaterial;
 
 		~VVolume() {};
 
@@ -850,8 +854,8 @@ namespace vnx {
 		    return transform_point_inverse(_frame, p);// / scale;
 		}
 
-		VVolume(std::string idv) :VNode(idv){
-		}
+		VVolume(std::string idv) :VNode(idv){}
+		VVolume(std::string idv,VMaterial* mtl) :VNode(idv),mMaterial(mtl){}
 
 		std::vector<VNode*> get_childs() {
 			auto child = std::vector<VNode*>();
@@ -905,7 +909,7 @@ namespace vnx {
 		float dist = maxf;
 		float vdist = maxf;
 
-		vec3f norm = zero3f; //still unused
+		//vec3f norm = zero3f; //still unused
 		vec3f wor_pos = zero3f;
 		vec3f loc_pos = zero3f;
 
@@ -1094,7 +1098,6 @@ namespace vnx {
 		}
 
 		inline ygl::vec3f eval_normals_tht(const VResult& vre,float eps) const {
-            if(!cmpf(vre.norm,zero3f)){return vre.norm;}
 			const auto p = vre.wor_pos;
                 VResult res;
                 root->eval(p + nv1*eps,res);
@@ -1109,7 +1112,6 @@ namespace vnx {
 		}
 
 		inline ygl::vec3f eval_normals_cnt(const VResult& vre,float eps) const {
-            if(!cmpf(vre.norm,zero3f)){return vre.norm;}
 			const auto p = vre.wor_pos;
 			VResult res;
 
