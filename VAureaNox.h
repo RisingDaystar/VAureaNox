@@ -1488,7 +1488,7 @@ namespace vnx {
                 vre = scn.INTERSECT_ALGO(ray,512,n_iters);
 
                 if(!vre.found()){
-                    dir = normalize(rand3f_r(rng,-1.0f,1.0f));
+                    dir = ygl::sample_sphere_direction(ygl::get_random_vec2f(rng));
                     ray = offsetted_ray(fvre.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
                     stats.y++;
                     continue;
@@ -1496,17 +1496,20 @@ namespace vnx {
 
                 auto norm = scn.NORMALS_ALGO(vre, neps);
 
-                ///ggx,  for internal emissive bounces
-                auto rn = ygl::get_random_vec2f(rng);
+                //ggx,  for internal emissive bounces
+                /*auto rn = ygl::get_random_vec2f(rng);
                 auto fp = dot(ray.d,norm) > 0.0f ? ygl::make_frame_fromz(zero3f, -norm) : ygl::make_frame_fromz(zero3f, norm); // TEST -norm && norm
                 auto tan2 = 0.1f * 0.1f * rn.y / (1 - rn.y);
                 auto rz = std::sqrt(1 / (tan2 + 1)), rr = std::sqrt(1 - rz * rz), rphi = 2 * ygl::pif * rn.x;
                 auto wh_local = ygl::vec3f{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
-                dir = ygl::transform_direction(fp, wh_local);
-                ///
+                dir = ygl::transform_direction(fp, wh_local);*/
+                //
+                auto rn = ygl::get_random_vec2f(rng);
+                auto fp = dot(ray.d,norm) > 0.0f ? ygl::make_frame_fromz(zero3f, -norm) : ygl::make_frame_fromz(zero3f, norm); // TEST -norm && norm
+                dir = ygl::transform_direction(fp,ygl::sample_hemisphere_direction(rn));
 
                 dir = -ygl::reflect(ray.d,dir);
-                ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)>0.0f ? -norm : norm,vre.dist); //TEST -norm && norm
+                ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)>0 ? -norm : norm,vre.dist); //TEST -norm && norm
 
                 auto er_material = *vre.mat;
                 if(er_material.mutator!=nullptr){
