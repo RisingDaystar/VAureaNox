@@ -46,7 +46,7 @@ Using ***floats***, precision related artifacts appeared (intersection precision
 
 ![32spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32.jpg)
 
-Same settings,but using ***doubles***
+Same settings, but using ***doubles***
 
 ![32spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32_doubles.jpg)
 
