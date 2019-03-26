@@ -35,7 +35,8 @@ Naive sphere tracing doesn't have a good time in this cases ( basically : it get
 For this purpose i use a double distance system (dist and vdist) [TODO: explain]
 
 
-///V 0.07 //
+///V 0.07
+
 Changed system to use doubles instead of floats , this fixed a lot of issues (mostly false/missing intersections) and improved  overall rendering quality.
 
 
