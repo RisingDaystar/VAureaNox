@@ -43,7 +43,6 @@ Changed system to use doubles instead of floats , this fixed a lot of issues (mo
 This scene uses a huge sphere as "floor" (***radius 3000***)
 
 Using ***floats***, precision related artifacts appeared (intersection precision related, not renderer related) 
-(Notice : the erroneous pattern follows the position of the box, as the distance value is affected by the entity position)
 
 ![32spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32.jpg)
 
