@@ -22,7 +22,7 @@ Refractive materials with fixed or variable ior accounting for ray wavelength (k
 
 Materials can be attached with a mutator , which allows to change the evaluated material at runtime , accounting also for normals and object loc/world pos...
 
-///SDFS
+///***SDFS***
 
 Features a selection of SDF volumes (prefer calling this way...see below) and operators to combine/deform/displace them.
 
@@ -35,21 +35,30 @@ Naive sphere tracing doesn't have a good time in this cases ( basically : it get
 For this purpose i use a double distance system (dist and vdist) [TODO: explain]
 
 
-///V 0.07
+
+///***Post V 0.07 changes***
 
 Changed system to use doubles instead of floats , this fixed a lot of issues (mostly false/missing intersections) and improved  overall rendering quality.
 
-This scene uses a huge sphere as "floor" (radius 3000)
+This scene uses a huge sphere as "floor" (***radius 3000***)
 
-Using floats, precision related artifacts appeared (intersection precision related, not renderer related) 
+Using ***floats***, precision related artifacts appeared (intersection precision related, not renderer related) 
 (Notice : the erroneous pattern follows the position of the box, as the distance value is affected by the entity position)
 
 ![32spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32.jpg)
 
+Same settings,but using ***doubles***
+
+![32spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32_doubles.jpg)
+
+With doubles, first artifacts appear using a sphere of ***radius 3000000000000*** !
+
+Preformance wise , didn't notice any drop
+
+Other improvements include way less rays lost during emissive precalc (most of the times , 0)
 
 
-
-//Images
+//***Images***
 
 4096 spp , dispersion enabled
 
