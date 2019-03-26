@@ -1846,7 +1846,7 @@ constexpr inline vec<T, 2> transform_point_inverse(
     return {dot(b - a.o, a.x), dot(b - a.o, a.y)};
 }
 template <typename T>
-constexpr inline vec3f transform_point_inverse(
+constexpr inline vec<T, 3> transform_point_inverse(
     const frame<T, 3>& a, const vec<T, 3>& b) {
     return {dot(b - a.o, a.x), dot(b - a.o, a.y), dot(b - a.o, a.z)};
 }
@@ -1856,12 +1856,12 @@ constexpr inline vec<T, 2> transform_vector_inverse(
     return {dot(b, a.x), dot(b, a.y)};
 }
 template <typename T>
-constexpr inline vec3f transform_vector_inverse(
+constexpr inline vec<T, 3> transform_vector_inverse(
     const frame<T, 3>& a, const vec<T, 3>& b) {
     return {dot(b, a.x), dot(b, a.y), dot(b, a.z)};
 }
 template <typename T, int N>
-constexpr inline vec3f transform_direction_inverse(
+constexpr inline vec<T, N> transform_direction_inverse(
     const frame<T, N>& a, const vec<T, N>& b) {
     return normalize(transform_vector_inverse(a, b));
 }

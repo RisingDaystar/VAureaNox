@@ -25,7 +25,7 @@ using namespace vnx;
 
 namespace vscndef {
 
-	vnx::VNode* make_shell(const std::string& name, vnx::VMaterial* mat, const ygl::vec3f& dims) {
+	vnx::VNode* make_shell(const std::string& name, vnx::VMaterial* mat, const vvec3f& dims) {
 		using namespace vnx;
 		vop_subtraction* sh_root = new vop_subtraction(name, 0.02f, {
 			new vvo_sd_ellipsoid(name + "_el",mat,dims),
@@ -300,7 +300,7 @@ namespace vscndef {
 	void init_spider_scene(VScene& scn) {
 		scn.id = "spider";
         scn.camera.yfov = radians(45);
-        scn.camera.mOrigin = {0,30.1f,68.0f};
+        scn.camera.mOrigin = {0,10.1f,38.0f};
         scn.camera.mTarget = {0,5.1f,0};
         scn.camera.mUp = {0,1.0f,0};
 
@@ -367,7 +367,7 @@ namespace vscndef {
 
 
 		auto emissive = scn.add_material("emissive");
-		emissive->e_temp = 6500;
+		emissive->e_temp = 4500;
 		emissive->e_power = 12500;
 
 		auto emissive_dim = scn.add_material("emissive_dim");
@@ -388,9 +388,9 @@ namespace vscndef {
 		};
 		grey_diffuse_no_refl_adv->mutator = mtor;*/
 
-		auto ftor = [](const ygl::vec3f& wor_pos, ygl::vec3f& loc_pos, const VNode* tref) {
+		auto ftor = [](const vvec3f& wor_pos, vvec3f& loc_pos, const VNode* tref) {
 			loc_pos = ygl::transform_point_inverse(tref->_frame, wor_pos) / tref->scale;
-			float dv = ygl::dot(loc_pos, ygl::normalize(ygl::vec3f{ 0,1,0 }));
+			float dv = ygl::dot(loc_pos, ygl::normalize(vvec3f{ 0,1,0 }));
 
 			dv += sin(wor_pos.x)*sin(wor_pos.y)*sin(wor_pos.z);
 			return dv*(1.0f / 2.0f);
@@ -399,9 +399,9 @@ namespace vscndef {
 		auto base_plane_v = new vvo_sd_plane("base_plane_v", grey_diffuse_no_refl_adv);
 
 
-		auto ftor2 = [](const ygl::vec3f& wor_pos,const ygl::vec3f& loc_pos, const VNode* tref) {
+		auto ftor2 = [](const vvec3f& wor_pos,const vvec3f& loc_pos, const VNode* tref) {
 			//loc_pos = ygl::transform_point_inverse(tref->_frame, wor_pos);
-			float dv = ygl::dot(loc_pos, ygl::normalize(ygl::vec3f{ 0,1,0 }));
+			float dv = ygl::dot(loc_pos, ygl::normalize(vvec3f{ 0,1,0 }));
 
 			dv += sin(wor_pos.x / 6.0f)*sin(wor_pos.z / 6.0f)*0.8f;
 
@@ -451,7 +451,8 @@ namespace vscndef {
 
 		auto root_union = new vop_union("root", {
 			//sea,
-			new vop_repeat("rrep",{19.0,5.0,39.0},{true,false,true},new vop_union("robot_root",{
+			//new vop_repeat("rrep",{19.0,5.0,39.0},{true,false,true},
+                new vop_union("robot_root",{
 				new vop_union("top_root",{
 					new vop_union("sc_head_root",0.3f,{
 						new vvo_sd_ellipsoid("sc_neck",black_material,{ 0.8f,0.5f,0.5f }),
@@ -510,8 +511,8 @@ namespace vscndef {
 						}),
 					}),
 				}),
-			})
-),
+			}),
+//),
 
 			new vop_union("base_plane_group",20.0f,{
 				base_plane,

@@ -52,7 +52,7 @@ namespace vscndef {
 		transmissive->sm_c3 = 1.03560653e2;
 		transmissive->k_sca = 0.0f;*/
 
-        transmissive->ka = vec3f{0.01f,0.01f,0.01f};
+        transmissive->ka = vvec3f{0.01f,0.01f,0.01f};
         transmissive->sm_b1 = 0.3306f;
         transmissive->sm_c1 = 0.1750f;
         transmissive->sm_b2 = 4.3356f;
@@ -61,9 +61,9 @@ namespace vscndef {
 
         auto diffuse2 = scn.add_material("diffuse2");
 		diffuse2->kr = {0.8f,0.8f,0.8f};
-        auto mtor = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
+        auto mtor = [](ygl::rng_state& rng, const VResult& hit,const vvec3f& n, VMaterial& mat) {
             if (std::abs(sin(hit.wor_pos.x*5)) < 0.07f || std::abs(sin(hit.wor_pos.z*5)) < 0.07f) {
-                mat.kr = zero3f;
+                mat.kr = vzero3f;
             }
 		};
 		diffuse2->mutator = mtor;

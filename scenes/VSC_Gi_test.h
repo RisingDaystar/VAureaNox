@@ -28,9 +28,9 @@ namespace vscndef {
 
 	void init_gi_test_scene(vnx::VScene& scn) {
         scn.camera.yfov = radians(45);
-        scn.camera.mOrigin = {0,5,20.0f};
+        scn.camera.mOrigin = {0,5,20.0};
         scn.camera.mTarget = {0,0,0};
-        scn.camera.mUp = {0,1.0f,0};
+        scn.camera.mUp = {0,1.0,0};
 		scn.id = "gi_test";
 
         auto emissive = scn.add_material("emissive");
@@ -41,18 +41,18 @@ namespace vscndef {
         emissive_dim->e_power = 880; //orig : 15
 
         auto diffuse_red_mat = scn.add_material("diffuse_red_mat");
-        diffuse_red_mat->kr = {0.4f,0.0f,0.0f};
+        diffuse_red_mat->kr = {0.4,0.0,0.0};
 
 		auto carbon_diamond_material = scn.add_material("diamond_material");
-        carbon_diamond_material->ka = vec3f{0.01f,0.01f,0.01f};
-        carbon_diamond_material->sm_b1 = 0.3306f;
-        carbon_diamond_material->sm_c1 = 0.1750f;
-        carbon_diamond_material->sm_b2 = 4.3356f;
-        carbon_diamond_material->sm_c2 = 0.1060f;
-        carbon_diamond_material->k_sca = 0.0f;
+        carbon_diamond_material->ka = vvec3f{0.01,0.01,0.01};
+        carbon_diamond_material->sm_b1 = 0.3306;
+        carbon_diamond_material->sm_c1 = 0.1750;
+        carbon_diamond_material->sm_b2 = 4.3356;
+        carbon_diamond_material->sm_c2 = 0.1060;
+        carbon_diamond_material->k_sca = 0.0;
 
 		auto partecipating_test = scn.add_material("partecipating_test");
-        partecipating_test->ka = {0.81f,0.81f,0.51f};
+        partecipating_test->ka = {0.81,0.81,0.51};
         //partecipating_test->rs = 0.3f;
         partecipating_test->k_sca = 0.0f;
 		partecipating_test->sm_b1 = 1.03961212;
@@ -64,96 +64,96 @@ namespace vscndef {
 
         auto diffuse_exp = scn.add_material("diffuse_exp");
         diffuse_exp->ior_type = non_wl_dependant;
-        diffuse_exp->ior = 1.4f;
-        diffuse_exp->kr = {0.6f,0.0f,0.0f};
-        diffuse_exp->rs = 0.15f;
-		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
-           if(dot(hit.wor_pos,hit.loc_pos)>0){mat.kr = {0.1f,0.1f,0.1f};}
+        diffuse_exp->ior = 1.4;
+        diffuse_exp->kr = {0.6,0.0f,0.0};
+        diffuse_exp->rs = 0.15;
+		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const vvec3f& n, VMaterial& mat) {
+           if(dot(hit.wor_pos,hit.loc_pos)>0){mat.kr = {0.1,0.1,0.1};}
 		};
         diffuse_exp->mutator = mtor_e;
 
         auto diffuse_mat = scn.add_material("diffuse");
         diffuse_mat->ior_type = non_wl_dependant;
-        diffuse_mat->ior = 1.8f;
-        diffuse_mat->kr = {0.8f,0.8f,0.8f};
-        diffuse_mat->rs = 0.15f;
-		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
-			if (std::abs(sin(hit.loc_pos.x)) < 0.03f || std::abs(sin(hit.loc_pos.z)) < 0.03f) {
+        diffuse_mat->ior = 1.8;
+        diffuse_mat->kr = {0.8,0.8,0.8};
+        diffuse_mat->rs = 0.15;
+		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const vvec3f& n, VMaterial& mat) {
+			if (std::abs(sin(hit.loc_pos.x)) < 0.03 || std::abs(sin(hit.loc_pos.z)) < 0.03) {
                     mat.type = conductor;
-                    mat.kr = {0.4f,0.4f,0.5f};
-                    mat.rs = 0.9f;
+                    mat.kr = {0.4,0.4,0.5};
+                    mat.rs = 0.9;
             }
 		};
 		diffuse_mat->mutator = mtor;
 
 		auto diffuse_pure = scn.add_material("diffuse_pure");
-		diffuse_pure->kr = {0,1.0f,0};
-		diffuse_pure->rs = 0.9f;
+		diffuse_pure->kr = {0,1.0,0};
+		diffuse_pure->rs = 0.9;
 
 		auto diffuse_sand = scn.add_material("diffuse_sand");
-		diffuse_sand->kr = {0.7f,0.6f,0.4f};
+		diffuse_sand->kr = {0.7,0.6,0.4};
 		diffuse_sand->ior_type = non_wl_dependant;
-		diffuse_sand->ior = 1.7f;
-		diffuse_sand->rs = 0.5f;
+		diffuse_sand->ior = 1.7;
+		diffuse_sand->rs = 0.5;
 
         auto steel = scn.add_material("steel");
         steel->type = conductor;
         steel->ior_type = non_wl_dependant;
-        steel->kr = {0.8f,0.8f,0.9f};
-        steel->rs = 0.05f;
-        steel->ior = 2.6f;
+        steel->kr = {0.8,0.8,0.9};
+        steel->rs = 0.05;
+        steel->ior = 2.6;
 
         auto sp_mat = scn.add_material("sp_mat");
         sp_mat->type = dielectric;
-        sp_mat->kr = {0.2f,0.5f,0.8f};
+        sp_mat->kr = {0.2,0.5,0.8};
         sp_mat->ior_type = non_wl_dependant;
-        sp_mat->ior = 2.2f;
+        sp_mat->ior = 2.2;
 
-		auto ring = new vop_twist("ring", X, 0.9f, new vop_subtraction("ring_s",1.0f,{
-                new vvo_sd_cylinder("ring_e_ex",diffuse_exp,{4.0f,0.5f}),
-                new vvo_sd_cylinder("ring_e_in",diffuse_exp,{3.0f,1.0f}),
+		auto ring = new vop_twist("ring", X, 0.9f, new vop_subtraction("ring_s",1.0,{
+                new vvo_sd_cylinder("ring_e_ex",diffuse_exp,{4.0,0.5}),
+                new vvo_sd_cylinder("ring_e_in",diffuse_exp,{3.0,1.0}),
               })
         );
 
-		scn.root = new vop_union("root",{
-            new vop_union("p_b_blend",0.0f,{ //0.8f
-                new vop_subtraction("plane_sub",0.5f,{
+		scn.root = new vop_union("root",0.0,{
+            new vop_union("p_b_blend",0.0,{ //0.8f
+                new vop_subtraction("plane_sub",0.5,{
                     new vvo_sd_plane("plane",diffuse_mat),
-                    new vop_twist("plane_sub_t",Y,1.9f,
-                        new vvo_sd_ellipsoid("plane_sub_e",diffuse_sand,{7.5f,3.5f,4.5f})
+                    new vop_twist("plane_sub_t",Y,1.9,
+                        new vvo_sd_ellipsoid("plane_sub_e",diffuse_sand,{7.5,3.5,4.5})
                     ),
                 }),
                 ring,
-                new vop_union("sph_group",0.0f,{
+                new vop_union("sph_group",0.0,{
                     //new vvo_sd_sphere("coat",partecipating_test,1.5f),
-                    new vvo_sd_sphere("sph",steel,0.5f),
+                    new vvo_sd_sphere("sph",steel,0.5),
                 }),
             }),
 
-           new vop_cut("sph2_group",{1,1,1},zero3f,0.1f,{
+           new vop_cut("sph2_group",{1,1,1},vzero3f,0.1,{
               //new vvo_sd_sphere("coat2",partecipating_test,1.8f),
-              new vop_onion("sph2_o",0.2f,new vvo_sd_sphere("sph2",steel,3.5f)),
+              new vop_onion("sph2_o",0.2f,new vvo_sd_sphere("sph2",steel,3.5)),
            }),
-           new vvo_sd_sphere("light",emissive,80.5f),
+           new vvo_sd_sphere("light",emissive,80.5),
         });
 
         scn.set_translation("sph2_group",{2,2,10});
         scn.set_translation("light",{0,180,0});
 
-        auto ftor = [](const vec3f& p){
-            const float f = 6.0f;
+        auto ftor = [](const vvec3f& p){
+            const float f = 6.0;
             const float fd = f*1;
             return (sin(f*p.x)*sin(f*p.y)*sin(f*p.z))/fd; //18= 1/20 + 1/20 + 1/20 ///limiti della funzione sin (e cos...)
         };
         scn.set_displacement("ring",ftor);
 
-        auto ftor3 = [](const vec3f& p){
+        auto ftor3 = [](const vvec3f& p){
             const float f = 1;
             const float fd = f*1;
             return (sin(f*p.x)*sin(f*p.y)*sin(f*p.z))/fd; //18= 1/20 + 1/20 + 1/20 ///limiti della funzione sin (e cos...)
         };
         scn.set_displacement("plane_sub_t",ftor3);
-        scn.set_scale("ring",{1.2f,1.0f,1.2f});
+        scn.set_scale("ring",{1.2,1.0,1.2});
 
         //scn.set_scale("coat",{3.0f,3.0f,3.0f});
         scn.set_rotation_degs("sph2_group",{25,25,25});

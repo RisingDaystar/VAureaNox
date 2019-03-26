@@ -53,7 +53,7 @@ namespace vscndef {
         //diff_white->ior = 1.2f;
 
 		auto carbon_diamond_material = scn.add_material("diamond_material");
-        carbon_diamond_material->ka = vec3f{0.01f,0.01f,0.01f};
+        carbon_diamond_material->ka = vvec3f{0.01f,0.01f,0.01f};
         carbon_diamond_material->sm_b1 = 0.3306f;
         carbon_diamond_material->sm_c1 = 0.1750f;
         carbon_diamond_material->sm_b2 = 4.3356f;
@@ -62,13 +62,13 @@ namespace vscndef {
         //carbon_diamond_material->rs = 0.01f;
 
         auto water_material = scn.add_material("water_material");
-        water_material->ka = vec3f{0.5f,0.5,0.01f};
+        water_material->ka = vvec3f{0.5f,0.5,0.01f};
         water_material->ior_type = non_wl_dependant;
         water_material->ior = 1.370f;
         water_material->k_sca = 0.0f;
 
         auto highior_material = scn.add_material("highior_material");
-        highior_material->ka = vec3f{0.0f,0.0f,0.0f};
+        highior_material->ka = vvec3f{0.0f,0.0f,0.0f};
         highior_material->ior_type = non_wl_dependant;
         highior_material->ior = 2.770f;
         highior_material->k_sca = 0.0f;
@@ -94,7 +94,7 @@ namespace vscndef {
 
 
         auto no_refr_media = scn.add_material("no_refr_media");
-        no_refr_media->ka = vec3f{0.41f,0.41f,0.41f};
+        no_refr_media->ka = vvec3f{0.41f,0.41f,0.41f};
         no_refr_media->k_sca = 0.0f;
 
         auto sp_mat2 = scn.add_material("sp_mat2");
@@ -109,12 +109,12 @@ namespace vscndef {
         auto cornell_composite_mat = scn.add_material("cornell_composite_mat");
         cornell_composite_mat->kr = {0.4f,0.4f,0.4f};
         cornell_composite_mat->rs = 0.5f;
-		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
+		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const vvec3f& n, VMaterial& mat) {
            if(hit.loc_pos.x<=-3.945f){mat.kr = {0.0f,0.4f,0.0f};/*mat.ks={1.0f,1.0f,1.0f};*/}
            else if(hit.loc_pos.x>=3.945f){mat.kr = {0.4f,0.0f,0.0f};/*mat.ks={1.0f,1.0f,1.0f};*/}
            else if(hit.loc_pos.z<-3.9f){
                 if(on_pattern_gradient_oblique(hit.loc_pos,45,5)){
-                    mat.kr = one3f; //zero3f
+                    mat.kr = vone3f; //zero3f
                 }
            }
 		};
@@ -142,14 +142,16 @@ namespace vscndef {
                 //new vvo_sd_box("occlusion",diff_white_lowks,{2.0f,0.1f,5.0f}),
                 //new vvo_sd_sphere("glass_ball",borosilicate_glass_material,2.5f),
 
-
+                /*
                 new vop_union("glass",{
                     new vop_cut("glass_cylinder",{0,1,0},{0,-1.8f,0},0.0f,new vop_onion("_gc_eo",0.15f,new vvo_sd_cylinder("_gc_e",borosilicate_glass_material,{1.3f,2.3f}))),
                     new vvo_sd_cylinder("inner_water",water_material,{0.99f,1.0f}),
                     new vop_twist("obs",Z,0.8f,new vvo_sd_box("obs_t",diff_white,{0.1f,3.0f,0.1f})),
-                }),
+                }),*/
 
-                //new vop_repeat("repeater",{5.0f,5.0f,5.0f},new vvo_sd_box("boxolo",diff_white,vec3f{1.0f,1.0f,1.0f}/3.0f)),
+                //new vop_repeat("repeater",{5.0f,5.0f,5.0f},new vvo_sd_box("boxolo",borosilicate_glass_material,vec3f{1.0f,1.0f,1.0f}/3.0f)),
+
+                new vvo_sd_diamond("box_lens",carbon_diamond_material),
 
                 //new vop_cut("mirror",{0,1,1},{0,0,0},0.1f,new vop_onion("mirror_o",0.06f,new vvo_sd_sphere("mirror_i",sp_mat))),
 
@@ -163,7 +165,7 @@ namespace vscndef {
 
                 //new vvo_sd_box("box1",diff_white,{1.0f,3.0f,1.0f}),
                 //new vvo_sd_hex_prism("box_repeated",borosilicate_glass_material,one2f*2.0f),
-                //new vvo_sd_box("box_partecipating",partecipating,8.0f),
+                //new vvo_sd_box("box_partecipating",partecipating,2.0f),
                 //new vvo_sd_box("box_occ",diff_white,{5.5,0.1f,5.5f}),
                 //new vvo_sd_hex_prism("sph",borosilicate_glass_material,one2f),
                 //new vvo_sd_tri_prism("box_tr2",borosilicate_glass_material,{1.0f,2.0f}),
@@ -187,6 +189,9 @@ namespace vscndef {
 		scn.set_rotation_degs("repeater",{0,45,0});
 
 		//scn.set_rotation_degs("cornell",{0,45,0});
+
+		scn.set_translation("box_lens",{0,0,15});
+		scn.set_rotation_degs("box_lens",{-90,0,0});
 
 		scn.set_translation("box1",{-2.0f,-2.0f,-2.0f});
 		scn.set_translation("box_tr",{-1.0f,-1.8f,1.0f});

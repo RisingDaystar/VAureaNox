@@ -71,7 +71,7 @@ namespace vnx {
 		if (renderer != nullptr) { delete renderer; renderer = nullptr; }
 	}
 
-	void init(VScene& scn, VRenderer** renderer, image3f& img, const VConfigurable& config) {
+	void init(VScene& scn, VRenderer** renderer, image3vf& img, const VConfigurable& config) {
 
 		auto renderer_type = config.try_get("renderer_type", "");
 		auto scn_to_render = config.try_get("render_scene", "cornell");
@@ -109,7 +109,7 @@ namespace vnx {
 		scn.camera.Setup(vec2f{float(w),float(h)});
 	}
 
-	void task(int id, const VScene& scn, VRenderer* renderer, image3f& img, std::mutex& mtx, ygl::rng_state& rng, volatile std::atomic<int>& lrow, volatile std::atomic<int>& rowCounter) {
+	void task(int id, const VScene& scn, VRenderer* renderer, image3vf& img, std::mutex& mtx, ygl::rng_state& rng, volatile std::atomic<int>& lrow, volatile std::atomic<int>& rowCounter) {
 		const int width = img.size.x;
 		const int height = img.size.y;
 
@@ -138,7 +138,7 @@ namespace vnx {
 
 
     //Utilizza "conio.h" , non standard, disattivabile in compilazione.
-	void monitor_task(std::mutex& mtx, const VScene& scn,VRenderer* renderer,const image3f& img){
+	void monitor_task(std::mutex& mtx, const VScene& scn,VRenderer* renderer,const image3vf& img){
         #ifdef MONITOR_THREAD_SUPPORT
         while(!renderer->status.bStopped && !renderer->status.bFinished){
             if(!kbhit()){std::this_thread::sleep_for(std::chrono::milliseconds(1000));continue;} //1s sleep, per evitare massiccio overhead
@@ -180,7 +180,7 @@ int main() {
 	VConfigurable config("configs/VAureaNox.ini");
 	VScene scn;
 	VRenderer* renderer = nullptr;
-	image3f img;
+	image3vf img;
 	bool b_start_monitor = false;
 	VStatus status;
 
@@ -190,8 +190,7 @@ int main() {
 		config.parse();
 		init(scn, &renderer, img, config);
 
-		//Controlli hardcoded, ridondanti per avere un grado extra di sicurezza visto che vengono uitilizzati a prescindere dal motore di rendering
-		auto n_em_evals = renderer->try_get("n_em_evals", 0);
+		auto n_em_evals = config.try_get("n_em_evals", 0);
 		if (n_em_evals < 0) { throw VException("n_em_evals < 0"); }
 
 		b_start_monitor = config.try_get("b_start_monitor",false);

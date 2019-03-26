@@ -7,6 +7,24 @@
 namespace vnx{
     struct VSceneParser{
 
+        const char mTchars[3] = {'\n','\t','\0'};
+
+        inline bool isControlCH(char c){
+            return c==mTchars[0] || c==mTchars[1] || c==mTchars[2];
+        }
+
+        inline nextTokenIsControlCH(const std::string& line, int i){
+            if(i+1>line.size())return true;
+
+            for(int n=i+1;n<line.size();n++){
+                auto c = line[n];
+                if(isControlCH(c) || c==';') break;
+                if(c==' ') continue;
+                return false;
+            }
+            return true;
+        }
+
         inline void parse(VScene& scn,const std::string& fname){
             std::map<std::string,VEntry> data;
             if (fname == "") { throw VException("Invalid scene filename."); }
@@ -25,7 +43,11 @@ namespace vnx{
             while (std::getline(in, line)) {
                 lid++;
                 try {eval_line(line,scn_name,root_id,data);}
-                catch (VException& ex) { printf("Scene parser {%s}: %s\n", fname.c_str(), ex.what()); continue; }
+                catch (const VException& ex) {
+                    std::string str = "Scene loading error--> ";
+                    str+=std::string(ex.what())+" at line : "+std::to_string(lid);
+                    throw VException(str);
+                }
             }
             in.close();
 
@@ -36,12 +58,8 @@ namespace vnx{
                 scn.root = static_cast<VNode*>(data[root_id].ptr);
                 scn.id = scn_name;
 
-            }catch(VException& ex){
-                for(auto& e : data){
-                    auto entry = e.second;
-                    if(entry.ptr!=nullptr) delete entry.ptr;
-                }
-                std::string str = "Scene loading error: ";
+            }catch(const VException& ex){
+                std::string str = "Scene loading error--> ";
                 str+=ex.what();
                 throw VException(str);
             }
@@ -51,28 +69,48 @@ namespace vnx{
             if (line.empty() || line[0] == ';') { return; }
             int mode = 0;
             int i = 0;
-            if(line[0] == '#') {mode = -1;i=1;}
-            else if(line[0] == '@') {mode = -2;i=1;}
+
+            bool closed = false;
+
+            if(line[0] == '#') {mode = -1;i=1;closed = true;}
+            else if(line[0] == '@') {mode = -2;i=1;closed = true;}
 
             std::string type_name = "";
             std::string id = "";
             int args_index = -1;
             bool grouped = false;
 
+
             for(;i<line.size();i++){
 
                 char c = line[i];
-                if(c=='\n' || c=='\r' || c=='\0') break;
-                if(c==' ' || c=='\t' || c=='"') continue;
+                if(c==' ' || c=='\t' || c=='"' || c=='[' || c==']') continue;
 
                 if(mode==-1) {
+                    if(isControlCH(c)) break;
+                    if(!std::isalnum(static_cast<unsigned char>(c)) && c!='_') continue;
                     scn_name += c;
                 }else if(mode==-2){
+                    if(isControlCH(c)) break;
+                    if(!std::isalnum(static_cast<unsigned char>(c)) && c!='_') continue;
                     root_id += c;
                 }else if(mode==0){
-                    if(c==')') break;
-                    if(c==',' && args_index==-1) throw VException("Illegal syntax");
-                    if(c==',' && args_index==0) {data[id] = VEntry({type_name,""});args_index++;continue;} //creo entry nella map con key=id e creo il vector con [0]=type_name
+                    if(isControlCH(c)) throw VException("Illegal syntax, unexpected control character");
+                    if(c==')') {
+                        if(grouped) throw VException("Illegal syntax, expected \"}\" before \")\"");
+                        if(!nextTokenIsControlCH(line,i)){
+                            throw VException("Illegal syntax, \")\" is not last token");
+                        }
+                        closed = true;
+                        break;
+                    }
+                    if(c==',' && args_index==-1) throw VException("Illegal syntax. Unexpected \",\"");
+                    if(c==',' && args_index==0) {
+                        if(id.empty()){throw VException("ID is empty, unexpected \",\"");}
+                        data[id] = VEntry({type_name,""});
+                        args_index++;
+                        continue;
+                    } //creo entry nella map con key=id e creo il vector con [0]=type_name
                     if(c==','){
                         if(!grouped){data[id].add_token("");args_index++;continue;}//passo ad index++
                     }
@@ -80,18 +118,20 @@ namespace vnx{
                         if(c=='('){args_index++;continue;} //passo ad index0
                         type_name+=c;
                     }else if (args_index==0){ //index0 deve essere l'id
-                        if(type_name.empty()) throw VException("Type_name is empty");
+                        if(type_name.empty()) throw VException("\"Type_name\" is empty");
                         if(type_name=="vcamera"){id="##camera##";data[id] = VEntry({type_name,""});args_index++;data[id].at(args_index)+=c;continue;}
                         id += c;
                     }else{
                         if(c=='{' && !grouped)grouped = true;
-                        else if(c=='{' && grouped) throw VException("Illegal syntax");
+                        else if(c=='{' && grouped) throw VException("Illegal syntax, Unexpected \"{\"");
                         else if(c=='}' && grouped)grouped = false;
-                        else if(c=='}' && !grouped) throw VException("Illegal syntax");
+                        else if(c=='}' && !grouped) throw VException("Illegal syntax, Unexpected \"}\"");
                         data[id].at(args_index) += c;
                     }
                 }
             }
+
+            if(!closed) throw VException("Illegal syntax, missing \")\"");
 
         }
 
@@ -111,6 +151,7 @@ namespace vnx{
 
             if(entry->allocated()) return;
             auto type = entry->at(0);
+
 
             if(type=="vmaterial"){
                 auto e = new VMaterial(id);
@@ -151,6 +192,7 @@ namespace vnx{
             }else{ //VOLUMI
                 auto mtl_id = entry->try_at(1);
                 link(scn,mtl_id,data,"vmaterial");
+
                 auto mtl = static_cast<VMaterial*>(data[mtl_id].ptr);
 
                 VNode* e = nullptr;
@@ -168,7 +210,8 @@ namespace vnx{
                 else if(stricmp(type,"vvo_sd_pyramid4")) e = new vvo_sd_pyramid4(id,mtl);
                 else if(stricmp(type,"vvo_sd_diamond")) e = new vvo_sd_diamond(id,mtl);
 
-                if(!e) throw VException("Unerecognized Entity \""+type+"\"");
+                if(e==nullptr) throw VException("Unerecognized Entity \""+type+"\"");
+
                 e->Relate(entry);
                 scn.nodes.push_back(e);
             }

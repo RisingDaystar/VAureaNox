@@ -42,11 +42,11 @@ namespace vscndef {
 		emissive_dim->e_power = 200;
 
 		auto diffuse = scn.add_material("diffuse");
-		diffuse->kr = vec3f{0.5f,0.5f,0.65f};
+		diffuse->kr = vvec3f{0.5f,0.5f,0.65f};
 		diffuse->ior_type = non_wl_dependant;
 		diffuse->ior = 1.3f;
 		diffuse->rs = 0.04f;
-		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
+		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const vvec3f& n, VMaterial& mat) {
 			if (std::abs(sin(hit.loc_pos.x*5)) < 0.07f || std::abs(sin(hit.loc_pos.z*5)) < 0.07f) {
                 mat.kr = {0.03f,0.03f,0.03f};
                 mat.ior = 1.0f;
@@ -56,23 +56,23 @@ namespace vscndef {
 
 
         auto diffuse2 = scn.add_material("diffuse2");
-		diffuse2->kr = vec3f{1.0f,0.3f,0.3f};
+		diffuse2->kr = vvec3f{1.0f,0.3f,0.3f};
 
         auto diffuse3 = scn.add_material("diffuse3");
-		diffuse3->kr = vec3f{0.3f,0.3f,0.3f};
+		diffuse3->kr = vvec3f{0.3f,0.3f,0.3f};
 
         auto metal = scn.add_material("metal");
         metal->type = conductor;
         metal->ior = 1.5f;
         metal->ior_type = non_wl_dependant;
-		metal->kr = vec3f{0.4f,0.9f,0.4f};
+		metal->kr = vvec3f{0.4f,0.9f,0.4f};
 		metal->rs = 0.05f;
 
         auto mirror = scn.add_material("mirror");
         mirror->type = conductor;
         mirror->ior = 1.7f;
         mirror->ior_type = non_wl_dependant;
-		mirror->kr = vec3f{1.0f,1.0f,1.0f};
+		mirror->kr = vvec3f{1.0f,1.0f,1.0f};
 
 		auto glass = scn.add_material("glass");
 		glass->k_sca = 0.0f;
@@ -85,7 +85,7 @@ namespace vscndef {
 		glass->ka = {0.01f,0.01f,0.01f};
 
 		auto carbon_diamond_material = scn.add_material("diamond_material");
-        carbon_diamond_material->ka = vec3f{0.01f,0.01f,0.01f};
+        carbon_diamond_material->ka = vvec3f{0.01f,0.01f,0.01f};
         carbon_diamond_material->sm_b1 = 0.3306f;
         carbon_diamond_material->sm_c1 = 0.1750f;
         carbon_diamond_material->sm_b2 = 4.3356f;

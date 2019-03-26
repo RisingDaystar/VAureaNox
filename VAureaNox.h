@@ -36,7 +36,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define INTERSECT_ALGO intersect_rel
 #define NORMALS_ALGO eval_normals_tht
 #define LIGHT_PRECALC_ALGO precalc_emissive_hints
-//precalc_emissive_hints || precalc_emissive_hints_rejection
 
 using namespace ygl;
 
@@ -54,11 +53,74 @@ namespace vnx {
 
 	struct VSceneParser;
 
+	using vfloat = double;
+    using vvec4f = vec<vfloat,4>;
+	using vvec3f = vec<vfloat,3>;
+	using vvec2f = vec<vfloat,2>;
+	using vframe3f = frame<vfloat,3>;
+	using vmat4f = mat<vfloat, 4, 4>;
+	using vmat3f = mat<vfloat, 3, 3>;
 
-	typedef float (*displ_ftor)(const ygl::vec3f&);
-	typedef void (*mtlm_ftor)(ygl::rng_state& rng,const VResult&,const ygl::vec3f&, VMaterial&);
+	constexpr const auto epsvf = epst<vfloat>();
+
+	constexpr vframe3f identity_vframe3f = vframe3f{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {0, 0, 0}};
+	constexpr vvec4f identity_vquat4f = vvec4f{0,0,0,1};
+	constexpr vmat4f identity_vmat4f = vmat4f{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+	constexpr vmat3f identity_vmat3f = vmat3f{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+
+	constexpr vvec4f vone4f = vvec4f{1.0,1.0,1.0,1.0};
+	constexpr vvec3f vone3f = vvec3f{1.0,1.0,1.0};
+	constexpr vvec2f vone2f = vvec2f{1.0,1.0};
+
+	constexpr vvec4f vzero4f = vvec4f{0.0,0.0,0.0,0.0};
+	constexpr vvec3f vzero3f = vvec3f{0.0,0.0,0.0};
+	constexpr vvec2f vzero2f = vvec2f{0.0,0.0};
+
+
+	typedef vfloat (*displ_ftor)(const vvec3f&);
+	typedef void (*mtlm_ftor)(ygl::rng_state& rng,const VResult&,const vvec3f&, VMaterial&);
 
 	using image3f = image<vec3f>;
+	using image3vf = image<vvec3f>;
+
+    inline vvec3f sample_sphere_direction_vf(const vec2f& ruv) {
+        auto z   = 2 * ruv.y - 1;
+        auto r   = sqrt(1 - z * z);
+        auto phi = 2 * pi<vfloat> * ruv.x;
+        return {r * cos(phi), r * sin(phi), z};
+    }
+
+    inline vvec3f sample_hemisphere_direction_vf(const vec2f& ruv) {
+        auto z   = ruv.y;
+        auto r   = sqrt(1 - z * z);
+        auto phi = 2 * pi<vfloat> * ruv.x;
+        return {r * cos(phi), r * sin(phi), z};
+    }
+
+    inline vvec3f sample_hemisphere_direction_cosine_vf(const vec2f& ruv) {
+        auto z   = sqrt(ruv.y);
+        auto r   = sqrt(1 - z * z);
+        auto phi = 2 * pif * ruv.x;
+        return {r * cos(phi), r * sin(phi), z};
+    }
+
+    template<typename T>
+    inline vec<T,3> gamma_to_linear(const vec<T,3>& srgb, T gamma = 2.2f) {
+        return {pow(srgb.x, gamma), pow(srgb.y, gamma), pow(srgb.z, gamma)};
+    }
+    template<typename T>
+    inline vec<T,3> linear_to_gamma(const vec<T,3>& lin, T gamma = 2.2f) {
+        return {pow(lin.x, 1 / gamma), pow(lin.y, 1 / gamma), pow(lin.z, 1 / gamma)};
+    }
+    template<typename T>
+    inline vec<T,4> gamma_to_linear(const vec<T,4>& srgb, T gamma = 2.2f) {
+        return {pow(srgb.x, gamma), pow(srgb.y, gamma), pow(srgb.z, gamma), srgb.w};
+    }
+    template<typename T>
+    inline vec<T,4> linear_to_gamma(const vec<T,4>& lin, T gamma = 2.2f) {
+        return {pow(lin.x, 1 / gamma), pow(lin.y, 1 / gamma), pow(lin.z, 1 / gamma),
+            lin.w};
+    }
 
 
     struct VStatus{ //TODO : extend
@@ -115,8 +177,10 @@ namespace vnx {
         return {rand1f_r(rng,a,b),rand1f_r(rng,a,b),rand1f_r(rng,a,b)};
     }
 
-    inline vec3f toVec3f(float v){return {v,v,v};}
-    inline vec2f toVec2f(float v){return {v,v};}
+    template<typename T> inline vec<T,3> toVec3(T v){return {v,v,v};}
+    template<typename T> inline vec<T,2> toVec2(T v){return {v,v};}
+
+	enum VAxis { X, Y, Z };
 
     enum VRotationOrder{
         VRO_XYZ,
@@ -139,23 +203,24 @@ namespace vnx {
 
 	const char* version = "0.07";
 
-	constexpr float minf = mint<float>();
+	constexpr const auto minvf = mint<vfloat>();
+	constexpr const auto maxvf = maxt<vfloat>();
 
-	constexpr float KC = 299792e3;
-    constexpr double KH = 6.63e-34;
-    constexpr double KB = 1.38066e-23;
-    constexpr double KSB = 5.670373e-8;
-    constexpr double KWD = 2.8977721e-3;
+	constexpr vfloat KC = 299792e3;
+    constexpr vfloat KH = 6.63e-34;
+    constexpr vfloat KB = 1.38066e-23;
+    constexpr vfloat KSB = 5.670373e-8;
+    constexpr vfloat KWD = 2.8977721e-3;
 
-	constexpr ygl::vec3f one3f = ygl::vec3f{ 1.0f,1.0f,1.0f };
+	/*constexpr ygl::vec3f one3f = ygl::vec3f{ 1.0f,1.0f,1.0f };
 	constexpr ygl::vec2f one2f = ygl::vec2f{ 1.0f,1.0f };
 	constexpr ygl::vec3f mone3f = ygl::vec3f{ -1.0f,-1.0f,-1.0f };
-	constexpr ygl::vec2f mone2f = ygl::vec2f{ -1.0f,-1.0f };
+	constexpr ygl::vec2f mone2f = ygl::vec2f{ -1.0f,-1.0f };*/
 
-    constexpr ygl::vec3f nv1 = { 1.0, -1.0, -1.0 };
-    constexpr ygl::vec3f nv2 = { -1.0, -1.0, 1.0 };
-    constexpr ygl::vec3f nv3 = { -1.0, 1.0, -1.0 };
-    constexpr ygl::vec3f nv4 = { 1.0, 1.0, 1.0 };
+    constexpr vvec3f nv1 = { 1.0, -1.0, -1.0 };
+    constexpr vvec3f nv2 = { -1.0, -1.0, 1.0 };
+    constexpr vvec3f nv3 = { -1.0, 1.0, -1.0 };
+    constexpr vvec3f nv4 = { 1.0, 1.0, 1.0 };
 
 	inline bool stricmp(std::string str1, std::string str2) {
 		return std::equal(str1.begin(), str1.end(), str2.begin(), [](const char& a, const char& b) {
@@ -168,7 +233,7 @@ namespace vnx {
     }
 
     inline std::vector<std::string> strDeGroup(const std::string& ss){
-        if(!strIsGroup(ss)) return {""};
+        if(!strIsGroup(ss)) return {ss};
         int idx = 0;
         std::vector<std::string> tokens = {""};
         for(int i=1;i<ss.length()-1;i++){
@@ -179,22 +244,30 @@ namespace vnx {
         return tokens;
     }
 
+    inline VAxis try_strToAxis(const std::string& ss,VAxis def){
+        if(ss.empty()) return def;
+        if(stricmp(ss,"x")) return VAxis::X;
+        if(stricmp(ss,"y")) return VAxis::Y;
+        if(stricmp(ss,"z")) return VAxis::Z;
+        return def;
+    }
+
     inline VMaterialType try_strToMaterialType(const std::string& ss,VMaterialType def){
-        if(ss=="") return def;
+        if(ss.empty()) return def;
         if(stricmp(ss,"d")) return VMaterialType::dielectric;
         if(stricmp(ss,"c")) return VMaterialType::conductor;
         return def;
     }
 
     inline VIorType try_strToIorType(const std::string& ss,VIorType def){
-        if(ss=="") return def;
+        if(ss.empty()) return def;
         if(stricmp(ss,"wl")) return VIorType::wl_dependant;
         if(stricmp(ss,"nwl")) return VIorType::non_wl_dependant;
         return def;
     }
 
     inline VRotationOrder try_strToRotationOrder(const std::string& ss,VRotationOrder def){
-        if(ss=="") return def;
+        if(ss.empty()) return def;
         if(stricmp(ss,"xyz")) return VRO_XYZ;
         if(stricmp(ss,"xzy")) return VRO_XZY;
         if(stricmp(ss,"yxz")) return VRO_YXZ;
@@ -202,6 +275,11 @@ namespace vnx {
         if(stricmp(ss,"zxy")) return VRO_ZXY;
         if(stricmp(ss,"zyx")) return VRO_ZYX;
         return def;
+    }
+
+    inline vfloat try_strToVFloat(const std::string& ss,vfloat def){
+        if(ss.empty()) return def;
+        return std::atof(ss.c_str());
     }
 
     inline float try_strToFloat(const std::string& ss,float def){
@@ -214,48 +292,173 @@ namespace vnx {
         return std::atoi(ss.c_str());
     }
 
+    inline bool try_strToBool(const std::string& ss,bool def){
+        if(ss.empty()) return def;
+        if(ss.length()>1){
+            if(stricmp(ss,"true")) return true;
+            if(stricmp(ss,"false")) return false;
+        }
+        return (bool)std::atoi(ss.c_str());
+    }
 
-    inline vec4f try_strToVec4f(const std::string& ss,vec4f def){
+    inline vec4i try_strToVec4i(const std::string& ss,vec4i def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
-            if(cpnts.size()==4){
-                return vec4f{std::atof(cpnts[0].c_str()),std::atof(cpnts[1].c_str()),std::atof(cpnts[2].c_str()),std::atof(cpnts[3].c_str())};
+            vec4i v = zero4i;
+            for(int i=0;i<cpnts.size() && i<4;i++){
+                if(i==0)v.x = try_strToInt(cpnts[i],0);
+                else if(i==1)v.y = try_strToInt(cpnts[i],0);
+                else if(i==2)v.z = try_strToInt(cpnts[i],0);
+                else if(i==3)v.w = try_strToInt(cpnts[i],0);
             }
-            return zero4f;
+            return v;
         }else{
-            auto cpnt = std::atof(ss.c_str());
-            return vec4f{cpnt,cpnt,cpnt,cpnt};
+            auto cpnt = try_strToInt(ss,0);
+            return vec4i{cpnt,cpnt,cpnt,cpnt};
         }
     }
-    inline vec3f try_strToVec3f(const std::string& ss,vec3f def){
+
+    inline vec3i try_strToVec3i(const std::string& ss,vec3i def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
-            if(cpnts.size()==3){
-                auto v = vec3f{std::atof(cpnts[0].c_str()),std::atof(cpnts[1].c_str()),std::atof(cpnts[2].c_str())};
-                return v;
+            vec3i v = zero3i;
+            for(int i=0;i<cpnts.size() && i<3;i++){
+                if(i==0)v.x = try_strToInt(cpnts[i],0);
+                else if(i==1)v.y = try_strToInt(cpnts[i],0);
+                else if(i==2)v.z = try_strToInt(cpnts[i],0);
             }
-            return zero3f;
+            return v;
         }else{
-            auto cpnt = std::atof(ss.c_str());
-            return vec3f{cpnt,cpnt,cpnt};
+            auto cpnt = try_strToInt(ss,0);
+            return vec3i{cpnt,cpnt,cpnt};
         }
     }
-    inline vec2f try_strToVec2f(const std::string& ss,vec2f def){
+
+    inline vec2i try_strToVec2i(const std::string& ss,vec2i def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
-            if(cpnts.size()==2){
-                return vec2f{std::atof(cpnts[0].c_str()),std::atof(cpnts[1].c_str())};
+            vec2i v = zero2i;
+            for(int i=0;i<cpnts.size() && i<2;i++){
+                if(i==0)v.x = try_strToInt(cpnts[i],0);
+                else if(i==1)v.y = try_strToInt(cpnts[i],0);
             }
-            return zero2f;
+            return v;
+        }else{
+            auto cpnt = try_strToInt(ss,0);
+            return vec2i{cpnt,cpnt};
+        }
+    }
+
+
+    inline vec<bool,4> try_strToVec4b(const std::string& ss,vec<bool,4> def){
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            vec<bool,4> v = {false,false,false,false};
+            for(int i=0;i<cpnts.size() && i<4;i++){
+                if(i==0)v.x = try_strToBool(cpnts[i],false);
+                else if(i==1)v.y = try_strToBool(cpnts[i],false);
+                else if(i==2)v.z = try_strToBool(cpnts[i],false);
+                else if(i==3)v.w = try_strToBool(cpnts[i],false);
+            }
+            return v;
+        }else{
+            auto cpnt = try_strToBool(ss,false);
+            return vec<bool,4>{cpnt,cpnt,cpnt,cpnt};
+        }
+    }
+
+    inline vec<bool,3> try_strToVec3b(const std::string& ss,vec<bool,3> def){
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            vec<bool,3> v = {false,false,false};
+            for(int i=0;i<cpnts.size() && i<3;i++){
+                if(i==0)v.x = try_strToBool(cpnts[i],false);
+                else if(i==1)v.y = try_strToBool(cpnts[i],false);
+                else if(i==2)v.z = try_strToBool(cpnts[i],false);
+            }
+            return v;
+        }else{
+            auto cpnt = try_strToBool(ss,false);
+            return vec<bool,3>{cpnt,cpnt,cpnt};
+        }
+    }
+
+    inline vec<bool,2> try_strToVec2b(const std::string& ss,vec<bool,2> def){
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            vec<bool,2> v = {false,false};
+            for(int i=0;i<cpnts.size() && i<2;i++){
+                if(i==0)v.x = try_strToBool(cpnts[i],false);
+                else if(i==1)v.y = try_strToBool(cpnts[i],false);
+            }
+            return v;
+        }else{
+            auto cpnt = try_strToBool(ss,false);
+            return vec<bool,2>{cpnt,cpnt};
+        }
+    }
+
+    inline vvec4f try_strToVec4f(const std::string& ss,vvec4f def){
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            vvec4f v = vzero4f;
+            for(int i=0;i<cpnts.size() && i<4;i++){
+                if(i==0) v.x = std::atof(cpnts[i].c_str());
+                else if(i==1) v.y = std::atof(cpnts[i].c_str());
+                else if(i==2) v.z = std::atof(cpnts[i].c_str());
+                else if(i==3) v.w = std::atof(cpnts[i].c_str());
+            }
+            return v;
         }else{
             auto cpnt = std::atof(ss.c_str());
-            return vec2f{cpnt,cpnt};
+            return vvec4f{cpnt,cpnt,cpnt,cpnt};
+        }
+    }
+    inline vvec3f try_strToVec3f(const std::string& ss,vvec3f def){
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            vvec3f v = vzero3f;
+            for(int i=0;i<cpnts.size() && i<3;i++){
+                if(i==0) v.x = std::atof(cpnts[i].c_str());
+                else if(i==1) v.y = std::atof(cpnts[i].c_str());
+                else if(i==2) v.z = std::atof(cpnts[i].c_str());
+            }
+            return v;
+        }else{
+            auto cpnt = std::atof(ss.c_str());
+            return vvec3f{cpnt,cpnt,cpnt};
+        }
+    }
+    inline vvec2f try_strToVec2f(const std::string& ss,vvec2f def){
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            vvec2f v = vzero2f;
+            for(int i=0;i<cpnts.size() && i<2;i++){
+                if(i==0) v.x = std::atof(cpnts[i].c_str());
+                else if(i==1) v.y = std::atof(cpnts[i].c_str());
+            }
+            return v;
+        }else{
+            auto cpnt = std::atof(ss.c_str());
+            return vvec2f{cpnt,cpnt};
         }
     }
 
@@ -265,53 +468,55 @@ namespace vnx {
 		std::cout << (hours % 60) << "h : " << (min % 60) << "m : " << (seconds % 60) << "s\n";
 	}
 
-	inline ygl::vec3f rgbtof(float r, float g, float b) {
-		return { r / 255.0f,g / 255.0f,b / 255.0f };
+    template<typename T>
+	inline vec<T,3> rgbto(T r,T g,T b) {
+		return { r / 255.0,g / 255.0,b / 255.0 };
 	}
 
-    inline float modulo(const float& x){return x - std::floor(x);}
+    template<typename T>
+    inline T modulo(const T& x){return x - std::floor(x);}
 
-	inline float sign(float v) {
-		if (v > 0.0f) { return 1.0f; }
-		else if (v < 0.0f) { return -1.0f; }
-		return 0.0f;
+	inline vfloat sign(vfloat v) {
+		if (v > 0.0) { return 1.0; }
+		else if (v < 0.0) { return -1.0; }
+		return 0.0;
 	}
 
-	inline float nz_sign(float v) { //zero is 1.0f
-		if (v >= 0.0f) { return 1.0f; }
-		return -1.0f;
+	inline vfloat nz_sign(vfloat v) { //zero is 1.0f
+		if (v >= 0.0) { return 1.0; }
+		return -1.0;
 	}
 
-	inline float nz_nz_sign(float v) { //zero is -1.0f
-		if (v >0.0f) { return 1.0f; }
-		return -1.0f;
+	inline vfloat nz_nz_sign(vfloat v) { //zero is -1.0f
+		if (v >0.0) { return 1.0; }
+		return -1.0;
 	}
 
-    inline float cotan(float x){
-        return 1.0f/(tan(x));
+    inline vfloat cotan(vfloat x){
+        return 1.0/(tan(x));
     }
 
-	inline float radians(float in) {
-		return (in*ygl::pif) / 180.0f;
+	inline vfloat radians(vfloat in) {
+		return (in*ygl::pi<vfloat>) / 180.0;
 	}
 
-	inline float degrees(float in){
-        return (in/ygl::pif)*180;
+	inline vfloat degrees(vfloat in){
+        return (in/ygl::pi<vfloat>)*180;
 	}
 
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
-	inline float gl_fract(float x) {
+	inline vfloat gl_fract(vfloat x) {
 		return x - std::floor(x);
 	}
 
     //SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
-	inline float gl_mod(float x,float y){
+	inline vfloat gl_mod(vfloat x,vfloat y){
         return x - y * floor(x/y);
 	}
 
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
-	inline float hash(float seed){
-		return gl_fract(sin(seed)*43758.5453f);
+	inline vfloat hash(vfloat seed){
+		return gl_fract(sin(seed)*43758.5453);
 	}
 
 	template <typename T> inline T max_element(const ygl::vec<T, 3>& v) { return std::max(v.x, std::max(v.y, v.z)); }
@@ -351,46 +556,46 @@ namespace vnx {
     template <typename T> inline T adot(const ygl::vec<T,3>& v1,const ygl::vec<T,3>& v2){ return abs(dot(v1,v2));}
     template <typename T> inline T adot(const ygl::vec<T,4>& v1,const ygl::vec<T,4>& v2){ return abs(dot(v1,v2));}
 
-    inline bool cmpf(float a, float b){
-        const float absA = abs(a);
-		const float absB = abs(b);
-		const float diff = abs(a - b);
+    inline bool cmpf(vfloat a, vfloat b){
+        const vfloat absA = abs(a);
+		const vfloat absB = abs(b);
+		const vfloat diff = abs(a - b);
 		if (a == b) {
 			return true;
-		} else if (a == 0 || b == 0 || diff < minf) {
-			return diff < (ygl::epsf * minf);
+		} else if (a == 0 || b == 0 || diff < minvf) {
+			return diff < (epsvf * minvf);
 		} else {
-			return diff / min((absA + absB), maxf) < ygl::epsf;
+			return diff / min((absA + absB), maxvf) < epsvf;
 		}
     }
 
-    inline bool cmpf(const vec3f& a,const vec3f& b){
+    inline bool cmpf(const vvec3f& a,const vvec3f& b){
         return cmpf(a.x,b.x) == cmpf(a.y,b.y) == cmpf(a.z,b.z);
     }
-    inline bool cmpf(const vec2f& a,const vec2f& b){
+    inline bool cmpf(const vvec2f& a,const vvec2f& b){
         return cmpf(a.x,b.x) == cmpf(a.y,b.y);
     }
-    inline bool cmpf(const vec4f& a,const vec4f& b){
+    inline bool cmpf(const vvec4f& a,const vvec4f& b){
         return cmpf(a.x,b.x) == cmpf(a.y,b.y) == cmpf(a.z,b.z) == cmpf(a.w,b.w);
     }
 
-    inline bool has_nan(const vec3f& a){
+    inline bool has_nan(const vvec3f& a){
         return std::isnan(a.x) || std::isnan(a.y) || std::isnan(a.z);
     }
 
-    inline bool has_nnormal(const vec3f& a){
+    inline bool has_nnormal(const vvec3f& a){
         return !(std::isnormal(a.x) && std::isnormal(a.y) && std::isnormal(a.z));
     }
 
-    inline bool has_inf(const vec3f& a){
+    inline bool has_inf(const vvec3f& a){
         return !(std::isfinite(a.x) && std::isfinite(a.y) && std::isfinite(a.z));
     }
 
-    inline bool is_zero_or_has_ltz(const vec3f& a){
-        return cmpf(a,zero3f) || a.x<-ygl::epsf || a.y<-ygl::epsf || a.z<-ygl::epsf;
+    inline bool is_zero_or_has_ltz(const vvec3f& a){
+        return cmpf(a,vzero3f) || a.x<-ygl::epsf || a.y<-ygl::epsf || a.z<-ygl::epsf;
     }
 
-    inline std::string _p(const vec3f& v){
+    inline std::string _p(const vvec3f& v){
         std::ostringstream oss;
         oss << v.x << "," << v.y << "," << v.z;
         return oss.str();
@@ -435,7 +640,7 @@ namespace vnx {
 
 	template<typename T> struct dual3Dom{
 
-	    dual3Dom<T>(const vec3f& p){
+	    dual3Dom<T>(const vvec3f& p){
             x = dual3<T>(p.x,{1.0f,0.0f,0.0f});
             y = dual3<T>(p.y,{0.0f,1.0f,0.0f});
             z = dual3<T>(p.z,{0.0f,0.0f,1.0f});
@@ -552,99 +757,98 @@ namespace vnx {
 	/////
 	/////
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/
-	inline float smin(float a, float b, float k)
+	inline vfloat smin(vfloat a, vfloat b, vfloat k)
 	{
-		float h = ygl::clamp(0.5f + 0.5f*(b - a) / k, 0.0f, 1.0f);
+		vfloat h = ygl::clamp(0.5 + 0.5*(b - a) / k, 0.0, 1.0);
 		return ygl::lerp(b, a, h) - k*h*(1.0 - h);
 	}
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/
-	inline float smax(float a, float b, float k)
+	inline vfloat smax(vfloat a, vfloat b, vfloat k)
 	{
-		float h = ygl::clamp(0.5f + 0.5f*(b - a) / k, 0.0f, 1.0f);
+		float h = ygl::clamp(0.5 + 0.5*(b - a) / k, 0.0, 1.0);
 		return ygl::lerp(a, b, h) + k*h*(1.0 - h);
 	}
 
     ///Credits : http://bl.ocks.org/benjaminabel/4355926 ///
-	inline ygl::vec3f spectral_to_rgb(float w) // RGB <0,1> <- lambda w <380,780> [nm]
-	{
-		float l = 0.0f; float R = 0.0f; float G = 0.0f; float B = 0.0f;
-        if (w >= 380.0f && w < 440.0f) {
-            R = -(w - 440.0f) / (440.0f - 350.0f);
-            G = 0.0f;
-            B = 1.0f;
-        } else if (w >= 440.0f && w < 490.0f) {
-            R = 0.0f;
-            G = (w - 440.0f) / (490.0f - 440.0f);
-            B = 1.0f;
-        } else if (w >= 490.0f && w < 510.0f) {
-            R = 0.0f;
-            G = 1.0f;
-            B = -(w - 510.0f) / (510.0f - 490.0f);
-        } else if (w >= 510.0f && w < 580.0f) {
-            R = (w - 510.0f) / (580.0f - 510.0f);
-            G = 1.0f;
-            B = 0.0f;
-        } else if (w >= 580.0f && w < 645.0f) {
-            R = 1.0f;
-            G = -(w - 645.0f) / (645.0f - 580.0f);
+	inline vvec3f spectral_to_rgb(vfloat w){ // RGB <0,1> <- lambda w <380,780> [nm]
+		vfloat l = 0.0f; vfloat R = 0.0; vfloat G = 0.0; vfloat B = 0.0;
+        if (w >= 380.0 && w < 440.0) {
+            R = -(w - 440.0) / (440.0 - 350.0);
+            G = 0.0;
+            B = 1.0;
+        } else if (w >= 440.0 && w < 490.0) {
+            R = 0.0;
+            G = (w - 440.0) / (490.0 - 440.0);
+            B = 1.0;
+        } else if (w >= 490.0 && w < 510.0) {
+            R = 0.0;
+            G = 1.0;
+            B = -(w - 510.0) / (510.0 - 490.0);
+        } else if (w >= 510.0 && w < 580.0) {
+            R = (w - 510.0) / (580.0 - 510.0);
+            G = 1.0;
             B = 0.0;
-        } else if (w >= 645.0f && w <= 780.0f) {
-            R = 1.0f;
-            G = 0.0f;
-            B = 0.0f;
+        } else if (w >= 580.0 && w < 645.0) {
+            R = 1.0;
+            G = -(w - 645.0) / (645.0 - 580.0);
+            B = 0.0;
+        } else if (w >= 645.0 && w <= 780.0) {
+            R = 1.0;
+            G = 0.0;
+            B = 0.0;
         } else {
-            R = 0.0f;
-            G = 0.0f;
-            B = 0.0f;
+            R = 0.0;
+            G = 0.0;
+            B = 0.0;
         }
 
-        if (w >= 380.0f && w < 420.0f) {
-            l = 0.3f + 0.7f * (w - 350.0f) / (420.0f - 350.0f);
-        } else if (w >= 420.0f && w <= 700.0f) {
-            l = 1.0f;
-        } else if (w > 700.0f && w <= 780.0f) {
-            l = 0.3f + 0.7f * (780.0f - w) / (780.0f - 700.0f);
+        if (w >= 380.0 && w < 420.0) {
+            l = 0.3 + 0.7 * (w - 350.0) / (420.0 - 350.0);
+        } else if (w >= 420.0 && w <= 700.0) {
+            l = 1.0;
+        } else if (w > 700.0 && w <= 780.0) {
+            l = 0.3 + 0.7 * (780.0 - w) / (780.0 - 700.0);
         } else {
-            l = 0.0f;
+            l = 0.0;
         }
 		return {l*R,l*G,l*B};
 	}
 
-	inline float blackbody_planks_law_wl(double t,double c,double wl) {
+	inline vfloat blackbody_planks_law_wl(vfloat t,vfloat c,vfloat wl) {
 	    wl = wl*1e-9;
 	    auto wl5 = wl*wl*wl*wl*wl;
         return (2*KH*c*c) / (wl5*(exp((KH*c)/(wl*KB*t)) -1));
 	}
 
-	inline float blackbody_planks_law_wl_normalized(double t,double c,double wl) {
+	inline vfloat blackbody_planks_law_wl_normalized(vfloat t,vfloat c,vfloat wl) {
 	    auto le = blackbody_planks_law_wl(t,c,wl);
-	    float lmax = KWD / t * 1e9; //wien
+	    vfloat lmax = KWD / t * 1e9; //wien
 	    auto lem = blackbody_planks_law_wl(t,c,lmax);
 	    return le / lem;
 	}
 
-	inline float stefan_boltzman_law(double t){
-        return (KSB / ygl::pif)*(t*t*t*t);
+	inline vfloat stefan_boltzman_law(vfloat t){
+        return (KSB / ygl::pi<vfloat>)*(t*t*t*t);
 	}
 
-	inline float wien_displacement_law(double t){
+	inline vfloat wien_displacement_law(vfloat t){
         return KWD * t;
 	}
 
-	inline float wl_from_frquency(double c,double f){
+	inline vfloat wl_from_frquency(vfloat c,vfloat f){
         return c/f;
 	}
 
-	inline float f_from_wl(double c,double wl){
+	inline vfloat f_from_wl(vfloat c,vfloat wl){
         return c/wl;
 	}
 
-	inline double thz_to_ghz(double f){
+	inline vfloat thz_to_ghz(vfloat f){
 	    return f*1e3;
 	}
 
     //.,.,.,nm^2,nm^2,nm^2,nm
-	inline float sellmeier_law(float b1, float b2, float b3, float c1, float c2, float c3, float wl) {
+	inline vfloat sellmeier_law(vfloat b1, vfloat b2, vfloat b3, vfloat c1, vfloat c2, vfloat c3, vfloat wl) {
 		wl *= 1e-2;
 		auto wl2 = wl*wl;
 		return std::sqrt(1 +
@@ -654,20 +858,20 @@ namespace vnx {
 		);
 	}
 
-	inline float F0_from_ior(float ior){
+	inline vfloat F0_from_ior(vfloat ior){
 	    return powf((ior-1.0f)/(ior+1.0f),2.0f);
 	}
 
 	struct VRay {
-		vec3f o = zero3f;
-		vec3f d = zero3f;
-		float tmin = 0.001f;
-		float tmax = 1000.0f;
-		float ior = 1.0f;
+		vvec3f o = vzero3f;
+		vvec3f d = vzero3f;
+		vfloat tmin = 0.001;
+		vfloat tmax = 1000.0;
+		vfloat ior = 1.0;
 
-		float wl = 0.0f;
-		float frequency = 0.0f;
-		float velocity = 0.0f;
+		vfloat wl = 0.0;
+		vfloat frequency = 0.0;
+		vfloat velocity = 0.0;
 
 
         VRay operator-() const {
@@ -685,8 +889,6 @@ namespace vnx {
         }
 	};
 
-	enum e_axis { X, Y, Z };
-
 	struct VMaterial {
 	    VMaterial(): id(""){}
 	    VMaterial(std::string idv){id=idv;}
@@ -696,24 +898,24 @@ namespace vnx {
         VMaterialType type = dielectric;
         VIorType ior_type = wl_dependant;
 
-		ygl::vec3f kr = ygl::zero3f;
-		ygl::vec3f ka = ygl::zero3f;
+		vvec3f kr = vzero3f;
+		vvec3f ka = vzero3f;
 
-		float k_sca = -1.0f;
+		vfloat k_sca = -1.0;
 
-		float e_temp = 0.0f;
-		float e_power = 0.0f;
+		vfloat e_temp = 0.0;
+		vfloat e_power = 0.0;
 
-		float ior = 1.0f;
-		float rs = 0.0f;
+		vfloat ior = 1.0;
+		vfloat rs = 0.0;
 
-		float sm_b1 = 0.0f;
-		float sm_b2 = 0.0f;
-		float sm_b3 = 0.0f;
+		vfloat sm_b1 = 0.0;
+		vfloat sm_b2 = 0.0;
+		vfloat sm_b3 = 0.0;
 
-		float sm_c1 = 0.0f;
-		float sm_c2 = 0.0f;
-		float sm_c3 = 0.0f;
+		vfloat sm_c1 = 0.0;
+		vfloat sm_c2 = 0.0;
+		vfloat sm_c3 = 0.0;
 
 		inline void Relate(VEntry* entry){
             entry->ptr = this;
@@ -739,23 +941,23 @@ namespace vnx {
 		inline bool is_transmissive() const { return k_sca>=-ygl::epsf;}
 		inline bool is_refractive() const { return is_transmissive() && (sm_b1>ygl::epsf || sm_b2>ygl::epsf || sm_b3>ygl::epsf || sm_c1>ygl::epsf || sm_c2>ygl::epsf || sm_c3>ygl::epsf);}
 
-		inline bool is_delta() const{return ((is_conductor() && rs<=ygl::epsf) || (is_transmissive() && rs<=ygl::epsf) || (is_dielectric() && !is_transmissive() && cmpf(kr,zero3f)));}
+		inline bool is_delta() const{return ((is_conductor() && rs<=ygl::epsf) || (is_transmissive() && rs<=ygl::epsf) || (is_dielectric() && !is_transmissive() && cmpf(kr,vzero3f)));}
 
-		inline bool has_kr(){return kr!=zero3f;}
+		inline bool has_kr(){return kr!=vzero3f;}
 
-		inline float eval_ior(float wl,float min_wl,float max_wl,bool do_wl_depend = true) const{
+		inline vfloat eval_ior(vfloat wl,vfloat min_wl,vfloat max_wl,bool do_wl_depend = true) const{
 		    if(ior_type==non_wl_dependant) return ior;
-		    if(!is_refractive()) return 1.0f;
+		    if(!is_refractive()) return 1.0;
 
             if(do_wl_depend) return sellmeier_law(sm_b1,sm_b2,sm_b3,sm_c1,sm_c2,sm_c3,wl);
 
             auto ior_min = sellmeier_law(sm_b1,sm_b2,sm_b3,sm_c1,sm_c2,sm_c3,min_wl);
             auto ior_max = sellmeier_law(sm_b1,sm_b2,sm_b3,sm_c1,sm_c2,sm_c3,max_wl);
-            return (ior_min+ior_max) / 2.0f;
+            return (ior_min+ior_max) / 2.0;
 
 		}
 
-		inline void eval_mutator(ygl::rng_state& rng,const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
+		inline void eval_mutator(ygl::rng_state& rng,const VResult& hit,const vvec3f& n, VMaterial& mat) {
 			if (mutator != nullptr){
                 mutator(rng, hit, n, mat);
 			}
@@ -764,19 +966,19 @@ namespace vnx {
 
 	struct VNode {
 		std::string id = "";
-		frame3f _frame = identity_frame3f;
-		vec3f translation = zero3f;
-		vec4f rotation = identity_quat4f;
-		vec3f scale = one3f;
+		vframe3f _frame = identity_vframe3f;
+		vvec3f translation = vzero3f;
+		vvec4f rotation = identity_vquat4f;
+		vvec3f scale = vone3f;
 		VRotationOrder rotation_order = VRO_XYZ;
 		displ_ftor displacement = nullptr;
 
 
 		VNode(std::string idv): id(idv) ,
-		_frame(identity_frame3f),
-		scale(one3f),
-		rotation(identity_quat4f),
-		translation(zero3f),
+		_frame(identity_vframe3f),
+		scale(vone3f),
+		rotation(identity_vquat4f),
+		translation(vzero3f),
 		rotation_order(VRO_XYZ),
 		displacement(nullptr){}
 
@@ -791,28 +993,28 @@ namespace vnx {
 
 		virtual inline const char* type() = 0;
 
-		inline float eval_displacement(const vec3f& p){
+		inline vfloat eval_displacement(const vvec3f& p){
 		    if(displacement!=nullptr){
                 return displacement(p);
 		    }
-		    return 0.0f;
+		    return 0.0;
 		}
 
-		inline void set_translation(const ygl::vec3f& a) { translation = a; }
-		inline void set_translation(float x, float y, float z) { translation = { x,y,z }; }
+		inline void set_translation(const vvec3f& a) { translation = a; }
+		inline void set_translation(vfloat x, vfloat y, vfloat z) { translation = { x,y,z }; }
 
-		inline void set_rotation(const ygl::vec3f& a) { rotation = { a.x,a.y,a.z,1 }; }
-		inline void set_rotation(float x, float y, float z) { rotation = { x,y,z,1 }; }
-		inline void set_rotation_degs(const ygl::vec3f& a) { rotation = { vnx::radians(a.x),vnx::radians(a.y),vnx::radians(a.z),1 }; }
-		inline void set_rotation_degs(float x, float y, float z) { rotation = { vnx::radians(x),vnx::radians(y),vnx::radians(z),1 }; }
-		inline void mod_rotation_degs(const ygl::vec3f& a) { rotation.x += vnx::radians(a.x), rotation.y += vnx::radians(a.y); rotation.z += vnx::radians(a.z); }
-		inline void mod_rotation_degs(float x, float y, float z) { rotation.x += vnx::radians(x), rotation.y += vnx::radians(y); rotation.z += vnx::radians(z); }
+		inline void set_rotation(const vvec3f& a) { rotation = { a.x,a.y,a.z,1 }; }
+		inline void set_rotation(vfloat x, vfloat y, vfloat z) { rotation = { x,y,z,1 }; }
+		inline void set_rotation_degs(const vvec3f& a) { rotation = { vnx::radians(a.x),vnx::radians(a.y),vnx::radians(a.z),1 }; }
+		inline void set_rotation_degs(vfloat x, vfloat y, vfloat z) { rotation = { vnx::radians(x),vnx::radians(y),vnx::radians(z),1 }; }
+		inline void mod_rotation_degs(const vvec3f& a) { rotation.x += vnx::radians(a.x), rotation.y += vnx::radians(a.y); rotation.z += vnx::radians(a.z); }
+		inline void mod_rotation_degs(vfloat x, vfloat y, vfloat z) { rotation.x += vnx::radians(x), rotation.y += vnx::radians(y); rotation.z += vnx::radians(z); }
 
 		inline void set_rotation_order(VRotationOrder ro){rotation_order = ro;}
 
-        inline void set_scale(float s){ if (s <= ygl::epsf) { scale = one3f; return; }  scale = {s,s,s}; }
-		inline void set_scale(const ygl::vec3f& a) { if (min_element(a) <= ygl::epsf) { scale = one3f; return; }  scale = a; }
-		inline void set_scale(float x, float y, float z) { if (min_element(ygl::vec3f{ x,y,z }) <= ygl::epsf) { scale = one3f; return; } scale = { x,y,z }; }
+        inline void set_scale(vfloat s){ if (s <= ygl::epsf) { scale = vone3f; return; }  scale = {s,s,s}; }
+		inline void set_scale(const vvec3f& a) { if (min_element(a) <= ygl::epsf) { scale = vone3f; return; }  scale = a; }
+		inline void set_scale(vfloat x, vfloat y, vfloat z) { if (min_element(vvec3f{ x,y,z }) <= ygl::epsf) { scale = vone3f; return; } scale = { x,y,z }; }
 
 		VNode* select(const std::string& n) {
 			auto chs = get_childs();
@@ -842,14 +1044,14 @@ namespace vnx {
 			return results;
 		}
 
-		inline virtual void eval(const vec3f& p,VResult& res) = 0;
+		inline virtual void eval(const vvec3f& p,VResult& res) = 0;
 	};
 
 	struct VVolume : public VNode {
 		VMaterial* mMaterial = nullptr;
 		~VVolume() {};
 
-		inline vec3f eval_ep(const vec3f& p){
+		inline vvec3f eval_ep(const vvec3f& p){
 		    return transform_point_inverse(_frame, p);// / scale;
 		}
 
@@ -905,12 +1107,12 @@ namespace vnx {
 		VMaterial* mat = nullptr;
 		VMaterial* vmat = nullptr;
 
-		float dist = maxf;
-		float vdist = maxf;
+		vfloat dist = maxvf;
+		vfloat vdist = maxvf;
 
 		//vec3f norm = zero3f; //still unused
-		vec3f wor_pos = zero3f;
-		vec3f loc_pos = zero3f;
+		vvec3f wor_pos = vzero3f;
+		vvec3f loc_pos = vzero3f;
 
 		bool _found = false;
 
@@ -919,30 +1121,30 @@ namespace vnx {
 	};
 
 	struct VCamera{
-        float focus = 1.0f;
-        float aperture = 0.0f;
-        float yfov = 45.0f;
+        vfloat focus = 1.0;
+        vfloat aperture = 0.0;
+        vfloat yfov = 45.0;
 
-        vec3f mOrigin = zero3f;
-        vec3f mTarget = zero3f;
-        vec3f mUp = {0,1,0};
+        vvec3f mOrigin = vzero3f;
+        vvec3f mTarget = vzero3f;
+        vvec3f mUp = {0,1,0};
 
         vec2f mResolution;
-        float mAspect;
+        vfloat mAspect;
 
-        mat4f mWorldToCamera = identity_mat4f;
-        mat4f mWorldToRaster = identity_mat4f;
-        mat4f mCameraToRaster = identity_mat4f;
-        mat4f mCameraToClip = identity_mat4f;
-        mat4f mClipToRaster = identity_mat4f;
+        vmat4f mWorldToCamera = identity_vmat4f;
+        vmat4f mWorldToRaster = identity_vmat4f;
+        vmat4f mCameraToRaster = identity_vmat4f;
+        vmat4f mCameraToClip = identity_vmat4f;
+        vmat4f mClipToRaster = identity_vmat4f;
 
 
-        mat4f mCameraToWorld = identity_mat4f;
-        mat4f mRasterToWorld = identity_mat4f;
-        mat4f mRasterToCamera = identity_mat4f;
+        vmat4f mCameraToWorld = identity_vmat4f;
+        vmat4f mRasterToWorld = identity_vmat4f;
+        vmat4f mRasterToCamera = identity_vmat4f;
 
         void Relate(const VEntry* entry){
-            yfov = radians(try_strToFloat(entry->try_at(1),45.0f));
+            yfov = radians(try_strToFloat(entry->try_at(1),45.0));
             mOrigin = try_strToVec3f(entry->try_at(2),mOrigin);
             mTarget = try_strToVec3f(entry->try_at(3),mTarget);
             mUp = try_strToVec3f(entry->try_at(4),mUp);
@@ -950,14 +1152,14 @@ namespace vnx {
 
         inline void Setup(const vec2f& resolution){
             mResolution = resolution;
-            mAspect = float(mResolution.x) / float(mResolution.y);
+            mAspect = vfloat(mResolution.x) / vfloat(mResolution.y);
 
             mClipToRaster =
-                frame_to_mat(scaling_frame(vec3f{mResolution.x,mResolution.y,1.0f}))*
-                frame_to_mat(scaling_frame(vec3f{0.5f,-0.5f,1.0f}))*
-                frame_to_mat(translation_frame(vec3f{1.0f,-1.0f,0.0f}));
+                frame_to_mat(scaling_frame(vvec3f{mResolution.x,mResolution.y,1.0}))*
+                frame_to_mat(scaling_frame(vvec3f{0.5,-0.5,1.0}))*
+                frame_to_mat(translation_frame(vvec3f{1.0,-1.0,0.0}));
 
-            mCameraToClip = perspective_mat(yfov,mAspect,0.1f,1.0f);
+            mCameraToClip = perspective_mat(yfov,mAspect,0.1,1.0);
             mCameraToRaster = mClipToRaster*mCameraToClip;
             mWorldToCamera = inverse(frame_to_mat(lookat_frame(mOrigin,mTarget,mUp)));
             mWorldToRaster = mCameraToRaster*mWorldToCamera;
@@ -969,17 +1171,17 @@ namespace vnx {
             mRasterToWorld = inverse(mWorldToRaster);
         }
 
-        inline bool inBounds(const vec3f& raster,vec2i& pid) const {
+        inline bool inBounds(const vvec3f& raster,vec2i& pid) const {
             pid = vec2i{int(std::round(raster.x)),int(std::round(raster.y))};
             return (pid.x>=0&&pid.x<int(mResolution.x) && pid.y>=0 && pid.y<int(mResolution.y));
         }
 
-        inline VRay Cast(float x,float y,const vec2f& uv) const{
-            vec3f raster_point = {x+uv.x,y+uv.y,0.0f};
-            vec3f view_dir = transform_point(mRasterToWorld,raster_point);
+        inline VRay Cast(vfloat x,vfloat y,const vec2f& uv) const{
+            vvec3f raster_point = {x+uv.x,y+uv.y,0.0};
+            vvec3f view_dir = transform_point(mRasterToWorld,raster_point);
 
             VRay rr;
-            rr.o = transform_point(mCameraToWorld,zero3f);
+            rr.o = transform_point(mCameraToWorld,vzero3f);
             rr.d = normalize(view_dir-rr.o);
             return rr;
         }
@@ -1015,39 +1217,39 @@ namespace vnx {
 			return materials[id];
 		}
 
-		bool set_translation(const std::string& idv, const ygl::vec3f& amount) {
+		bool set_translation(const std::string& idv, const vvec3f& amount) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
 			node->set_translation(amount);
 			return true;
 		}
-		bool set_translation(const std::string& idv,float x,float y,float z) {
+		bool set_translation(const std::string& idv,vfloat x,vfloat y,vfloat z) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
 			node->set_translation(x,y,z);
 			return true;
 		}
 
-		bool set_rotation(std::string n, const ygl::vec3f& amount) {
+		bool set_rotation(std::string n, const vvec3f& amount) {
 			auto node = select(n);
 			if (node == nullptr) { return false; }
 			node->set_rotation(amount);
 			return true;
 		}
-		bool set_rotation(std::string n,float x,float y,float z) {
+		bool set_rotation(std::string n,vfloat x,vfloat y,vfloat z) {
 			auto node = select(n);
 			if (node == nullptr) { return false; }
 			node->set_rotation(x,y,z);
 			return true;
 		}
 
-		bool set_rotation_degs(const std::string& idv, const ygl::vec3f& amount) {
+		bool set_rotation_degs(const std::string& idv, const vvec3f& amount) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
 			node->set_rotation_degs(amount);
 			return true;
 		}
-		bool set_rotation_degs(const std::string& idv,float x,float y,float z) {
+		bool set_rotation_degs(const std::string& idv,vfloat x,vfloat y,vfloat z) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
 			node->set_rotation_degs(x,y,z);
@@ -1061,22 +1263,22 @@ namespace vnx {
 			return true;
 		}
 
-		bool set_scale(const std::string& idv, const ygl::vec3f& amount) {
+		bool set_scale(const std::string& idv, const vvec3f& amount) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
 			node->set_scale(amount);
 			return true;
 		}
-		bool set_scale(const std::string& idv,float x,float y,float z) {
+		bool set_scale(const std::string& idv,vfloat x,vfloat y,vfloat z) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
 			node->set_scale(x,y,z);
 			return true;
 		}
-		bool set_scale(const std::string& idv, float amount) {
+		bool set_scale(const std::string& idv, vfloat amount) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
-			node->set_scale(vec3f{amount,amount,amount});
+			node->set_scale(vvec3f{amount,amount,amount});
 			return true;
 		}
 
@@ -1087,16 +1289,16 @@ namespace vnx {
 			return true;
 		}
 
-		inline VResult eval(const vec3f& p) const {
+		inline VResult eval(const vvec3f& p) const {
 		    VResult res;
 			if (root != nullptr) {root->eval(p,res);res.wor_pos = p;} //ensure wor_pos is set to world coord
 			return res;
 		}
-		inline void eval(const vec3f& p,VResult& res) const {
+		inline void eval(const vvec3f& p,VResult& res) const {
 			if (root != nullptr) {root->eval(p,res);res.wor_pos = p;} // ensure wor_pos is set to world coord
 		}
 
-		inline ygl::vec3f eval_normals_tht(const VResult& vre,float eps) const {
+		inline vvec3f eval_normals_tht(const VResult& vre,vfloat eps) const {
 			const auto p = vre.wor_pos;
                 VResult res;
                 root->eval(p + nv1*eps,res);
@@ -1110,22 +1312,22 @@ namespace vnx {
                 return normalize(n);
 		}
 
-		inline ygl::vec3f eval_normals_cnt(const VResult& vre,float eps) const {
+		inline vvec3f eval_normals_cnt(const VResult& vre,vfloat eps) const {
 			const auto p = vre.wor_pos;
 			VResult res;
 
-			vec3f norm = zero3f;
-			root->eval(p + vec3f{eps,0,0},res);
+			vvec3f norm = vzero3f;
+			root->eval(p + vvec3f{eps,0,0},res);
 			norm.x = res.dist;
-			root->eval(p - vec3f{eps,0,0},res);
+			root->eval(p - vvec3f{eps,0,0},res);
 			norm.x -= res.dist;
-			root->eval(p + vec3f{0,eps,0},res);
+			root->eval(p + vvec3f{0,eps,0},res);
 			norm.y = res.dist;
-			root->eval(p - vec3f{0,eps,0},res);
+			root->eval(p - vvec3f{0,eps,0},res);
 			norm.y -= res.dist;
-			root->eval(p + vec3f{0,0,eps},res);
+			root->eval(p + vvec3f{0,0,eps},res);
 			norm.z = res.dist;
-			root->eval(p - vec3f{0,0,eps},res);
+			root->eval(p - vvec3f{0,0,eps},res);
 			norm.z -= res.dist;
 
 			return normalize(norm);
@@ -1155,13 +1357,13 @@ namespace vnx {
         ///it simply cannot determine wether it is an "error" or a legit inside trace.
         ///TODO ,over rel & lipschitz fixer for "started inside" tracings
 		inline VResult intersect_rel(const VRay& ray,int miters,int& i) const{
-		    const float hmaxf = maxf/2.0f; ///consider using this to avoid over/underflows (depending on sign of the leading expression, it might happen, needs testing) .
+		    const vfloat hmaxf = maxvf/2.0; ///consider using this to avoid over/underflows (depending on sign of the leading expression, it might happen, needs testing) .
 		    ///P.S: DON'T use "maxf" , it WILL UNDERFlOW (of course...)
-		    const float maxf_m1 = maxf-1.0f;
-            float t=0.0;
-            float pd=maxf_m1;
-            float os=0.0;
-            float s = 1.0f;
+		    const vfloat maxf_m1 = maxvf-1.0;
+            vfloat t=0.0;
+            vfloat pd=maxf_m1;
+            vfloat os=0.0;
+            vfloat s = 1.0f;
             VResult vre;
             for(i=0;i<miters;i++){
                 eval(ray.o+ray.d*t,vre);
@@ -1176,7 +1378,7 @@ namespace vnx {
                 }else{  //started outside
                     if(absd>=abs(os)){
                         if(absd<ray.tmin){vre._found = true;/*vre.wor_pos+=(abs(d)*ray.d);*/ return vre;}
-                        os=d*min(1.0f,0.5f*d/pd);
+                        os=d*min(1.0,0.5*d/pd);
                         t+=d+os;
                         pd=d;
                     }else{
@@ -1193,7 +1395,7 @@ namespace vnx {
 
         ///original naive sphere tracing algorithm
 		inline VResult intersect(const VRay& ray, int miters,int& i) const {
-			float t = 0.0f;
+			vfloat t = 0.0;
 			VResult vre;
 			for(i=0;i<miters;i++){
                 eval(ray.o + (ray.d*t),vre);
@@ -1302,10 +1504,10 @@ namespace vnx {
 		inline virtual void post_init(VScene& scn) = 0;
 		inline virtual std::string type() const = 0;
 		inline virtual std::string img_affix(const VScene& scn) const {return std::string("");};
-		inline virtual void eval_image(const VScene& scn, ygl::rng_state& rng, image3f& img, int width,int height, int j) = 0;
+		inline virtual void eval_image(const VScene& scn, ygl::rng_state& rng, image3vf& img, int width,int height, int j) = 0;
 	};
 
-	inline void save_ppm(std::string fname, const image3f& img) {
+	inline void save_ppm(std::string fname, const image3vf& img) {
 		const int x = img.size.x, y = img.size.y;
 		FILE *fp = fopen((fname + ".ppm").c_str(), "wb");
 		fprintf(fp, "P3\n%d %d\n255\n", x, y);
@@ -1322,14 +1524,14 @@ namespace vnx {
 		fclose(fp);
 	}
 
-	inline ygl::vec3f rand_in_hemisphere_cos(const vec3f& pos, const ygl::vec3f& norm,const vec2f& rn) {
+	inline vvec3f rand_in_hemisphere_cos(const vvec3f& pos, const vvec3f& norm,const vec2f& rn) {
 		auto fp = ygl::make_frame_fromz(pos, norm);
 		auto rz = sqrtf(rn.x), rr = sqrtf(1 - rz * rz), rphi = 2 * ygl::pif * rn.y;
-		auto wi_local = ygl::vec3f{ rr * cosf(rphi), rr * sinf(rphi), rz };
+		auto wi_local = vvec3f{ rr * cosf(rphi), rr * sinf(rphi), rz };
 		return ygl::transform_direction(fp, wi_local);
 	}
 
-	inline VRay offsetted_ray(const ygl::vec3f& o,VRay rr, const ygl::vec3f& d, const float tmin, const float tmax, const ygl::vec3f& offalong, const float dist, float fmult = 2.0f) {
+	inline VRay offsetted_ray(const vvec3f& o,VRay rr, const vvec3f& d, const vfloat tmin, const vfloat tmax, const vvec3f& offalong, const vfloat dist, vfloat fmult = 2.0) {
 		rr.o = o + (offalong*(fmult * std::max(tmin, std::abs(dist))));
 		rr.d = d;
 		rr.tmin = tmin;
@@ -1342,50 +1544,51 @@ namespace vnx {
         return rr;
 	}
 
-	inline bool in_range_eps(float v,float vref,float eps){
+	inline bool in_range_eps(vfloat v,vfloat vref,vfloat eps){
         return (v>=vref-eps) && (v<=vref+eps);
 	}
 
-	frame3f calculate_frame(const VNode* node,const ygl::frame3f& parent = ygl::identity_frame3f){
-		if (node == nullptr) { return ygl::identity_frame3f; }
+	vframe3f calculate_frame(const VNode* node,const vframe3f& parent = identity_vframe3f){
+		if (node == nullptr) { return identity_vframe3f; }
 		auto fr = parent*ygl::translation_frame(node->translation);
 
 			switch(node->rotation_order){
             case VRO_XYZ:
-                fr=fr*ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x)*
-                    ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y)*
-                    ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z);
+                fr=fr*ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x)*
+                    ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y)*
+                    ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z);
                 break;
             case VRO_XZY:
-                fr=fr*ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x)*
-                    ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z)*
-                    ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y);
+                fr=fr*ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x)*
+                    ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z)*
+                    ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y);
                 break;
             case VRO_YXZ:
-                fr=fr*ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y)*
-                    ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x)*
-                    ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z);
+                fr=fr*ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y)*
+                    ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x)*
+                    ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z);
                 break;
             case VRO_YZX:
-                fr=fr*ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y)*
-                    ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z)*
-                    ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x);
+                fr=fr*ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y)*
+                    ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z)*
+                    ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x);
                 break;
             case VRO_ZXY:
-                fr=fr*ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z)*
-                    ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x)*
-                    ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y);
+                fr=fr*ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z)*
+                    ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x)*
+                    ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y);
                 break;
             case VRO_ZYX:
-                fr=fr*ygl::rotation_frame(ygl::vec3f{ 0,0,1 }, node->rotation.z)*
-                    ygl::rotation_frame(ygl::vec3f{ 0,1,0 }, node->rotation.y)*
-                    ygl::rotation_frame(ygl::vec3f{ 1,0,0 }, node->rotation.x);
+                fr=fr*ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z)*
+                    ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y)*
+                    ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x);
                 break;
 			}
-			return fr*scaling_frame(one3f/node->scale);
+			auto n_scale = !cmpf(node->scale,vzero3f) ? vone3f/node->scale : vone3f;
+			return fr*scaling_frame(n_scale);
 	}
 
-	void apply_transforms(VNode* node, const ygl::frame3f& parent = ygl::identity_frame3f) {
+	void apply_transforms(VNode* node, const vframe3f& parent = identity_vframe3f) {
 		node->_frame = calculate_frame(node,parent);
 		auto chs = node->get_childs();
 		if (chs.empty()) { return; }
@@ -1393,14 +1596,15 @@ namespace vnx {
 	}
 
     //TODO : FIX
-    inline vec2i precalc_emissive_hints_rejection(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,float ieps,float neps,bool verbose,frame3f parent_frame = ygl::identity_frame3f){
+    /*
+    inline vec2i precalc_emissive_hints_rejection(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,vfloat ieps,vfloat neps,bool verbose,vframe3f parent_frame = identity_vframe3f){
 		if (ptr == nullptr) { return {0,0}; }
 		vec2i stats = {0,0};
 
 		std::string id = p_prefix+ptr->id;
 		VResult vre;
         auto fr = calculate_frame(ptr,parent_frame); //HACK : risultato esatto , TODO test
-        auto epv = transform_point(fr, zero3f);
+        auto epv = transform_point(fr, vzero3f);
         scn.eval(epv,vre);
 
         vre._found = true;
@@ -1408,31 +1612,31 @@ namespace vnx {
             if(emap.find(id)==emap.end()){
                 auto vre_material = *vre.vmat;
                 if(vre_material.mutator!=nullptr){
-                    ygl::vec3f norm = scn.NORMALS_ALGO(vre, neps);
+                    vvec3f norm = scn.NORMALS_ALGO(vre, neps);
                     vre_material.eval_mutator(rng, vre, norm, vre_material);
                 };
-                if (vre.vdist<0.0f && vre_material.is_emissive()) {
+                if (vre.vdist<0.0 && vre_material.is_emissive()) {
                     std::vector<VResult>* epoints = &emap[id];
                     epoints->push_back(vre); stats.x++;
 
-                    float r = 1.0f;
-                    float step = 0.1f;
+                    float r = 1.0;
+                    float step = 0.1;
                     std::vector<VResult> old_points;
                     while(true){
                         std::vector<VResult> points;
                         float min_dist = maxf;
-                        for(int s=0;s<ceil(n_em_e*(r/4.0f));s++){
+                        for(int s=0;s<ceil(n_em_e*(r/4.0));s++){
                             auto p = rand3f_r(rng,-r,r);
                             VResult er;
                             scn.eval(transform_point(fr,p),er);
-                            if(er.vdist<0.0f && er.vsur->id == vre.vsur->id){
+                            if(er.vdist<0.0 && er.vsur->id == vre.vsur->id){
                                 auto er_material = *er.vmat;
                                 if(er_material.mutator!=nullptr){
                                     ygl::vec3f norm = scn.NORMALS_ALGO(er, neps);
                                     er_material.eval_mutator(rng, er, norm, er_material);
                                 };
                                 if(er_material.is_emissive()){
-                                    if(cmpf(r,1.0f) && (p.x<=r-step && p.x>=-r+step)&& (p.y<=r-step && p.y>=-r+step)&& (p.z<=r-step && p.z>=-r+step)) continue;
+                                    if(cmpf(r,1.0) && (p.x<=r-step && p.x>=-r+step)&& (p.y<=r-step && p.y>=-r+step)&& (p.z<=r-step && p.z>=-r+step)) continue;
                                     min_dist = min(min_dist,distance(er.wor_pos,vre.wor_pos));
                                     er._found = true;
                                     points.push_back(er);
@@ -1457,21 +1661,21 @@ namespace vnx {
 			stats+=precalc_emissive_hints_rejection(scn, rng, emap, node,id, n_em_e, ieps, neps, verbose, fr);
 		}
         return stats;
-    }
+    }*/
 
-    inline vec2i precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,float ieps,float neps,bool verbose,frame3f parent_frame = ygl::identity_frame3f) {
+    inline vec2i precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,vfloat ieps,vfloat neps,bool verbose,vframe3f parent_frame = identity_vframe3f) {
 		if (ptr == nullptr) { return {0,0}; }
 		vec2i stats = {0,0};
 
 		//std::string id = p_prefix+ptr->id;
         VResult vre;
         auto fr = calculate_frame(ptr,parent_frame); //HACK : risultato esatto , TODO test
-        auto epv = transform_point(fr, zero3f);
+        auto epv = transform_point(fr, vzero3f);
         scn.eval(epv,vre);
 
         vre._found = true;
         auto vre_material = *vre.mat;
-        ygl::vec3f norm = scn.NORMALS_ALGO(vre, neps);
+        vvec3f norm = scn.NORMALS_ALGO(vre, neps);
         if(vre_material.mutator!=nullptr){
             vre_material.eval_mutator(rng, vre, norm, vre_material);
         };
@@ -1480,16 +1684,16 @@ namespace vnx {
             vre_vmaterial.eval_mutator(rng, vre, norm, vre_vmaterial);
         };
         if(vre_vmaterial.is_emissive() || vre_material.is_emissive()){
-            auto dir = ygl::sample_sphere_direction(ygl::get_random_vec2f(rng));
-            auto ray = VRay{epv,dir,ieps,1000.0f};
+            auto dir = sample_sphere_direction_vf(ygl::get_random_vec2f(rng));
+            auto ray = VRay{epv,dir,ieps,1000.0};
             VResult fvre = vre;
             for (int i=0; i < n_em_e; i++) {
                 int n_iters = 0;
                 vre = scn.INTERSECT_ALGO(ray,512,n_iters);
 
                 if(!vre.found()){
-                    dir = ygl::sample_sphere_direction(ygl::get_random_vec2f(rng));
-                    ray = offsetted_ray(fvre.wor_pos,{},dir,ieps,1000.0f,zero3f,0.0f);
+                    dir = sample_sphere_direction_vf(ygl::get_random_vec2f(rng));
+                    ray = offsetted_ray(fvre.wor_pos,{},dir,ieps,1000.0,vzero3f,0.0);
                     stats.y++;
                     continue;
                 }
@@ -1505,11 +1709,11 @@ namespace vnx {
                 dir = ygl::transform_direction(fp, wh_local);*/
                 //
                 auto rn = ygl::get_random_vec2f(rng);
-                auto fp = dot(ray.d,norm) > 0.0f ? ygl::make_frame_fromz(zero3f, -norm) : ygl::make_frame_fromz(zero3f, norm); // TEST -norm && norm
-                dir = ygl::transform_direction(fp,ygl::sample_hemisphere_direction(rn));
+                auto fp = dot(ray.d,norm) > 0.0 ? ygl::make_frame_fromz(vzero3f, -norm) : ygl::make_frame_fromz(vzero3f, norm); // TEST -norm && norm
+                dir = ygl::transform_direction(fp,sample_hemisphere_direction_vf(rn));
 
                 dir = -ygl::reflect(ray.d,dir);
-                ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0f,dot(ray.d,norm)>0 ? -norm : norm,vre.dist); //TEST -norm && norm
+                ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0,dot(ray.d,norm)>0 ? -norm : norm,vre.dist); //TEST -norm && norm
 
                 auto er_material = *vre.mat;
                 if(er_material.mutator!=nullptr){
@@ -1554,27 +1758,27 @@ namespace vnx {
 	}
 
 	///Procedural patterns utilities
-    inline bool on_pattern_gradient_oblique(const vec3f& loc_pos,float angle,float sx){
+    inline bool on_pattern_gradient_oblique(const vvec3f& loc_pos,vfloat angle,float sx){
         angle = radians(angle);
-        const float cangle = std::cos(angle);
-        const float sangle = std::sin(angle);
+        const vfloat cangle = std::cos(angle);
+        const vfloat sangle = std::sin(angle);
 
-        float s = loc_pos.x * cangle - loc_pos.y * sangle;
-        float t = loc_pos.y * cangle + loc_pos.x * sangle;
-        if((modulo(s * sx) < 0.5f)){
+        vfloat s = loc_pos.x * cangle - loc_pos.y * sangle;
+        vfloat t = loc_pos.y * cangle + loc_pos.x * sangle;
+        if((modulo(s * sx) < 0.5)){
             return true;
         }
         return false;
     }
 
-    inline bool on_pattern_gradient_checker(const vec3f& loc_pos,float angle,const vec2f& sc){
+    inline bool on_pattern_gradient_checker(const vvec3f& loc_pos,vfloat angle,const vec2f& sc){
         angle = radians(angle);
-        const float cangle = std::cos(angle);
-        const float sangle = std::sin(angle);
+        const vfloat cangle = std::cos(angle);
+        const vfloat sangle = std::sin(angle);
 
-        float s = loc_pos.x * cangle - loc_pos.y * sangle;
-        float t = loc_pos.y * cangle + loc_pos.x * sangle;
-        if((modulo(s * sc.x) < 0.5f) || (modulo(t * sc.y) < 0.5f)){
+        vfloat s = loc_pos.x * cangle - loc_pos.y * sangle;
+        vfloat t = loc_pos.y * cangle + loc_pos.x * sangle;
+        if((modulo(s * sc.x) < 0.5) || (modulo(t * sc.y) < 0.5)){
             return true;
         }
         return false;

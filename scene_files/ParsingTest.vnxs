@@ -4,11 +4,12 @@
 ;;Translation,Rotation,Scale,RotationOrder
 ;;
 
-vvo_sd_plane("plane","diffuse_mat",{0.0,-1.0,0.0},0.0,1.0,XYZ)
+;vvo_sd_plane("plane","diffuse_mat",{0.0,-1.0,0.0},0.0,1.0,XYZ)
+vvo_sd_sphere("plane","diffuse_mat",{0,-3003.0,0},0.0,1.0,XYZ,3000.0)
 vvo_sd_box("box","diffuse_mat2",{0.0,-1.0,0.0},{25,25,0},1.0,XYZ)
 vvo_sd_sphere("light","light_mat",{-8.0,20.0,8.0},0.0,1.0,XYZ)
 
-vop_union("root_union",{1.0,0.0,0.0},0.0,{1.0,1.0,1.0},XYZ,0.0,{"box","plane","light"})
+vop_union("root_union",{0.0,0.0,0.0},0.0,{1.0,1.0,1.0},XYZ,{"box","plane","light"})
 
 vmaterial("diffuse_mat2",d,nwl,{0.5,0.5,0.5})
 vmaterial("diffuse_mat",d,nwl,{0.8,0.3,0.3})
