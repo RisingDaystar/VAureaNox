@@ -51,6 +51,7 @@ Same settings, but using ***doubles***
 ![32spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32_doubles.jpg)
 
 With doubles, first artifacts appear using a sphere of ***radius 3000000000000*** !
+(Of course this depends on the host system) 
 
 Preformance wise , didn't notice any drop
 
