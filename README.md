@@ -28,10 +28,10 @@ Features a selection of SDF volumes (prefer calling this way...see below) and op
 
 To assemble scene, utility functions are provided to univocally select items in the scene graph and manipolate them.
 
-Sphere tracing: Uses a non naive approach to sphere tracing , using a self crafted technique (influenced by sphere overrelaxing techniques : [source](http://erleuchtet.org/~cupe/permanent/enhanced_sphere_tracing.pdf) ) , which both improves rendering speed and precision.
+Sphere tracing: Uses a non naive approach to sphere tracing , using a self crafted technique (influenced by sphere overrelaxing techniques : [***erleuchtet.org***](http://erleuchtet.org/~cupe/permanent/enhanced_sphere_tracing.pdf) and [***fractalforums.com***](http://www.fractalforums.com/3d-fractal-generation/enhanced-sphere-tracing-paper/) ) , which both improves rendering speed and precision.
 Expecially it allows to trace against non C1 continuous and non lipschitz continuous distance functions reducing artifacts by a lot.
 It can trace inside volumes natively.
-Naive sphere tracing doesn't have a good time in this cases ( basically : it gets stuck or it returns a black pixel, depending on implementation).
+Naive sphere tracing doesn't have a good time in this cases ( basically : it gets stuck or it returns a null intersection, depending on implementation).
 For this purpose i use a double distance system (dist and vdist) [TODO: explain]
 
 
