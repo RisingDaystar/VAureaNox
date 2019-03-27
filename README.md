@@ -65,7 +65,7 @@ This scene is made with a large use of twist operator and other "non distance co
 
 Notice the amount of artifacts for the standard algorithm , caused by rays "overstepping" the boundary of the volume and then going further inside reaching the maximum number of iterations (at this point are considered as a "miss") , the same happens along the spiral surface: the hole seen on the whole surface are caused by the same phenomena.
 
-Also, the horizon line seems to be "lower" compared to the Custom algorithm render, that's because the standard algorithm reaches the max number of iterations much faster (Custom algorithm uses controlled overrelaxing).
+Also, the horizon line seems to be "lower" compared to the Custom algorithm render, that's because the standard algorithm reaches the max number of iterations much faster (Custom algorithm uses overrelaxing).
 
 Finally, the custom algorithm runs about 15% faster on average than the standard one.
 
