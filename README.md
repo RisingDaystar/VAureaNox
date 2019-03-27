@@ -44,14 +44,19 @@ This scene uses a huge sphere as "floor" (***radius 3000***)
 
 Using ***floats***, precision related artifacts appeared (intersection precision related, not renderer related) 
 
-![32spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32.jpg)
-
-Same settings, but using ***doubles***
-
-![32spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32_doubles.jpg)
-
-With doubles, first artifacts appear using a sphere of ***radius 3000000000000*** !
+Using ***doubles***, first artifacts appear using a sphere of ***radius 3000000000000*** !
 (Of course this depends on the host system) 
+
+<table>
+  <tr>
+    <th>Floats</th>
+    <th>Doubles</th>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32.jpg" width="400"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32_doubles.jpg" width="400"></td>
+  </tr>
+ </table>
 
 Preformance wise , didn't notice any drop
 
