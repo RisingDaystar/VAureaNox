@@ -40,7 +40,7 @@ Sphere tracing: Uses a non naive approach to sphere tracing , using a self craft
 Expecially it allows to trace against non C1 continuous and non lipschitz continuous distance functions reducing artifacts by a lot.
 It can trace inside volumes natively.
 Naive sphere tracing doesn't have a good time in this cases ( basically : it gets stuck, oversteps, or it returns a null intersection, depending on implementation).
-For this purpose i use a double distance system (dist and vdist) [TODO: explain]
+For this purpose i use a double distance system (dist and vdist)
 
 The distance function is calculated just once, the 2 distance values are obtained by making different assumptions on the operators.
 
