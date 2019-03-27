@@ -26,6 +26,7 @@ There is basilar support for homogeneous and scattering media, so far (v 0.07) o
 
 Materials can be attached with a mutator , which allows to change the evaluated material at runtime , accounting also for normals and object loc/world pos...
 
+<br />
 <h4>
   <b>SDFs</b>
   <hr />
@@ -80,6 +81,7 @@ Finally, the custom algorithm runs about 15% faster on average than the standard
 
 Work is in progress on finding a way to apply the improved behaviour also in this case.
 
+<br />
 <h4>
   <b>Post V 0.07 changes</b>
   <hr />
