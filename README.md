@@ -111,7 +111,7 @@ Preformance wise , didn't notice any drop
 
 Other improvements include way less rays lost during emissive precalc (most of the times , 0)
 
-
+<br />
 <h4>
   <b>Images</b>
   <hr />
