@@ -22,7 +22,10 @@ Refractive materials with fixed or variable ior accounting for ray wavelength (k
 
 Materials can be attached with a mutator , which allows to change the evaluated material at runtime , accounting also for normals and object loc/world pos...
 
-///***SDFS***
+<h4>
+  <b>SDFs</b>
+  <hr />
+</h4>
 
 Features a selection of SDF volumes (prefer calling this way...see below) and operators to combine/deform/displace them.
 
@@ -36,7 +39,10 @@ For this purpose i use a double distance system (dist and vdist) [TODO: explain]
 
 
 
-///***Post V 0.07 changes***
+<h4>
+  <b>Post V 0.07 changes</b>
+  <hr />
+</h4>
 
 Changed system to use doubles instead of floats , this fixed a lot of issues (mostly false/missing intersections) and improved  overall rendering quality.
 
@@ -56,14 +62,17 @@ Using ***doubles***, first artifacts appear using a sphere of ***radius 30000000
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32.jpg" width="400"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32_doubles.jpg" width="400"></td>
   </tr>
- </table>
+</table>
 
 Preformance wise , didn't notice any drop
 
 Other improvements include way less rays lost during emissive precalc (most of the times , 0)
 
 
-//***Images***
+<h4>
+  <b>Images</b>
+  <hr />
+</h4>
 
 4096 spp , dispersion enabled
 
