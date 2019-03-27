@@ -41,7 +41,22 @@ It can trace inside volumes natively.
 Naive sphere tracing doesn't have a good time in this cases ( basically : it gets stuck or it returns a null intersection, depending on implementation).
 For this purpose i use a double distance system (dist and vdist) [TODO: explain]
 
+This scene is made with a large use of twist operator and other "non distance conserving" operators combinations, which makes the distance field not lipschitz continuous.
 
+<table>
+  <tr>
+    <th>Standard algorithm</th>
+    <th>Custom algorithm</th>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_img01.jpg" width="400"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_img00.jpg" width="400"></td>
+  </tr>
+</table>
+
+Notice the amount of artifacts for the standard algorithm , caused by rays "overstepping" the boundary of the volume and then going further inside reaching the maximum number of iterations (at this point are considered as a "miss") , the same happens along the spiral surface: the hole seen on the whole surface are caused by the same phenomena.
+
+Also, the horizon line seems to be "lower" compared to the Custom algorithm render, that's because the standard algorithm reaches the max number of iterations much faster (Custom algorithm uses controlled overrelaxing)
 
 <h4>
   <b>Post V 0.07 changes</b>
