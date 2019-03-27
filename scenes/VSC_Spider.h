@@ -25,7 +25,7 @@ using namespace vnx;
 
 namespace vscndef {
 
-	vnx::VNode* make_shell(const std::string& name, vnx::VMaterial* mat, const vvec3f& dims) {
+	vnx::VNode* make_shell(const std::string& name, vnx::VMaterial* mat, const vec3vf& dims) {
 		using namespace vnx;
 		vop_subtraction* sh_root = new vop_subtraction(name, 0.02f, {
 			new vvo_sd_ellipsoid(name + "_el",mat,dims),
@@ -388,9 +388,9 @@ namespace vscndef {
 		};
 		grey_diffuse_no_refl_adv->mutator = mtor;*/
 
-		auto ftor = [](const vvec3f& wor_pos, vvec3f& loc_pos, const VNode* tref) {
+		auto ftor = [](const vec3vf& wor_pos, vec3vf& loc_pos, const VNode* tref) {
 			loc_pos = ygl::transform_point_inverse(tref->_frame, wor_pos) / tref->scale;
-			float dv = ygl::dot(loc_pos, ygl::normalize(vvec3f{ 0,1,0 }));
+			float dv = ygl::dot(loc_pos, ygl::normalize(vec3vf{ 0,1,0 }));
 
 			dv += sin(wor_pos.x)*sin(wor_pos.y)*sin(wor_pos.z);
 			return dv*(1.0f / 2.0f);
@@ -399,9 +399,9 @@ namespace vscndef {
 		auto base_plane_v = new vvo_sd_plane("base_plane_v", grey_diffuse_no_refl_adv);
 
 
-		auto ftor2 = [](const vvec3f& wor_pos,const vvec3f& loc_pos, const VNode* tref) {
+		auto ftor2 = [](const vec3vf& wor_pos,const vec3vf& loc_pos, const VNode* tref) {
 			//loc_pos = ygl::transform_point_inverse(tref->_frame, wor_pos);
-			float dv = ygl::dot(loc_pos, ygl::normalize(vvec3f{ 0,1,0 }));
+			float dv = ygl::dot(loc_pos, ygl::normalize(vec3vf{ 0,1,0 }));
 
 			dv += sin(wor_pos.x / 6.0f)*sin(wor_pos.z / 6.0f)*0.8f;
 

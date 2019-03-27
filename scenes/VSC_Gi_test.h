@@ -44,7 +44,7 @@ namespace vscndef {
         diffuse_red_mat->kr = {0.4,0.0,0.0};
 
 		auto carbon_diamond_material = scn.add_material("diamond_material");
-        carbon_diamond_material->ka = vvec3f{0.01,0.01,0.01};
+        carbon_diamond_material->ka = vec3vf{0.01,0.01,0.01};
         carbon_diamond_material->sm_b1 = 0.3306;
         carbon_diamond_material->sm_c1 = 0.1750;
         carbon_diamond_material->sm_b2 = 4.3356;
@@ -67,7 +67,7 @@ namespace vscndef {
         diffuse_exp->ior = 1.4;
         diffuse_exp->kr = {0.6,0.0f,0.0};
         diffuse_exp->rs = 0.15;
-		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const vvec3f& n, VMaterial& mat) {
+		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const vec3vf& n, VMaterial& mat) {
            if(dot(hit.wor_pos,hit.loc_pos)>0){mat.kr = {0.1,0.1,0.1};}
 		};
         diffuse_exp->mutator = mtor_e;
@@ -77,7 +77,7 @@ namespace vscndef {
         diffuse_mat->ior = 1.8;
         diffuse_mat->kr = {0.8,0.8,0.8};
         diffuse_mat->rs = 0.15;
-		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const vvec3f& n, VMaterial& mat) {
+		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const vec3vf& n, VMaterial& mat) {
 			if (std::abs(sin(hit.loc_pos.x)) < 0.03 || std::abs(sin(hit.loc_pos.z)) < 0.03) {
                     mat.type = conductor;
                     mat.kr = {0.4,0.4,0.5};
@@ -130,7 +130,7 @@ namespace vscndef {
                 }),
             }),
 
-           new vop_cut("sph2_group",{1,1,1},vzero3f,0.1,{
+           new vop_cut("sph2_group",{1,1,1},zero3vf,0.1,{
               //new vvo_sd_sphere("coat2",partecipating_test,1.8f),
               new vop_onion("sph2_o",0.2f,new vvo_sd_sphere("sph2",steel,3.5)),
            }),
@@ -140,17 +140,17 @@ namespace vscndef {
         scn.set_translation("sph2_group",{2,2,10});
         scn.set_translation("light",{0,180,0});
 
-        auto ftor = [](const vvec3f& p){
-            const float f = 6.0;
-            const float fd = f*1;
-            return (sin(f*p.x)*sin(f*p.y)*sin(f*p.z))/fd; //18= 1/20 + 1/20 + 1/20 ///limiti della funzione sin (e cos...)
+        auto ftor = [](const vec3vf& p){
+            const vfloat f = 6.0;
+            const vfloat fd = f*1;
+            return (std::sin(f*p.x)*std::sin(f*p.y)*std::sin(f*p.z))/fd; //18= 1/20 + 1/20 + 1/20 ///limiti della funzione sin (e cos...)
         };
         scn.set_displacement("ring",ftor);
 
-        auto ftor3 = [](const vvec3f& p){
-            const float f = 1;
-            const float fd = f*1;
-            return (sin(f*p.x)*sin(f*p.y)*sin(f*p.z))/fd; //18= 1/20 + 1/20 + 1/20 ///limiti della funzione sin (e cos...)
+        auto ftor3 = [](const vec3vf& p){
+            const vfloat f = 1;
+            const vfloat fd = f*1;
+            return (std::sin(f*p.x)*std::sin(f*p.y)*std::sin(f*p.z))/fd; //18= 1/20 + 1/20 + 1/20 ///limiti della funzione sin (e cos...)
         };
         scn.set_displacement("plane_sub_t",ftor3);
         scn.set_scale("ring",{1.2,1.0,1.2});

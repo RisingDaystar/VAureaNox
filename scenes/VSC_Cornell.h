@@ -53,7 +53,7 @@ namespace vscndef {
         //diff_white->ior = 1.2f;
 
 		auto carbon_diamond_material = scn.add_material("diamond_material");
-        carbon_diamond_material->ka = vvec3f{0.01f,0.01f,0.01f};
+        carbon_diamond_material->ka = vec3vf{0.01f,0.01f,0.01f};
         carbon_diamond_material->sm_b1 = 0.3306f;
         carbon_diamond_material->sm_c1 = 0.1750f;
         carbon_diamond_material->sm_b2 = 4.3356f;
@@ -62,13 +62,13 @@ namespace vscndef {
         //carbon_diamond_material->rs = 0.01f;
 
         auto water_material = scn.add_material("water_material");
-        water_material->ka = vvec3f{0.5f,0.5,0.01f};
+        water_material->ka = vec3vf{0.5f,0.5,0.01f};
         water_material->ior_type = non_wl_dependant;
         water_material->ior = 1.370f;
         water_material->k_sca = 0.0f;
 
         auto highior_material = scn.add_material("highior_material");
-        highior_material->ka = vvec3f{0.0f,0.0f,0.0f};
+        highior_material->ka = vec3vf{0.0f,0.0f,0.0f};
         highior_material->ior_type = non_wl_dependant;
         highior_material->ior = 2.770f;
         highior_material->k_sca = 0.0f;
@@ -94,7 +94,7 @@ namespace vscndef {
 
 
         auto no_refr_media = scn.add_material("no_refr_media");
-        no_refr_media->ka = vvec3f{0.41f,0.41f,0.41f};
+        no_refr_media->ka = vec3vf{0.41f,0.41f,0.41f};
         no_refr_media->k_sca = 0.0f;
 
         auto sp_mat2 = scn.add_material("sp_mat2");
@@ -109,12 +109,12 @@ namespace vscndef {
         auto cornell_composite_mat = scn.add_material("cornell_composite_mat");
         cornell_composite_mat->kr = {0.4f,0.4f,0.4f};
         cornell_composite_mat->rs = 0.5f;
-		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const vvec3f& n, VMaterial& mat) {
+		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const vec3vf& n, VMaterial& mat) {
            if(hit.loc_pos.x<=-3.945f){mat.kr = {0.0f,0.4f,0.0f};/*mat.ks={1.0f,1.0f,1.0f};*/}
            else if(hit.loc_pos.x>=3.945f){mat.kr = {0.4f,0.0f,0.0f};/*mat.ks={1.0f,1.0f,1.0f};*/}
            else if(hit.loc_pos.z<-3.9f){
                 if(on_pattern_gradient_oblique(hit.loc_pos,45,5)){
-                    mat.kr = vone3f; //zero3f
+                    mat.kr = one3vf; //zero3f
                 }
            }
 		};

@@ -36,14 +36,14 @@ namespace vnx {
 		struct VSample{
             VRay ray;
             v_sample_type type = s_undefined;
-            vvec2f pdf_factor = vone2f;
+            vec2vf pdf_factor = one2vf;
 		};
 
 		struct VSampleEx{
-            VSampleEx(): sample({}),w(vzero3f),ge(true),b(0){};
-		    VSampleEx(VSample samplev,vvec3f wv,bool gev,int bv): sample(samplev),w(wv),ge(gev),b(bv){};
+            VSampleEx(): sample({}),w(zero3vf),ge(true),b(0){};
+		    VSampleEx(VSample samplev,vec3vf wv,bool gev,int bv): sample(samplev),w(wv),ge(gev),b(bv){};
             VSample sample;
-            vvec3f w;
+            vec3vf w;
             bool ge;
             int b;
 		};
@@ -73,10 +73,10 @@ namespace vnx {
 		int n_ray_samples = 1;
 		int n_max_march_iterations = 512;
 
-		vfloat f_ray_tmin = 0.001f;
-		vfloat f_ray_tmax = 1000.0f;
-		vfloat f_normal_eps = 0.0001f;
-		vfloat f_refracted_ray_eps_mult = 2.0f;
+		vfloat f_ray_tmin = 0.001;
+		vfloat f_ray_tmax = 1000.0;
+		vfloat f_normal_eps = 0.0001;
+		vfloat f_refracted_ray_eps_mult = 2.0;
 		vfloat f_min_wl = 400;
 		vfloat f_max_wl = 700;
 
@@ -98,22 +98,22 @@ namespace vnx {
 			if (n_max_march_iterations <= 0) { throw VException("n_max_march_iterations < 0"); }
 
 			f_ray_tmin = try_get("f_ray_tmin", f_ray_tmin);
-			if (f_ray_tmin <= 0.0) { throw VException("f_ray_tmin <= 0.0f"); }
+			if (f_ray_tmin <= 0.0) { throw VException("f_ray_tmin <= 0.0"); }
 
 			f_ray_tmax = try_get("f_ray_tmax", f_ray_tmax);
-			if (f_ray_tmax <= 0.0) { throw VException("f_ray_tmax <= 0.0f"); }
+			if (f_ray_tmax <= 0.0) { throw VException("f_ray_tmax <= 0.0"); }
 
 			f_normal_eps = try_get("f_normal_eps", f_normal_eps);
-			if (f_normal_eps <= 0.0) { throw VException("f_normal_eps <= 0.0f"); }
+			if (f_normal_eps <= 0.0) { throw VException("f_normal_eps <= 0.0"); }
 
 			f_refracted_ray_eps_mult = try_get("f_refracted_ray_eps_mult", f_refracted_ray_eps_mult);
-			if (f_refracted_ray_eps_mult <= 0.0) { throw VException("f_refracted_ray_eps_mult <= 0.0f"); }
+			if (f_refracted_ray_eps_mult <= 0.0) { throw VException("f_refracted_ray_eps_mult <= 0.0"); }
 
 			f_min_wl = try_get("f_min_wl", f_min_wl);
-			if (f_min_wl <= 0.0) { throw VException("f_min_wl <= 0.0f"); }
+			if (f_min_wl <= 0.0) { throw VException("f_min_wl <= 0.0"); }
 
 			f_max_wl = try_get("f_max_wl", f_min_wl);
-			if (f_max_wl <= 0.0) { throw VException("f_max_wl <= 0.0f"); }
+			if (f_max_wl <= 0.0) { throw VException("f_max_wl <= 0.0"); }
 
 			b_debug_normals = try_get("b_debug_normals", b_debug_normals);
 
@@ -132,7 +132,7 @@ namespace vnx {
             return true;
 		}*/
 
-		inline bool russian_roulette(ygl::rng_state& rng,vvec3f& w){
+		inline bool russian_roulette(ygl::rng_state& rng,vec3vf& w){
             auto rrprob = min(max_element(w), 0.95);
             if (get_random_float(rng) > rrprob) return false;
             w *= 1.0 / rrprob;
@@ -142,36 +142,36 @@ namespace vnx {
 		//////Hints from
 		//https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 		//////
-        inline vvec3f reflect(const vvec3f &I, const vvec3f &N){
+        inline vec3vf reflect(const vec3vf &I, const vec3vf &N){
             return I - 2 * dot(I,N) * N;
         }
 		//////Hints from
 		//https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 		//////
-        inline vvec3f refract(const vvec3f &I, const vvec3f &N,vfloat etai,vfloat etat){
+        inline vec3vf refract(const vec3vf &I, const vec3vf &N,vfloat etai,vfloat etat){
             vfloat cosi = ygl::clamp(dot(I,N),-1.0, 1.0);
-            vvec3f n = N;
+            vec3vf n = N;
             if (cosi < 0) { cosi = -cosi; } else { /*std::swap(etai, etat);*/ n= -N; }
             vfloat eta = etai / etat;
             vfloat k = 1 - eta * eta * (1 - cosi * cosi);
-            return k < 0 ? vzero3f : eta * I + (eta * cosi - sqrtf(k)) * n;
+            return k < 0 ? zero3vf : eta * I + (eta * cosi - std::sqrt(k)) * n;
         }
 
-		inline vvec3f brdf_diffuse_ashikhmin(const VMaterial& m,const vfloat Rs,const VRay& wi,const VRay& wo,vfloat ndi,vfloat ndo){
-            auto rfc = ((28.0)/(23.0*ygl::pi<vfloat>))*m.kr*(1.0-Rs);
-            auto rfc2 = (1.0-std::pow(1.0-(abs(ndi)/2.0),5.0))*(1.0-std::pow(1.0-(abs(ndo)/2.0),5.0));
+		inline vec3vf brdf_diffuse_ashikhmin(const VMaterial& m,const vfloat Rs,const VRay& wi,const VRay& wo,vfloat ndi,vfloat ndo){
+            auto rfc = ((28.0)/(23.0*pivf))*m.kr*(1.0-Rs);
+            auto rfc2 = (1.0-std::pow(1.0-(std::abs(ndi)/2.0),5.0))*(1.0-std::pow(1.0-(std::abs(ndo)/2.0),5.0));
             return rfc*rfc2;
 		}
 
 		inline vfloat brdf_cook_torrance_G(vfloat ndi,vfloat ndo,vfloat ndh,vfloat odh){
-            return std::min(1.0,std::min( (2.0*abs(ndh)*abs(ndo))/abs(odh), (2.0*abs(ndh)*abs(ndi))/abs(odh)));
+            return std::min(1.0,std::min( (2.0*std::abs(ndh)*std::abs(ndo))/std::abs(odh), (2.0*std::abs(ndh)*std::abs(ndi))/std::abs(odh)));
 		}
 		inline vfloat brdf_cook_torrance_D(vfloat rs,vfloat ndi,vfloat ndo,vfloat ndh,vfloat odh){
             auto a2 = rs*rs;
             a2 = max(a2,0.00001);
             auto ndh2 = ndh*ndh;
             auto andh4 = ndh2*ndh2;
-            return (1.0/(ygl::pi<vfloat>*a2*andh4))*exp((ndh2-1.0)/(a2*ndh2));
+            return (1.0/(pivf*a2*andh4))*exp((ndh2-1.0)/(a2*ndh2));
         }
         inline vfloat brdf_cook_torrance_DG(vfloat rs,vfloat ndi,vfloat ndo,vfloat ndh,vfloat odh){
             auto D = brdf_cook_torrance_G(ndi,ndo,ndh,odh);
@@ -182,13 +182,13 @@ namespace vnx {
 		inline vfloat brdf_ggx_G(vfloat rs,vfloat ndi,vfloat ndo,vfloat ndh){
 			auto a2 = rs * rs;
 			a2 = max(a2,0.00001);
-			auto goDN = abs(ndo) + std::sqrt(a2 + (1 - a2) * ndo * ndo);
+			auto goDN = std::abs(ndo) + std::sqrt(a2 + (1 - a2) * ndo * ndo);
 			if(cmpf(goDN,0.0)) return 0.0;
-			auto giDN = abs(ndi) + std::sqrt(a2 + (1 - a2) * ndi * ndi);
+			auto giDN = std::abs(ndi) + std::sqrt(a2 + (1 - a2) * ndi * ndi);
 			if(cmpf(giDN,0.0)) return 0.0;
 
-            auto Go = (2 * abs(ndo)) / goDN;
-            auto Gi = (2 * abs(ndi)) / giDN;
+            auto Go = (2 * std::abs(ndo)) / goDN;
+            auto Gi = (2 * std::abs(ndi)) / giDN;
             return Go*Gi;
 		}
 
@@ -199,7 +199,7 @@ namespace vnx {
             auto dn = ((ndh2*a2)+(1.0-(ndh2)));
             dn*=dn;
             if(cmpf(dn,0.0)) return 0.0;
-            return a2 / (ygl::pi<vfloat>*dn);
+            return a2 / (pivf*dn);
         }
 
 		inline vfloat brdf_ggx_DG(vfloat rs, vfloat ndi, vfloat ndo, vfloat ndh) {
@@ -210,29 +210,29 @@ namespace vnx {
             return brdf_ggx_D(rs,ndi,ndo,ndh)*ndh;
         }
 
-		inline vvec3f eval_fresnel_schlick(const vvec3f& ks, vfloat dcos) {
-		    if(ks==vzero3f) return vzero3f;
-            return ks +(1 - ks) *std::pow(clamp(1 - abs(dcos), 0.0, 1.0), 5.0);
+		inline vec3vf eval_fresnel_schlick(const vec3vf& ks, vfloat dcos) {
+		    if(ks==zero3vf) return zero3vf;
+            return ks +(1 - ks) *std::pow(clamp(1 - std::abs(dcos), 0.0, 1.0), 5.0);
 		}
 
-		inline vvec3f eval_fresnel_conductor(const vvec3f& I,const vvec3f& N,vfloat etai,vvec3f etak){
+		inline vec3vf eval_fresnel_conductor(const vec3vf& I,const vec3vf& N,vfloat etai,vec3vf etak){
            float cosi = ygl::clamp(dot(I,N),-1.0, 1.0);
 
            vfloat cosi2 = cosi * cosi;
            vfloat sini2 = 1 - cosi2;
-           vvec3f etai2 = toVec3(etai * etai);
-           vvec3f etak2 = etak * etak;
+           vec3vf etai2 = toVec3(etai * etai);
+           vec3vf etak2 = etak * etak;
 
-           vvec3f t0 = etai2 - etak2 - vvec3f{sini2,sini2,sini2};
-           vvec3f a2plusb2 = vnx::sqrt(t0 * t0 + 4 * etai2 * etak2);
-           vvec3f t1 = a2plusb2 + vvec3f{cosi2,cosi2,cosi2};
-           vvec3f a = vnx::sqrt(0.5f * (a2plusb2 + t0));
-           vvec3f t2 = 2 * a * cosi;
-           vvec3f Rs = (t1 - t2) / (t1 + t2);
+           vec3vf t0 = etai2 - etak2 - vec3vf{sini2,sini2,sini2};
+           vec3vf a2plusb2 = vnx::sqrt(t0 * t0 + 4 * etai2 * etak2);
+           vec3vf t1 = a2plusb2 + vec3vf{cosi2,cosi2,cosi2};
+           vec3vf a = vnx::sqrt(0.5 * (a2plusb2 + t0));
+           vec3vf t2 = 2 * a * cosi;
+           vec3vf Rs = (t1 - t2) / (t1 + t2);
 
-           vvec3f t3 = cosi2 * a2plusb2 + toVec3(sini2 * sini2);
-           vvec3f t4 = t2 * sini2;
-           vvec3f Rp = Rs * (t3 - t4) / (t3 + t4);
+           vec3vf t3 = cosi2 * a2plusb2 + toVec3(sini2 * sini2);
+           vec3vf t4 = t2 * sini2;
+           vec3vf Rp = Rs * (t3 - t4) / (t3 + t4);
 
            return 0.5 * (Rp + Rs);
 		}
@@ -240,17 +240,17 @@ namespace vnx {
 		//////Hints from
 		//https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 		//////
-		inline vfloat eval_fresnel_dielectric(const vvec3f& I, const vvec3f& N,vfloat etai,vfloat etat){
+		inline vfloat eval_fresnel_dielectric(const vec3vf& I, const vec3vf& N,vfloat etai,vfloat etat){
             vfloat cosi = ygl::clamp(dot(I,N),-1.0, 1.0);
             //if (cosi > ygl::epsf) { std::swap(etai, etat); }
 
-            vfloat sint = etai / etat * sqrtf(std::max(0.0, 1 - cosi * cosi));
+            vfloat sint = etai / etat * std::sqrt(std::max(0.0, 1 - cosi * cosi));
             if (sint >= 1) {
                 return 1.0;
             }
             else {
-            vfloat cost = sqrtf(std::max(0.0, 1 - sint * sint));
-            cosi = fabsf(cosi);
+            vfloat cost = std::sqrt(std::max(0.0, 1 - sint * sint));
+            cosi = std::abs(cosi);
             float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
             float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
                 return (Rs * Rs + Rp * Rp) / 2;
@@ -261,18 +261,18 @@ namespace vnx {
 		inline vfloat pow2(vfloat a){return a*a;}
 
 
-		inline vvec3f eval_light(const VScene& scn,ygl::rng_state& rng,VRay rr,vvec3f& ln,VResult& lres) {
-			vvec3f w = vone3f;
+		inline vec3vf eval_light(const VScene& scn,ygl::rng_state& rng,VRay rr,vec3vf& ln,VResult& lres) {
+			vec3vf w = one3vf;
 			for(int b=0;;b++){
                 int i = 0;
                 auto old_rr = rr;
                 auto poll = poll_volume(scn, rng, rr);
                 lres = scn.INTERSECT_ALGO( rr, n_max_march_iterations, i);
-                if (!lres.found() || !lres.valid()) { return vzero3f; }
+                if (!lres.found() || !lres.valid()) { return zero3vf; }
                 if(poll.is_inside_transmissive()){
                     w *= calc_beer_law(poll.emat,length(rr.o-lres.wor_pos));
                 }
-                if(is_zero_or_has_ltz(w)){return vzero3f;}
+                if(is_zero_or_has_ltz(w)){return zero3vf;}
 
                 VMaterial hmat = *lres.mat;
                 ln = scn.NORMALS_ALGO(lres, f_normal_eps);
@@ -288,29 +288,29 @@ namespace vnx {
                     if(status.bDebugMode)std::cout<<"*<!>Eval light Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
 
                     bool outside = dot(rr.d,ln) > 0;
-                    vvec3f offBy = outside ? -ln : ln;
+                    vec3vf offBy = outside ? -ln : ln;
                     rr = offsetted_ray(lres.wor_pos,rr,rr.d,rr.tmin,rr.tmax,offBy,lres.dist);
                     continue;
                 }
-                return vzero3f;
+                return zero3vf;
 			}
-			return vzero3f;
+			return zero3vf;
 		}
 
 
-		inline vvec3f sample_diffuse(const vec2f& rn,const vvec3f& o,const vvec3f& n){
-            auto fp = dot(n, o) >= 0 ? make_frame_fromz(vzero3f, n) : make_frame_fromz(vzero3f, -n);
+		inline vec3vf sample_diffuse(const vec2f& rn,const vec3vf& o,const vec3vf& n){
+            auto fp = dot(n, o) >= 0 ? make_frame_fromz(zero3vf, n) : make_frame_fromz(zero3vf, -n);
             auto wh_local = sample_hemisphere_direction_cosine_vf(rn);
             return ygl::transform_direction(fp, wh_local);
 		}
 
 
-		inline vvec3f sample_ggx(const vec2f& rn,const vvec3f& o,const vvec3f& n,vfloat rs){
+		inline vec3vf sample_ggx(const vec2f& rn,const vec3vf& o,const vec3vf& n,vfloat rs){
             //auto fp = dot(n, o) >= 0 ? make_frame_fromz(zero3f, n) : make_frame_fromz(zero3f, -n);
-            auto fp = make_frame_fromz(vzero3f,n);
+            auto fp = make_frame_fromz(zero3vf,n);
             auto tan2 = rs * rs * rn.y / (1 - rn.y);
-            auto rz = std::sqrt(1 / (tan2 + 1)), rr = std::sqrt(1 - rz * rz), rphi = 2 * ygl::pi<vfloat> * rn.x;
-            auto wh_local = vvec3f{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
+            auto rz = std::sqrt(1 / (tan2 + 1)), rr = std::sqrt(1 - rz * rz), rphi = 2 * pivf * rn.x;
+            auto wh_local = vec3vf{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
             return ygl::transform_direction(fp, wh_local);
 		}
 
@@ -332,31 +332,31 @@ namespace vnx {
             return point;
 		}
 
-		inline VSample sample_transmissive( const VScene& scn, ygl::rng_state& rng, const VResult& hit, const VMaterial& material,const VRay& wo, const vvec3f& n, const vvec3f& wh){
+		inline VSample sample_transmissive( const VScene& scn, ygl::rng_state& rng, const VResult& hit, const VMaterial& material,const VRay& wo, const vec3vf& n, const vec3vf& wh){
             auto wi = -wo;
             bool outside = dot(wo.d,n) > 0;
-            vvec3f offBy = outside ? -n : n;
+            vec3vf offBy = outside ? -n : n;
 
             auto poll_ray = offsetted_ray(hit.wor_pos,wi,wi.d,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
             auto poll = poll_volume(scn,rng,poll_ray);
             vfloat ior = poll_ray.ior;
             auto F = eval_fresnel_dielectric(wi.d,wh,wi.ior,ior);
 
-            if(cmpf(F,0.0f)){
+            if(cmpf(F,0.0)){
                 auto refr_dir = refract(wi.d,wh,wi.ior,ior);
                 auto iray = offsetted_ray(hit.wor_pos,wi,refr_dir,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
-                return VSample{iray,s_transmitted,{0,1.0f}};
-            }else if(cmpf(F,1.0f)){
+                return VSample{iray,s_transmitted,{0,1.0}};
+            }else if(cmpf(F,1.0)){
                 auto refl_dir = ygl::reflect(wo.d,outside ? wh : -wh);
                 auto iray = offsetted_ray(hit.wor_pos,wi,refl_dir,wi.tmin,wi.tmax,-offBy,hit.dist);
-                return VSample{iray,s_tr_reflected,{0,1.0f}};
+                return VSample{iray,s_tr_reflected,{0,1.0}};
             }else{
                 //auto rn_ks = get_random_float(rng);
                 const vfloat rv = F;
                 if(get_random_float(rng)>rv){ //TODO : re-test with 0.5f
                     auto refr_dir = refract(wi.d,wh,wi.ior,ior);
                     auto iray = offsetted_ray(hit.wor_pos,wi,refr_dir,wi.tmin,wi.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
-                    return VSample{iray,s_transmitted,{0,1.0f-rv}};
+                    return VSample{iray,s_transmitted,{0,1.0-rv}};
                 }else{
                     auto refl_dir = ygl::reflect(wo.d,outside ? wh : -wh);
                     auto iray = offsetted_ray(hit.wor_pos,wi,refl_dir,wi.tmin,wi.tmax,-offBy,hit.dist);
@@ -365,14 +365,14 @@ namespace vnx {
             }
 		}
 
-		inline VSample sample_bsdfcos(const VScene& scn, ygl::rng_state& rng, const VResult& hit, const VMaterial& material,const VRay& wo, const vvec3f& n) {
+		inline VSample sample_bsdfcos(const VScene& scn, ygl::rng_state& rng, const VResult& hit, const VMaterial& material,const VRay& wo, const vec3vf& n) {
             if(material.is_delta()){
                 if(material.is_transmissive()){
                     return sample_transmissive(scn,rng,hit,material,wo,n,n);
                 }else{
                     auto offby = n;//dot(wo.d,n)>=0 ? n : -n;
                     auto iray = offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,offby), wo.tmin, wo.tmax, offby, hit.dist);
-                    return VSample{iray,s_reflected,{0.0f,1.0f}};
+                    return VSample{iray,s_reflected,{0.0,1.0}};
                 }
             }else{
                 if(material.is_transmissive()){
@@ -381,7 +381,7 @@ namespace vnx {
                     auto ior = material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
                     auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,ior);
 
-                    auto weights = vvec2f{(1.0f-F),F};
+                    auto weights = vec2vf{(1.0-F),F};
                     weights /= weights.x+weights.y;
 
                     auto rr = ygl::get_random_float(rng);
@@ -400,16 +400,16 @@ namespace vnx {
                     auto rn = ygl::get_random_vec2f(rng);
                     auto offby = n;//dot(wo.d,n)>=0 ? n : -n;
                     auto iray = offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,sample_ggx(rn,wo.d,n,material.rs)), wo.tmin, wo.tmax, offby, hit.dist);
-                    return VSample{iray,s_reflected,{0.0f,1.0f}};
+                    return VSample{iray,s_reflected,{0.0,1.0}};
                 }
             }
 		}
 
-		inline vfloat eval_bsdfcos_pdf( const VMaterial& material, const VRay& wi, const VRay& wo, const vvec3f& n,const vvec2f& weights = vone2f) {
-		    vfloat pdf = 0.0f;
+		inline vfloat eval_bsdfcos_pdf( const VMaterial& material, const VRay& wi, const VRay& wo, const vec3vf& n,const vec2vf& weights = one2vf) {
+		    vfloat pdf = 0.0;
 
 		    if(material.is_delta()){
-                if(material.is_conductor()) pdf = 1.0f;
+                if(material.is_conductor()) pdf = 1.0;
                 else if(material.is_transmissive())pdf = weights.y;
 		    }else{
                 auto ndi = dot(n,wi.d);
@@ -421,36 +421,36 @@ namespace vnx {
                     auto ir = (dot(n, wo.d) >= 0) ? ygl::reflect(-wi.d, n) : ygl::reflect(-wi.d, -n);
                     auto hv = normalize(ir + wo.d);
                     auto d = (brdf_ggx_pdf(material.rs,dot(n,ir),ndo,dot(hv,n)));
-                    pdf +=  d / (4*abs(dot(wo.d,hv)));
+                    pdf +=  d / (4*std::abs(dot(wo.d,hv)));
                 }else{
                     if(ndo*ndi<epsvf) return 0.0;
                     if(material.is_conductor()){
-                        if(ndh==0.0f) return 0.0;
+                        if(ndh==0.0) return 0.0;
                         auto odh = dot(wo.d,h);
-                        if(odh==0.0f)return 0.0;
+                        if(odh==0.0)return 0.0;
                         auto d = (brdf_ggx_pdf(material.rs,ndi,ndo,ndh));
-                        pdf +=  d / (4*abs(odh));
+                        pdf +=  d / (4*std::abs(odh));
                     }else{
-                        auto ior = material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
-                        auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,ior);
+                        //auto ior = material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
+                        //auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,ior);
                         //auto weights = vec2f{(1.0f-F),F};
                         //weights /= weights.x+weights.y;
 
-                        pdf += (weights.x)*(abs(ndi)/ygl::pi<vfloat>);
+                        pdf += (weights.x)*(std::abs(ndi)/pivf);
 
                         if(ndh==0.0) return pdf;
                         auto odh = dot(wo.d,h);
-                        if(odh==0.0f)return pdf;
+                        if(odh==0.0)return pdf;
                         auto d = (brdf_ggx_pdf(material.rs,ndi,ndo,ndh));
-                        pdf += weights.y * (d / (4*abs(odh)));
+                        pdf += weights.y * (d / (4*std::abs(odh)));
                     }
                 }
 		    }
 		    return pdf;
 		}
 
-		inline vvec3f eval_bsdfcos(const VScene& scn,ygl::rng_state& rng,const VResult& hit,const VMaterial& material, const VRay& wi, const VRay& wo, const vvec3f& n) {
-		    vvec3f li = vzero3f;
+		inline vec3vf eval_bsdfcos(const VScene& scn,ygl::rng_state& rng,const VResult& hit,const VMaterial& material, const VRay& wi, const VRay& wo, const vec3vf& n) {
+		    vec3vf li = zero3vf;
             auto ndi = dot(n,wi.d);
             auto ndo = dot(n,wo.d);
 		    if(material.is_delta()){
@@ -459,13 +459,13 @@ namespace vnx {
                     li +=F;
                 }else if(material.is_transmissive()){
                     bool outside = dot(wo.d,n) > 0;
-                    vvec3f offBy = outside ? -n : n;
+                    vec3vf offBy = outside ? -n : n;
                     auto poll_ray = offsetted_ray(hit.wor_pos,wo,wo.d,wo.tmin,wo.tmax,offBy,hit.dist,f_refracted_ray_eps_mult);
                     auto poll = poll_volume(scn,rng,poll_ray);
                     vfloat ior = poll_ray.ior;
 
                     auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,ior);
-                    if(ndo*ndi<=epsvf) li+= toVec3(1.0f-F);
+                    if(ndo*ndi<=epsvf) li+= toVec3(1.0-F);
                     else li+= toVec3(F);
                 }
 		    }else{
@@ -474,15 +474,15 @@ namespace vnx {
                     auto hv = normalize(ir + wo.d);
                     auto irdn = dot(ir,n);
                     auto F = toVec3(eval_fresnel_dielectric(-wo.d,hv,wo.ior,material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral)));
-                    if(ndo*ndi<epsvf) li+= ((vone3f-F)*(brdf_ggx_DG(material.rs,irdn,ndo,dot(n,hv))) / (4*abs(irdn)*abs(ndo)));
-                    else li+= (F*(brdf_ggx_DG(material.rs,irdn,ndo,dot(n,hv))) / (4*abs(irdn)*abs(ndo)));
+                    if(ndo*ndi<epsvf) li+= ((one3vf-F)*(brdf_ggx_DG(material.rs,irdn,ndo,dot(n,hv))) / (4*std::abs(irdn)*std::abs(ndo)));
+                    else li+= (F*(brdf_ggx_DG(material.rs,irdn,ndo,dot(n,hv))) / (4*std::abs(irdn)*std::abs(ndo)));
                 }else{
-                    if(ndo*ndi<epsvf) return vzero3f;
+                    if(ndo*ndi<epsvf) return zero3vf;
                     auto h = normalize(wi.d+wo.d);
                     auto ndh = dot(n,h);
                     if(material.is_conductor())  {
                         auto F = eval_fresnel_conductor(wo.d,n,wo.ior,material.kr);
-                        li += (F*(brdf_ggx_DG(material.rs,ndi,ndo,ndh)) / (4*abs(ndi)*abs(ndo)));
+                        li += (F*(brdf_ggx_DG(material.rs,ndi,ndo,ndh)) / (4*std::abs(ndi)*std::abs(ndo)));
                     }
                     else{
                         auto ior = material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral);
@@ -491,23 +491,23 @@ namespace vnx {
 
                         auto hdi = dot(h,wi.d);
                         auto fd90 = (0.5+(hdi*hdi))*ks;
-                        auto m1_ndi5 = std::pow((1.0-abs(ndi)),5.0);
-                        auto m1_ndo5 = std::pow((1.0-abs(ndo)),5.0);
-                        li += (material.kr/ygl::pi<vfloat>)*(1.0+fd90*m1_ndi5)*(1.0+fd90*m1_ndo5)*(vone3f-F);
+                        auto m1_ndi5 = std::pow((1.0-std::abs(ndi)),5.0);
+                        auto m1_ndo5 = std::pow((1.0-std::abs(ndo)),5.0);
+                        li += (material.kr/pivf)*(1.0+fd90*m1_ndi5)*(1.0+fd90*m1_ndo5)*(one3vf-F);
 
-                        if(ndh==0.0) return li*abs(ndi);
-                        li+=brdf_ggx_D(material.rs,ndi,ndo,ndh) / (4.0 * abs(dot(wi.d, h)) * max(abs(ndi), abs(ndo))) * F;
+                        if(ndh==0.0) return li*std::abs(ndi);
+                        li+=brdf_ggx_D(material.rs,ndi,ndo,ndh) / (4.0 * std::abs(dot(wi.d, h)) * max(std::abs(ndi), std::abs(ndo))) * F;
                     }
                 }
-                li*=abs(ndi);
+                li*=std::abs(ndi);
 		    }
 		    return li;
 		}
 
 
-		inline vvec3f calc_beer_law(const VMaterial& evmat,const vfloat dst){
+		inline vec3vf calc_beer_law(const VMaterial& evmat,const vfloat dst){
             if (dst > epsvf) return exp(-evmat.ka*dst);
-            return vone3f;
+            return one3vf;
 		}
 
 		inline void update_ray_physics(VRay& ray,vfloat ior){
@@ -521,14 +521,14 @@ namespace vnx {
 
             VMaterial evmat;
             //fix for nested dielectrics
-            if(ev.vdist<0.0 && ev.dist<0.0 && abs(ev.dist)<abs(ev.vdist)){
+            if(ev.vdist<0.0 && ev.dist<0.0 && std::abs(ev.dist)<std::abs(ev.vdist)){
                 evmat = *ev.mat;
             }
             else{
                 evmat = *ev.vmat;
             }
 
-            vvec3f evnorm = scn.NORMALS_ALGO(ev,f_normal_eps);
+            vec3vf evnorm = scn.NORMALS_ALGO(ev,f_normal_eps);
             evmat.eval_mutator(rng, ev, evnorm, evmat);
 
 			if(ev.vdist<epsvf || ev.dist<epsvf) update_ray_physics(ray,evmat.eval_ior(ray.wl,f_min_wl,f_max_wl,b_do_spectral));
@@ -540,14 +540,14 @@ namespace vnx {
 			auto ev = scn.eval(ray.o);
             VMaterial evmat;
             //fix for nested dielectrics
-            if(ev.vdist<0.0 && ev.dist<0.0 && abs(ev.dist)<abs(ev.vdist)){
+            if(ev.vdist<0.0 && ev.dist<0.0 && std::abs(ev.dist)<std::abs(ev.vdist)){
                 evmat = *ev.mat;
             }
             else{
                 evmat = *ev.vmat;
             }
 
-            vvec3f evnorm = scn.NORMALS_ALGO(ev,f_normal_eps);
+            vec3vf evnorm = scn.NORMALS_ALGO(ev,f_normal_eps);
             evmat.eval_mutator(rng, ev, evnorm, evmat);
             return {ev,evmat};
 		}
@@ -587,7 +587,7 @@ namespace vnx {
 
 		struct VVertex{
 		    struct VTroughput{
-		        vvec3f w;
+		        vec3vf w;
                 vfloat e_power;
                 vfloat e_temp;
 		    };
@@ -595,44 +595,44 @@ namespace vnx {
             VMaterial material;
             VRay wi;
             VTroughput troughput;
-            vvec3f n;
+            vec3vf n;
             VertexType type = SURFACE;
 
             vfloat vc;
             vfloat vcm;
 		};
 
-		inline vvec3f ConnectToEmissive(const VScene& scn,ygl::rng_state& rng,const VRay& wo,const VVertex& v1,const VResult& em){
+		inline vec3vf ConnectToEmissive(const VScene& scn,ygl::rng_state& rng,const VRay& wo,const VVertex& v1,const VResult& em){
             auto dir = normalize(em.wor_pos-v1.hit.wor_pos);
             auto to_em = offsetted_ray(v1.hit.wor_pos,wo,dir,f_ray_tmin,f_ray_tmax,v1.n,v1.hit.dist);
             int n_iters = 0;
             auto origin = to_em.o;
 
-            vvec3f brdf = vzero3f;
+            vec3vf brdf = zero3vf;
             vfloat pdf = 0.0;
 
             if(v1.type==VOLUME){
-                brdf = vone3f;
-                pdf = 4*ygl::pi<vfloat>;
+                brdf = one3vf;
+                pdf = 4*pivf;
             }else if(v1.type==SURFACE){
                 brdf = eval_bsdfcos(scn,rng,v1.hit,v1.material,to_em,wo,v1.n);
-                if(brdf==vzero3f) return vzero3f;
+                if(brdf==zero3vf) return zero3vf;
                 pdf = eval_bsdfcos_pdf(v1.material,to_em,wo,v1.n);
-                if(pdf<=0.0f) return vzero3f;
+                if(pdf<=0.0) return zero3vf;
             }
 
             vfloat traveled_dist = 0.0;
-            vvec3f trw = vone3f;
+            vec3vf trw = one3vf;
             for(int b=0;;++b){
                 VVolumePoll poll = poll_volume(scn,rng,to_em);
                 VResult hit = scn.INTERSECT_ALGO(to_em,n_max_march_iterations,n_iters);
-                if(!hit.found()) return vzero3f;
+                if(!hit.found()) return zero3vf;
 
                 VMaterial tmat = *hit.mat;
                 auto tn = scn.NORMALS_ALGO(hit,f_normal_eps);
                 tmat.eval_mutator(rng,hit,tn,tmat);
 
-                if(poll.is_inside_transmissive() && poll.emat.ka!=vzero3f){
+                if(poll.is_inside_transmissive() && poll.emat.ka!=zero3vf){
                     trw *= exp(-poll.emat.ka*ygl::distance(to_em.o,hit.wor_pos));
                 }
                 traveled_dist = ygl::distance(origin,hit.wor_pos);
@@ -640,11 +640,11 @@ namespace vnx {
                 if(tmat.is_emissive()){
                     auto lc = eval_le(to_em,tmat.e_power,tmat.e_temp);
                     auto dsqr = traveled_dist*traveled_dist;
-                    auto pdf2 = dsqr / abs(dot(tn,-to_em.d));
+                    auto pdf2 = dsqr / std::abs(dot(tn,-to_em.d));
 
                     vfloat mw = Mis2(pdf2,1.0/pdf);
                     if(mw>0.0) return (mw / pdf2)*(trw*v1.troughput.w*lc*brdf);
-                    return vzero3f;
+                    return zero3vf;
                 }
 
                 if(!tmat.is_transmissive() || tmat.is_refractive()){break;}
@@ -657,19 +657,19 @@ namespace vnx {
                 auto offby = dot(to_em.d,tn) > 0 ? -tn : tn;
                 to_em = offsetted_ray(hit.wor_pos,to_em,to_em.d,f_ray_tmin,f_ray_tmax,-offby,hit.dist);
             }
-            return vzero3f;
+            return zero3vf;
 		}
 
 		inline void init_ray_physics(rng_state& rng,VRay& ray){
             ray.wl = rand1f_r(rng,f_min_wl,f_max_wl);
             ray.velocity = KC;
             ray.frequency = ray.velocity / ray.wl;
-            ray.ior = 1.0f;
+            ray.ior = 1.0;
 		}
 
-		inline vvec3f eval_pixel(const VScene& scn, ygl::rng_state& rng,image3vf& img,const VCamera& camera, const VRay& ray) {
-			vvec3f output = vzero3f;
-			vvec3f w = vone3f;
+		inline vec3vf eval_pixel(const VScene& scn, ygl::rng_state& rng,image3vf& img,const VCamera& camera, const VRay& ray) {
+			vec3vf output = zero3vf;
+			vec3vf w = one3vf;
 			bool gather_ke = true;
 			bool nee_hit = false;
             VSample sample = {ray,s_undefined};
@@ -684,7 +684,7 @@ namespace vnx {
 
                 if (b_debug_iterations) {
                     if (!hit.found() || !hit.valid()) {break; }
-                    return vone3f*((vfloat)n_iters)/((vfloat)n_max_march_iterations);
+                    return one3vf*((vfloat)n_iters)/((vfloat)n_max_march_iterations);
                 }
 
                 if (b_debug_normals) {
@@ -710,7 +710,7 @@ namespace vnx {
                         if(!scn.emissive_hints.empty()){
                             int idl = 0;
                             auto emissive = sample_emissive(scn,rng,idl);
-                            VVertex ev = {poll.eres,poll.emat,sample.ray,{w,0.0,0.0},vzero3f,VOLUME,0.0,0.0};
+                            VVertex ev = {poll.eres,poll.emat,sample.ray,{w,0.0,0.0},zero3vf,VOLUME,0.0,0.0};
                             output += ConnectToEmissive(scn,rng,sample.ray,ev,emissive);
                             //VVertex lev = {emissive,{},{},{w,0.0f,0.0f},scn.NORMALS_ALGO(emissive,f_normal_eps),EMISSIVE,0.0f,0.0f};
                             //output += ConnectVertex(scn,rng,ev,lev,incoming,pdf,1);
@@ -721,7 +721,7 @@ namespace vnx {
 
                         sample.ray.d =  sample_sphere_direction_vf(ygl::get_random_vec2f(rng));
 
-                        w = (w*exp(-vmt.ka*dist))/(pdf+(4*ygl::pi<vfloat>));
+                        w = (w*exp(-vmt.ka*dist))/(pdf+(4*pivf));
                         if(is_zero_or_has_ltz(w) || has_inf(w)) break;
 
                         if(b>2){if(!russian_roulette(rng,w)){break;}}
@@ -757,12 +757,12 @@ namespace vnx {
 
                 sample = sample_bsdfcos(scn, rng, hit, material, wo, n);
                 wi = sample.ray;
-                if(wi.d==vzero3f) break;
+                if(wi.d==zero3vf) break;
 
                 auto pdf = eval_bsdfcos_pdf(material,wi,wo,n,sample.pdf_factor);
-                if(cmpf(pdf,0.0f)) break;
+                if(cmpf(pdf,0.0)) break;
                 auto brdf = eval_bsdfcos(scn,rng,hit,material,wi,wo,n);
-                if(cmpf(brdf,vzero3f)) break;
+                if(cmpf(brdf,zero3vf)) break;
 
                 //DIRECT + NEE
                 if(!gather_ke){
@@ -781,14 +781,14 @@ namespace vnx {
                     }
 
                     { //SCOPE
-                        vvec3f ln;
+                        vec3vf ln;
                         VResult lres;
                         auto lc = eval_light(scn, rng, wi, ln, lres);
-                        if(!cmpf(lc,vzero3f)){
+                        if(!cmpf(lc,zero3vf)){
                             auto dist = ygl::distance_squared(hit.wor_pos,lres.wor_pos);
-                            auto pdf2 = (dist) / abs(dot(ln,-wi.d));
+                            auto pdf2 = (dist) / std::abs(dot(ln,-wi.d));
                             vfloat mw = Mis2(pdf2,1.0/pdf);
-                            if(mw>0.0f) output += (mw / pdf2) *(w*lc*brdf);
+                            if(mw>0.0) output += (mw / pdf2) *(w*lc*brdf);
                             break; // will hit an emissive as next event
                         }else{nee_hit = true;hit = lres;}
                     }
@@ -812,7 +812,7 @@ namespace vnx {
 		inline void eval_image(const VScene& scn, ygl::rng_state& rng, image3vf& img, int width, int height, int j) {
 		    const vfloat f_ray_samples = (vfloat)n_ray_samples;
 			for (int i = 0; i < width && !status.bStopped; i++) {
-				vvec3f color = vzero3f;
+				vec3vf color = zero3vf;
 
                 for (int s = 0; s < n_ray_samples; s++) {
                     VRay ray = scn.camera.Cast(i,j,get_random_vec2f(rng));

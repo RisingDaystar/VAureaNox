@@ -53,75 +53,93 @@ namespace vnx {
 
 	struct VSceneParser;
 
+	const char* version = "0.07";
+
 	using vfloat = double;
-    using vvec4f = vec<vfloat,4>;
-	using vvec3f = vec<vfloat,3>;
-	using vvec2f = vec<vfloat,2>;
-	using vframe3f = frame<vfloat,3>;
-	using vmat4f = mat<vfloat, 4, 4>;
-	using vmat3f = mat<vfloat, 3, 3>;
-
-	constexpr const auto epsvf = epst<vfloat>();
-
-	constexpr vframe3f identity_vframe3f = vframe3f{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {0, 0, 0}};
-	constexpr vvec4f identity_vquat4f = vvec4f{0,0,0,1};
-	constexpr vmat4f identity_vmat4f = vmat4f{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
-	constexpr vmat3f identity_vmat3f = vmat3f{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-
-	constexpr vvec4f vone4f = vvec4f{1.0,1.0,1.0,1.0};
-	constexpr vvec3f vone3f = vvec3f{1.0,1.0,1.0};
-	constexpr vvec2f vone2f = vvec2f{1.0,1.0};
-
-	constexpr vvec4f vzero4f = vvec4f{0.0,0.0,0.0,0.0};
-	constexpr vvec3f vzero3f = vvec3f{0.0,0.0,0.0};
-	constexpr vvec2f vzero2f = vvec2f{0.0,0.0};
-
-
-	typedef vfloat (*displ_ftor)(const vvec3f&);
-	typedef void (*mtlm_ftor)(ygl::rng_state& rng,const VResult&,const vvec3f&, VMaterial&);
+    using vec4vf = vec<vfloat,4>;
+	using vec3vf = vec<vfloat,3>;
+	using vec2vf = vec<vfloat,2>;
+	using frame3vf = frame<vfloat,3>;
+	using mat4vf = mat<vfloat, 4, 4>;
+	using mat3vf = mat<vfloat, 3, 3>;
+	using mat2vf = mat<vfloat, 2, 2>;
 
 	using image3f = image<vec3f>;
-	using image3vf = image<vvec3f>;
+	using image3vf = image<vec3vf>;
 
-    inline vvec3f sample_sphere_direction_vf(const vec2f& ruv) {
-        auto z   = 2 * ruv.y - 1;
-        auto r   = sqrt(1 - z * z);
-        auto phi = 2 * pi<vfloat> * ruv.x;
-        return {r * cos(phi), r * sin(phi), z};
-    }
+	constexpr const auto epsvf = epst<vfloat>();
+	constexpr const auto minvf = mint<vfloat>();
+	constexpr const auto maxvf = maxt<vfloat>();
+	constexpr const auto pivf  = ygl::pi<vfloat>;
 
-    inline vvec3f sample_hemisphere_direction_vf(const vec2f& ruv) {
-        auto z   = ruv.y;
-        auto r   = sqrt(1 - z * z);
-        auto phi = 2 * pi<vfloat> * ruv.x;
-        return {r * cos(phi), r * sin(phi), z};
-    }
+	constexpr frame3vf identity_frame3vf = frame3vf{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {0, 0, 0}};
+	constexpr vec4vf identity_quat4vf = vec4vf{0,0,0,1};
+	constexpr mat4vf identity_mat4vf = mat4vf{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+	constexpr mat3vf identity_mat3vf = mat3vf{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+	constexpr mat2vf identity_mat2vf = mat2vf{{1, 0}, {0, 1}};
 
-    inline vvec3f sample_hemisphere_direction_cosine_vf(const vec2f& ruv) {
-        auto z   = sqrt(ruv.y);
-        auto r   = sqrt(1 - z * z);
-        auto phi = 2 * pif * ruv.x;
-        return {r * cos(phi), r * sin(phi), z};
-    }
+	template<typename T>
+	constexpr vec<T,4> zero4 = vec<T,4>{0,0,0,0};
+	template<typename T>
+	constexpr vec<T,3> zero3 = vec<T,3>{0,0,0};
+	template<typename T>
+	constexpr vec<T,2> zero2 = vec<T,2>{0,0};
 
-    template<typename T>
-    inline vec<T,3> gamma_to_linear(const vec<T,3>& srgb, T gamma = 2.2f) {
-        return {pow(srgb.x, gamma), pow(srgb.y, gamma), pow(srgb.z, gamma)};
-    }
-    template<typename T>
-    inline vec<T,3> linear_to_gamma(const vec<T,3>& lin, T gamma = 2.2f) {
-        return {pow(lin.x, 1 / gamma), pow(lin.y, 1 / gamma), pow(lin.z, 1 / gamma)};
-    }
-    template<typename T>
-    inline vec<T,4> gamma_to_linear(const vec<T,4>& srgb, T gamma = 2.2f) {
-        return {pow(srgb.x, gamma), pow(srgb.y, gamma), pow(srgb.z, gamma), srgb.w};
-    }
-    template<typename T>
-    inline vec<T,4> linear_to_gamma(const vec<T,4>& lin, T gamma = 2.2f) {
-        return {pow(lin.x, 1 / gamma), pow(lin.y, 1 / gamma), pow(lin.z, 1 / gamma),
-            lin.w};
-    }
+	template<typename T>
+	constexpr vec<T,4> one4 = vec<T,4>{1,1,1,1};
+	template<typename T>
+	constexpr vec<T,3> one3 = vec<T,3>{1,1,1};
+	template<typename T>
+	constexpr vec<T,2> one2 = vec<T,2>{1,1};
 
+	constexpr vec4vf one4vf = one4<vfloat>;//vec4vf{1.0,1.0,1.0,1.0};
+	constexpr vec3vf one3vf = one3<vfloat>;//vec3vf{1.0,1.0,1.0};
+	constexpr vec2vf one2vf = one2<vfloat>;//vec2vf{1.0,1.0};
+
+	constexpr vec4vf zero4vf = zero4<vfloat>;//vec4vf{0.0,0.0,0.0,0.0};
+	constexpr vec3vf zero3vf = zero3<vfloat>;//vec3vf{0.0,0.0,0.0};
+	constexpr vec2vf zero2vf = zero2<vfloat>;//vec2vf{0.0,0.0};
+
+    template<typename T> inline vec<T,4> toVec4(T v){return {v,v,v,v};}
+    template<typename T> inline vec<T,3> toVec3(T v){return {v,v,v};}
+    template<typename T> inline vec<T,2> toVec2(T v){return {v,v};}
+
+
+	constexpr vfloat KC = 299792e3;
+    constexpr vfloat KH = 6.63e-34;
+    constexpr vfloat KB = 1.38066e-23;
+    constexpr vfloat KSB = 5.670373e-8;
+    constexpr vfloat KWD = 2.8977721e-3;
+
+    constexpr vec3vf nv1 = { 1.0, -1.0, -1.0 };
+    constexpr vec3vf nv2 = { -1.0, -1.0, 1.0 };
+    constexpr vec3vf nv3 = { -1.0, 1.0, -1.0 };
+    constexpr vec3vf nv4 = { 1.0, 1.0, 1.0 };
+
+
+	typedef vfloat (*displ_ftor)(const vec3vf&);
+	typedef void (*mtlm_ftor)(ygl::rng_state& rng,const VResult&,const vec3vf&, VMaterial&);
+
+	enum VAxis { X, Y, Z };
+
+    enum VRotationOrder{
+        VRO_XYZ,
+        VRO_XZY,
+        VRO_YXZ,
+        VRO_YZX,
+        VRO_ZXY,
+        VRO_ZYX,
+    };
+
+    enum VMaterialType{
+        dielectric,
+        conductor,
+    };
+
+    enum VIorType{
+        wl_dependant,
+        non_wl_dependant
+    };
 
     struct VStatus{ //TODO : extend
         bool bDebugMode = false;
@@ -167,6 +185,46 @@ namespace vnx {
         inline void setADR(bool v){_adr = v;}
     };
 
+
+    inline vec3vf sample_sphere_direction_vf(const vec2f& ruv) {
+        auto z   = 2 * ruv.y - 1;
+        auto r   = std::sqrt(1 - z * z);
+        auto phi = 2 * pivf * ruv.x;
+        return {r * std::cos(phi), r * std::sin(phi), z};
+    }
+
+    inline vec3vf sample_hemisphere_direction_vf(const vec2f& ruv) {
+        auto z   = ruv.y;
+        auto r   = std::sqrt(1 - z * z);
+        auto phi = 2 * pivf * ruv.x;
+        return {r * std::cos(phi), r * std::sin(phi), z};
+    }
+
+    inline vec3vf sample_hemisphere_direction_cosine_vf(const vec2f& ruv) {
+        auto z   = std::sqrt(ruv.y);
+        auto r   = std::sqrt(1 - z * z);
+        auto phi = 2 * pivf * ruv.x;
+        return {r * std::cos(phi), r * std::sin(phi), z};
+    }
+
+    template<typename T>
+    inline vec<T,3> gamma_to_linear(const vec<T,3>& srgb, T gamma = 2.2f) {
+        return {std::pow(srgb.x, gamma), std::pow(srgb.y, gamma), std::pow(srgb.z, gamma)};
+    }
+    template<typename T>
+    inline vec<T,3> linear_to_gamma(const vec<T,3>& lin, T gamma = 2.2f) {
+        return {std::pow(lin.x, 1 / gamma), std::pow(lin.y, 1 / gamma), std::pow(lin.z, 1 / gamma)};
+    }
+    template<typename T>
+    inline vec<T,4> gamma_to_linear(const vec<T,4>& srgb, T gamma = 2.2f) {
+        return {std::pow(srgb.x, gamma), std::pow(srgb.y, gamma), std::pow(srgb.z, gamma), srgb.w};
+    }
+    template<typename T>
+    inline vec<T,4> linear_to_gamma(const vec<T,4>& lin, T gamma = 2.2f) {
+        return {std::pow(lin.x, 1 / gamma), std::pow(lin.y, 1 / gamma), std::pow(lin.z, 1 / gamma),
+            lin.w};
+    }
+
 	inline float rand1f_r(rng_state& rng, float a, float b) {
         return a + (b - a) * get_random_float(rng);
     }
@@ -177,52 +235,8 @@ namespace vnx {
         return {rand1f_r(rng,a,b),rand1f_r(rng,a,b),rand1f_r(rng,a,b)};
     }
 
-    template<typename T> inline vec<T,3> toVec3(T v){return {v,v,v};}
-    template<typename T> inline vec<T,2> toVec2(T v){return {v,v};}
-
-	enum VAxis { X, Y, Z };
-
-    enum VRotationOrder{
-        VRO_XYZ,
-        VRO_XZY,
-        VRO_YXZ,
-        VRO_YZX,
-        VRO_ZXY,
-        VRO_ZYX,
-    };
-
-    enum VMaterialType{
-        dielectric,
-        conductor,
-    };
-
-    enum VIorType{
-        wl_dependant,
-        non_wl_dependant
-    };
-
-	const char* version = "0.07";
-
-	constexpr const auto minvf = mint<vfloat>();
-	constexpr const auto maxvf = maxt<vfloat>();
-
-	constexpr vfloat KC = 299792e3;
-    constexpr vfloat KH = 6.63e-34;
-    constexpr vfloat KB = 1.38066e-23;
-    constexpr vfloat KSB = 5.670373e-8;
-    constexpr vfloat KWD = 2.8977721e-3;
-
-	/*constexpr ygl::vec3f one3f = ygl::vec3f{ 1.0f,1.0f,1.0f };
-	constexpr ygl::vec2f one2f = ygl::vec2f{ 1.0f,1.0f };
-	constexpr ygl::vec3f mone3f = ygl::vec3f{ -1.0f,-1.0f,-1.0f };
-	constexpr ygl::vec2f mone2f = ygl::vec2f{ -1.0f,-1.0f };*/
-
-    constexpr vvec3f nv1 = { 1.0, -1.0, -1.0 };
-    constexpr vvec3f nv2 = { -1.0, -1.0, 1.0 };
-    constexpr vvec3f nv3 = { -1.0, 1.0, -1.0 };
-    constexpr vvec3f nv4 = { 1.0, 1.0, 1.0 };
-
 	inline bool stricmp(std::string str1, std::string str2) {
+	    if(str1.size()!=str2.size()) return false;
 		return std::equal(str1.begin(), str1.end(), str2.begin(), [](const char& a, const char& b) {
 			return (std::tolower(a) == std::tolower(b));
 		});
@@ -287,7 +301,7 @@ namespace vnx {
         return std::atof(ss.c_str());
     }
 
-    inline float try_strToInt(const std::string& ss,int def){
+    inline int try_strToInt(const std::string& ss,int def){
         if(ss.empty()) return def;
         return std::atoi(ss.c_str());
     }
@@ -410,12 +424,12 @@ namespace vnx {
         }
     }
 
-    inline vvec4f try_strToVec4f(const std::string& ss,vvec4f def){
+    inline vec4vf try_strToVec4f(const std::string& ss,vec4vf def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
-            vvec4f v = vzero4f;
+            vec4vf v = zero4vf;
             for(int i=0;i<cpnts.size() && i<4;i++){
                 if(i==0) v.x = std::atof(cpnts[i].c_str());
                 else if(i==1) v.y = std::atof(cpnts[i].c_str());
@@ -425,15 +439,15 @@ namespace vnx {
             return v;
         }else{
             auto cpnt = std::atof(ss.c_str());
-            return vvec4f{cpnt,cpnt,cpnt,cpnt};
+            return vec4vf{cpnt,cpnt,cpnt,cpnt};
         }
     }
-    inline vvec3f try_strToVec3f(const std::string& ss,vvec3f def){
+    inline vec3vf try_strToVec3f(const std::string& ss,vec3vf def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
-            vvec3f v = vzero3f;
+            vec3vf v = zero3vf;
             for(int i=0;i<cpnts.size() && i<3;i++){
                 if(i==0) v.x = std::atof(cpnts[i].c_str());
                 else if(i==1) v.y = std::atof(cpnts[i].c_str());
@@ -442,15 +456,15 @@ namespace vnx {
             return v;
         }else{
             auto cpnt = std::atof(ss.c_str());
-            return vvec3f{cpnt,cpnt,cpnt};
+            return vec3vf{cpnt,cpnt,cpnt};
         }
     }
-    inline vvec2f try_strToVec2f(const std::string& ss,vvec2f def){
+    inline vec2vf try_strToVec2f(const std::string& ss,vec2vf def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
-            vvec2f v = vzero2f;
+            vec2vf v = zero2vf;
             for(int i=0;i<cpnts.size() && i<2;i++){
                 if(i==0) v.x = std::atof(cpnts[i].c_str());
                 else if(i==1) v.y = std::atof(cpnts[i].c_str());
@@ -458,7 +472,7 @@ namespace vnx {
             return v;
         }else{
             auto cpnt = std::atof(ss.c_str());
-            return vvec2f{cpnt,cpnt};
+            return vec2vf{cpnt,cpnt};
         }
     }
 
@@ -493,15 +507,15 @@ namespace vnx {
 	}
 
     inline vfloat cotan(vfloat x){
-        return 1.0/(tan(x));
+        return 1.0/(std::tan(x));
     }
 
 	inline vfloat radians(vfloat in) {
-		return (in*ygl::pi<vfloat>) / 180.0;
+		return (in*pivf) / 180.0;
 	}
 
 	inline vfloat degrees(vfloat in){
-        return (in/ygl::pi<vfloat>)*180;
+        return (in/pivf) * 180.0;
 	}
 
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
@@ -545,57 +559,105 @@ namespace vnx {
     template <typename T> inline ygl::vec<T,2> min(const ygl::vec<T,2>& v1,const ygl::vec<T,2>& v2){return ygl::vec<T,2>{min(v1.x,v2.x),min(v1.y,v2.y)};}
 
     using std::abs;
-    template <typename T> inline ygl::vec<T,3> abs(const ygl::vec<T,3>& v){return ygl::vec<T,3>{abs(v.x),abs(v.y),abs(v.z)};}
-    template <typename T> inline ygl::vec<T,2> abs(const ygl::vec<T,2>& v){return ygl::vec<T,2>{abs(v.x),abs(v.y)};}
+    template <typename T> inline ygl::vec<T,3> abs(const ygl::vec<T,3>& v){return ygl::vec<T,3>{std::abs(v.x),std::abs(v.y),std::abs(v.z)};}
+    template <typename T> inline ygl::vec<T,2> abs(const ygl::vec<T,2>& v){return ygl::vec<T,2>{std::abs(v.x),std::abs(v.y)};}
 
     using std::sqrt;
-    template <typename T> inline ygl::vec<T,3> sqrt(const ygl::vec<T,3>& v){return ygl::vec<T,3>{sqrt(v.x),sqrt(v.y),sqrt(v.z)};}
-    template <typename T> inline ygl::vec<T,2> sqrt(const ygl::vec<T,2>& v){return ygl::vec<T,2>{sqrt(v.x),sqrt(v.y)};}
+    template <typename T> inline ygl::vec<T,3> sqrt(const ygl::vec<T,3>& v){return ygl::vec<T,3>{std::sqrt(v.x),std::sqrt(v.y),std::sqrt(v.z)};}
+    template <typename T> inline ygl::vec<T,2> sqrt(const ygl::vec<T,2>& v){return ygl::vec<T,2>{std::sqrt(v.x),std::sqrt(v.y)};}
 
-    template <typename T> inline T adot(const ygl::vec<T,2>& v1,const ygl::vec<T,2>& v2){ return abs(dot(v1,v2));}
-    template <typename T> inline T adot(const ygl::vec<T,3>& v1,const ygl::vec<T,3>& v2){ return abs(dot(v1,v2));}
-    template <typename T> inline T adot(const ygl::vec<T,4>& v1,const ygl::vec<T,4>& v2){ return abs(dot(v1,v2));}
+    template <typename T> inline T adot(const ygl::vec<T,2>& v1,const ygl::vec<T,2>& v2){ return std::abs(dot(v1,v2));}
+    template <typename T> inline T adot(const ygl::vec<T,3>& v1,const ygl::vec<T,3>& v2){ return std::abs(dot(v1,v2));}
+    template <typename T> inline T adot(const ygl::vec<T,4>& v1,const ygl::vec<T,4>& v2){ return std::abs(dot(v1,v2));}
 
-    inline bool cmpf(vfloat a, vfloat b){
-        const vfloat absA = abs(a);
-		const vfloat absB = abs(b);
-		const vfloat diff = abs(a - b);
+    template<typename T>
+    inline bool cmpf(T a, T b){
+        constexpr const static T minT = mint<T>();
+        constexpr const static T maxT = maxt<T>();
+        constexpr const static T epsT = epst<T>();
+
+
+        const T absA = std::abs(a);
+		const T absB = std::abs(b);
+		const T diff = std::abs(a - b);
 		if (a == b) {
 			return true;
-		} else if (a == 0 || b == 0 || diff < minvf) {
-			return diff < (epsvf * minvf);
+		} else if (a == 0 || b == 0 || diff < minT) {
+			return diff < (epsT * minT);
 		} else {
-			return diff / min((absA + absB), maxvf) < epsvf;
+			return diff / std::min((absA + absB), maxT) < epsT;
 		}
     }
 
-    inline bool cmpf(const vvec3f& a,const vvec3f& b){
-        return cmpf(a.x,b.x) == cmpf(a.y,b.y) == cmpf(a.z,b.z);
+    template<typename T>
+    inline bool cmpf(const vec<T,2>& a,const vec<T,2>& b){
+        return cmpf(a.x,b.x) && cmpf(a.y,b.y);
     }
-    inline bool cmpf(const vvec2f& a,const vvec2f& b){
-        return cmpf(a.x,b.x) == cmpf(a.y,b.y);
+    template<typename T>
+    inline bool cmpf(const vec<T,3>& a,const vec<T,3>& b){
+        return cmpf(a.x,b.x) && cmpf(a.y,b.y) && cmpf(a.z,b.z);
     }
-    inline bool cmpf(const vvec4f& a,const vvec4f& b){
-        return cmpf(a.x,b.x) == cmpf(a.y,b.y) == cmpf(a.z,b.z) == cmpf(a.w,b.w);
+    template<typename T>
+    inline bool cmpf(const vec<T,4>& a,const vec<T,4>& b){
+        return cmpf(a.x,b.x) && cmpf(a.y,b.y) && cmpf(a.z,b.z) && cmpf(a.w,b.w);
     }
 
-    inline bool has_nan(const vvec3f& a){
+    template<typename T>
+    inline bool has_nan(const vec<T,2>& a){
+        return std::isnan(a.x) || std::isnan(a.y);
+    }
+    template<typename T>
+    inline bool has_nan(const vec<T,3>& a){
         return std::isnan(a.x) || std::isnan(a.y) || std::isnan(a.z);
     }
+    template<typename T>
+    inline bool has_nan(const vec<T,4>& a){
+        return std::isnan(a.x) || std::isnan(a.y) || std::isnan(a.z) || std::isnan(a.w);
+    }
 
-    inline bool has_nnormal(const vvec3f& a){
+    template<typename T>
+    inline bool has_nnormal(const vec<T,2>& a){
+        return !(std::isnormal(a.x) && std::isnormal(a.y));
+    }
+    template<typename T>
+    inline bool has_nnormal(const vec<T,3>& a){
         return !(std::isnormal(a.x) && std::isnormal(a.y) && std::isnormal(a.z));
     }
+    template<typename T>
+    inline bool has_nnormal(const vec<T,4>& a){
+        return !(std::isnormal(a.x) && std::isnormal(a.y) && std::isnormal(a.z) && std::isnormal(a.w));
+    }
 
-    inline bool has_inf(const vvec3f& a){
+    template<typename T>
+    inline bool has_inf(const vec<T,2>& a){
+        return !(std::isfinite(a.x) && std::isfinite(a.y));
+    }
+    template<typename T>
+    inline bool has_inf(const vec<T,3>& a){
         return !(std::isfinite(a.x) && std::isfinite(a.y) && std::isfinite(a.z));
     }
-
-    inline bool is_zero_or_has_ltz(const vvec3f& a){
-        return cmpf(a,vzero3f) || a.x<-ygl::epsf || a.y<-ygl::epsf || a.z<-ygl::epsf;
+    template<typename T>
+    inline bool has_inf(const vec<T,4>& a){
+        return !(std::isfinite(a.x) && std::isfinite(a.y) && std::isfinite(a.z) && std::isfinite(a.w));
     }
 
-    inline std::string _p(const vvec3f& v){
+    template<typename T>
+    inline is_zero_or_has_ltz(const vec<T,2>& a){
+        constexpr const static T epsT = epst<T>();
+        return cmpf(a,zero2<T>) || a.x<-epsT || a.y<-epsT;
+    }
+    template<typename T>
+    inline is_zero_or_has_ltz(const vec<T,3>& a){
+        constexpr const static T epsT = epst<T>();
+        return cmpf(a,zero3<T>) || a.x<-epsT || a.y<-epsT || a.z<-epsT;
+    }
+    template<typename T>
+    inline is_zero_or_has_ltz(const vec<T,4>& a){
+        constexpr const static T epsT = epst<T>();
+        return cmpf(a,zero4<T>) || a.x<-epsT || a.y<-epsT || a.z<-epsT || a.w<-epsT;
+    }
+
+    inline std::string _p(const vec3vf& v){
         std::ostringstream oss;
         oss << v.x << "," << v.y << "," << v.z;
         return oss.str();
@@ -605,157 +667,7 @@ namespace vnx {
         oss << v.x << "," << v.y;
         return oss.str();
     }
-	/////
-	/////
-	//DUAL NUMBERS AUTOMATIC DERIVATIVES
-	/////
-	/////
 
-
-	template<typename T> struct dual3{
-        dual3<T>(){
-            real = T(0);
-            dual.x = real;
-            dual.y = real;
-            dual.z = real;
-        }
-	    dual3<T>(const T& v){
-            real = v;
-            dual.x = 0.0f;
-            dual.y = 0.0f;
-            dual.z = 0.0f;
-	    }
-
-	    dual3<T>(const T& r,const vec<T,3>& d){
-            real = r;
-            dual = d;
-	    }
-
-	    inline T Real(){return real;}
-	    inline vec<T,3> Dual(){return dual;}
-
-        T real;
-        vec<T,3> dual;
-	};
-
-	template<typename T> struct dual3Dom{
-
-	    dual3Dom<T>(const vvec3f& p){
-            x = dual3<T>(p.x,{1.0f,0.0f,0.0f});
-            y = dual3<T>(p.y,{0.0f,1.0f,0.0f});
-            z = dual3<T>(p.z,{0.0f,0.0f,1.0f});
-	    }
-
-        dual3<T> x;
-        dual3<T> y;
-        dual3<T> z;
-	};
-
-	template <typename T> inline dual3<T> operator +(const dual3<T>& a, const dual3<T>& b){
-        return dual3<T>(a.real+b.real,a.dual+b.dual);
-	}
-	template <typename T> inline dual3<T> operator -(const dual3<T>& a, const dual3<T>& b){
-        return dual3<T>(a.real-b.real,a.dual-b.dual);
-	}
-	template <typename T> inline dual3<T> operator *(const dual3<T>& a, const dual3<T>& b){
-        return dual3<T>(
-            a.real * b.real,
-            a.real * b.dual + a.dual * b.real
-        );
-	}
-	template <typename T> inline dual3<T> operator /(const dual3<T>& a, const dual3<T>& b){
-        return dual3<T>(
-            a.real / b.real,
-            (a.dual * b.real - a.real * b.dual) / (b.real * b.real)
-        );
-	}
-
-	template <typename T> inline dual3<T> pow(const dual3<T>& a, float y){
-        return dual3<T>(
-            std::pow(a.real,y),
-            (y * a.dual) * std::pow(a.real,y - 1.0f)
-        );
-	}
-
-	template <typename T> inline dual3<T> sqrt(const dual3<T>& a){
-        return dual3<T>(
-            std::sqrt(a.real),
-            a.dual / (2.0f*std::sqrt(a.real))
-        );
-	}
-
-	template <typename T> inline dual3<T> sin(const dual3<T>& a){
-        return dual3<T>(
-            std::sin(a.real),
-            a.dual * std::cos(a.real)
-        );
-	}
-
-	template <typename T> inline dual3<T> cos(const dual3<T>& a){
-        return dual3<T>(
-            std::cos(a.real),
-            -a.dual * std::sin(a.real)
-        );
-	}
-
-	template <typename T> inline dual3<T> tan(const dual3<T>& a){
-	    auto sq_cos = std::cos(a.real);
-        return dual3<T>(
-            std::tan(a.real),
-            a.dual / (sq_cos * sq_cos)
-        );
-	}
-
-	template <typename T> inline dual3<T> atan(const dual3<T>& a){
-        return dual3<T>(
-            std::atan(a.real),
-            a.dual / (1.0f +(a.real * a.real))
-        );
-	}
-
-	template <typename T> inline dual3<T> abs(const dual3<T>& a){
-        return dual3<T>(
-            std::abs(a.real),
-            a.dual*sign(a.real)
-        );
-	}
-
-	template <typename T> inline dual3<T> max(const dual3<T>& a,const dual3<T>& b){
-	    return (a.real>=b.real)?a:b;
-	}
-	template <typename T> inline dual3<T> min(const dual3<T>& a,const dual3<T>& b){
-	    return (a.real<b.real)?a:b;
-	}
-
-	template<typename T> inline dual3<T> length(const dual3<T>& x,const dual3<T>& y,const dual3<T>& z){
-	    auto r = length(vec<T,3>{x.real,y.real,z.real});
-	    auto inv = (cmpf(r,0.0f)) ? r: 1.0f/r;
-        auto d = (x.dual*x.real + y.dual*y.real + z.dual*z.real) * inv;
-        return dual3<T>(r, d);
-        /*return dual3<T>(
-            length(vec<T,3>{x.real,y.real,z.real}),
-            (x.dual*y.dual*z.dual)* ((2.0f*y.real*(y.dual/x.dual)) + (2.0f*z.real*(z.dual/x.dual)) + (2.0f*x.real)) / sqrt(pow(x,2.0f)+pow(y,2.0f)+pow(z,2.0f))
-        );*/
-        //return sqrt(dot(x,dot(y,z)));
-	}
-
-	template<typename T> inline dual3<T> dot(const dual3Dom<T>& a, const dual3Dom<T>& b){
-	    dual3<T> t0 = a.x*b.x;
-	    dual3<T> t1 = a.y*b.y;
-	    dual3<T> t2 = a.z*b.z;
-	    return t0+t1+t2;
-	}
-
-
-
-
-
-
-	/////
-	/////
-	//DUAL NUMBERS AUTOMATIC DERIVATIVES
-	/////
-	/////
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/
 	inline vfloat smin(vfloat a, vfloat b, vfloat k)
 	{
@@ -770,8 +682,8 @@ namespace vnx {
 	}
 
     ///Credits : http://bl.ocks.org/benjaminabel/4355926 ///
-	inline vvec3f spectral_to_rgb(vfloat w){ // RGB <0,1> <- lambda w <380,780> [nm]
-		vfloat l = 0.0f; vfloat R = 0.0; vfloat G = 0.0; vfloat B = 0.0;
+	inline vec3vf spectral_to_rgb(vfloat w){ // RGB <0,1> <- lambda w <380,780> [nm]
+		vfloat l = 0.0; vfloat R = 0.0; vfloat G = 0.0; vfloat B = 0.0;
         if (w >= 380.0 && w < 440.0) {
             R = -(w - 440.0) / (440.0 - 350.0);
             G = 0.0;
@@ -828,7 +740,7 @@ namespace vnx {
 	}
 
 	inline vfloat stefan_boltzman_law(vfloat t){
-        return (KSB / ygl::pi<vfloat>)*(t*t*t*t);
+        return (KSB / pivf)*(t*t*t*t);
 	}
 
 	inline vfloat wien_displacement_law(vfloat t){
@@ -859,12 +771,12 @@ namespace vnx {
 	}
 
 	inline vfloat F0_from_ior(vfloat ior){
-	    return powf((ior-1.0f)/(ior+1.0f),2.0f);
+	    return std::pow((ior-1.0)/(ior+1.0),2.0);
 	}
 
 	struct VRay {
-		vvec3f o = vzero3f;
-		vvec3f d = vzero3f;
+		vec3vf o = zero3vf;
+		vec3vf d = zero3vf;
 		vfloat tmin = 0.001;
 		vfloat tmax = 1000.0;
 		vfloat ior = 1.0;
@@ -898,8 +810,8 @@ namespace vnx {
         VMaterialType type = dielectric;
         VIorType ior_type = wl_dependant;
 
-		vvec3f kr = vzero3f;
-		vvec3f ka = vzero3f;
+		vec3vf kr = zero3vf;
+		vec3vf ka = zero3vf;
 
 		vfloat k_sca = -1.0;
 
@@ -937,13 +849,13 @@ namespace vnx {
 		inline bool is_dielectric() const {return type==dielectric;}
 		inline bool is_conductor()const {return type==conductor;}
 
-		inline bool is_emissive()  const { return e_temp > ygl::epsf && e_power > ygl::epsf; }
-		inline bool is_transmissive() const { return k_sca>=-ygl::epsf;}
-		inline bool is_refractive() const { return is_transmissive() && (sm_b1>ygl::epsf || sm_b2>ygl::epsf || sm_b3>ygl::epsf || sm_c1>ygl::epsf || sm_c2>ygl::epsf || sm_c3>ygl::epsf);}
+		inline bool is_emissive()  const { return e_temp > 0.0001 && e_power > 0.0001; }
+		inline bool is_transmissive() const { return k_sca>=-0.0001;}
+		inline bool is_refractive() const { return is_transmissive() && (sm_b1>0.0001 || sm_b2>0.0001 || sm_b3>0.0001 || sm_c1>0.0001 || sm_c2>0.0001 || sm_c3>0.0001);}
 
-		inline bool is_delta() const{return ((is_conductor() && rs<=ygl::epsf) || (is_transmissive() && rs<=ygl::epsf) || (is_dielectric() && !is_transmissive() && cmpf(kr,vzero3f)));}
+		inline bool is_delta() const{return ((is_conductor() && rs<=0.0001) || (is_transmissive() && rs<=0.0001) || (is_dielectric() && !is_transmissive() && cmpf(kr,zero3vf)));}
 
-		inline bool has_kr(){return kr!=vzero3f;}
+		inline bool has_kr(){return kr!=zero3vf;}
 
 		inline vfloat eval_ior(vfloat wl,vfloat min_wl,vfloat max_wl,bool do_wl_depend = true) const{
 		    if(ior_type==non_wl_dependant) return ior;
@@ -957,7 +869,7 @@ namespace vnx {
 
 		}
 
-		inline void eval_mutator(ygl::rng_state& rng,const VResult& hit,const vvec3f& n, VMaterial& mat) {
+		inline void eval_mutator(ygl::rng_state& rng,const VResult& hit,const vec3vf& n, VMaterial& mat) {
 			if (mutator != nullptr){
                 mutator(rng, hit, n, mat);
 			}
@@ -966,19 +878,19 @@ namespace vnx {
 
 	struct VNode {
 		std::string id = "";
-		vframe3f _frame = identity_vframe3f;
-		vvec3f translation = vzero3f;
-		vvec4f rotation = identity_vquat4f;
-		vvec3f scale = vone3f;
+		frame3vf _frame = identity_frame3vf;
+		vec3vf translation = zero3vf;
+		vec4vf rotation = identity_quat4vf;
+		vec3vf scale = one3vf;
 		VRotationOrder rotation_order = VRO_XYZ;
 		displ_ftor displacement = nullptr;
 
 
 		VNode(std::string idv): id(idv) ,
-		_frame(identity_vframe3f),
-		scale(vone3f),
-		rotation(identity_vquat4f),
-		translation(vzero3f),
+		_frame(identity_frame3vf),
+		scale(one3vf),
+		rotation(identity_quat4vf),
+		translation(zero3vf),
 		rotation_order(VRO_XYZ),
 		displacement(nullptr){}
 
@@ -993,28 +905,28 @@ namespace vnx {
 
 		virtual inline const char* type() = 0;
 
-		inline vfloat eval_displacement(const vvec3f& p){
+		inline vfloat eval_displacement(const vec3vf& p){
 		    if(displacement!=nullptr){
                 return displacement(p);
 		    }
 		    return 0.0;
 		}
 
-		inline void set_translation(const vvec3f& a) { translation = a; }
+		inline void set_translation(const vec3vf& a) { translation = a; }
 		inline void set_translation(vfloat x, vfloat y, vfloat z) { translation = { x,y,z }; }
 
-		inline void set_rotation(const vvec3f& a) { rotation = { a.x,a.y,a.z,1 }; }
+		inline void set_rotation(const vec3vf& a) { rotation = { a.x,a.y,a.z,1 }; }
 		inline void set_rotation(vfloat x, vfloat y, vfloat z) { rotation = { x,y,z,1 }; }
-		inline void set_rotation_degs(const vvec3f& a) { rotation = { vnx::radians(a.x),vnx::radians(a.y),vnx::radians(a.z),1 }; }
+		inline void set_rotation_degs(const vec3vf& a) { rotation = { vnx::radians(a.x),vnx::radians(a.y),vnx::radians(a.z),1 }; }
 		inline void set_rotation_degs(vfloat x, vfloat y, vfloat z) { rotation = { vnx::radians(x),vnx::radians(y),vnx::radians(z),1 }; }
-		inline void mod_rotation_degs(const vvec3f& a) { rotation.x += vnx::radians(a.x), rotation.y += vnx::radians(a.y); rotation.z += vnx::radians(a.z); }
+		inline void mod_rotation_degs(const vec3vf& a) { rotation.x += vnx::radians(a.x), rotation.y += vnx::radians(a.y); rotation.z += vnx::radians(a.z); }
 		inline void mod_rotation_degs(vfloat x, vfloat y, vfloat z) { rotation.x += vnx::radians(x), rotation.y += vnx::radians(y); rotation.z += vnx::radians(z); }
 
 		inline void set_rotation_order(VRotationOrder ro){rotation_order = ro;}
 
-        inline void set_scale(vfloat s){ if (s <= ygl::epsf) { scale = vone3f; return; }  scale = {s,s,s}; }
-		inline void set_scale(const vvec3f& a) { if (min_element(a) <= ygl::epsf) { scale = vone3f; return; }  scale = a; }
-		inline void set_scale(vfloat x, vfloat y, vfloat z) { if (min_element(vvec3f{ x,y,z }) <= ygl::epsf) { scale = vone3f; return; } scale = { x,y,z }; }
+        inline void set_scale(vfloat s){ if (s <= 0.0001) { scale = one3vf; return; }  scale = {s,s,s}; }
+		inline void set_scale(const vec3vf& a) { if (min_element(a) <= 0.0001) { scale = one3vf; return; }  scale = a; }
+		inline void set_scale(vfloat x, vfloat y, vfloat z) { if (min_element(vec3vf{ x,y,z }) <= 0.0001) { scale = one3vf; return; } scale = { x,y,z }; }
 
 		VNode* select(const std::string& n) {
 			auto chs = get_childs();
@@ -1044,14 +956,14 @@ namespace vnx {
 			return results;
 		}
 
-		inline virtual void eval(const vvec3f& p,VResult& res) = 0;
+		inline virtual void eval(const vec3vf& p,VResult& res) = 0;
 	};
 
 	struct VVolume : public VNode {
 		VMaterial* mMaterial = nullptr;
 		~VVolume() {};
 
-		inline vvec3f eval_ep(const vvec3f& p){
+		inline vec3vf eval_ep(const vec3vf& p){
 		    return transform_point_inverse(_frame, p);// / scale;
 		}
 
@@ -1111,8 +1023,8 @@ namespace vnx {
 		vfloat vdist = maxvf;
 
 		//vec3f norm = zero3f; //still unused
-		vvec3f wor_pos = vzero3f;
-		vvec3f loc_pos = vzero3f;
+		vec3vf wor_pos = zero3vf;
+		vec3vf loc_pos = zero3vf;
 
 		bool _found = false;
 
@@ -1125,23 +1037,23 @@ namespace vnx {
         vfloat aperture = 0.0;
         vfloat yfov = 45.0;
 
-        vvec3f mOrigin = vzero3f;
-        vvec3f mTarget = vzero3f;
-        vvec3f mUp = {0,1,0};
+        vec3vf mOrigin = zero3vf;
+        vec3vf mTarget = zero3vf;
+        vec3vf mUp = {0,1,0};
 
         vec2f mResolution;
         vfloat mAspect;
 
-        vmat4f mWorldToCamera = identity_vmat4f;
-        vmat4f mWorldToRaster = identity_vmat4f;
-        vmat4f mCameraToRaster = identity_vmat4f;
-        vmat4f mCameraToClip = identity_vmat4f;
-        vmat4f mClipToRaster = identity_vmat4f;
+        mat4vf mWorldToCamera = identity_mat4vf;
+        mat4vf mWorldToRaster = identity_mat4vf;
+        mat4vf mCameraToRaster = identity_mat4vf;
+        mat4vf mCameraToClip = identity_mat4vf;
+        mat4vf mClipToRaster = identity_mat4vf;
 
 
-        vmat4f mCameraToWorld = identity_vmat4f;
-        vmat4f mRasterToWorld = identity_vmat4f;
-        vmat4f mRasterToCamera = identity_vmat4f;
+        mat4vf mCameraToWorld = identity_mat4vf;
+        mat4vf mRasterToWorld = identity_mat4vf;
+        mat4vf mRasterToCamera = identity_mat4vf;
 
         void Relate(const VEntry* entry){
             yfov = radians(try_strToFloat(entry->try_at(1),45.0));
@@ -1155,9 +1067,9 @@ namespace vnx {
             mAspect = vfloat(mResolution.x) / vfloat(mResolution.y);
 
             mClipToRaster =
-                frame_to_mat(scaling_frame(vvec3f{mResolution.x,mResolution.y,1.0}))*
-                frame_to_mat(scaling_frame(vvec3f{0.5,-0.5,1.0}))*
-                frame_to_mat(translation_frame(vvec3f{1.0,-1.0,0.0}));
+                frame_to_mat(scaling_frame(vec3vf{mResolution.x,mResolution.y,1.0}))*
+                frame_to_mat(scaling_frame(vec3vf{0.5,-0.5,1.0}))*
+                frame_to_mat(translation_frame(vec3vf{1.0,-1.0,0.0}));
 
             mCameraToClip = perspective_mat(yfov,mAspect,0.1,1.0);
             mCameraToRaster = mClipToRaster*mCameraToClip;
@@ -1171,17 +1083,17 @@ namespace vnx {
             mRasterToWorld = inverse(mWorldToRaster);
         }
 
-        inline bool inBounds(const vvec3f& raster,vec2i& pid) const {
+        inline bool inBounds(const vec3vf& raster,vec2i& pid) const {
             pid = vec2i{int(std::round(raster.x)),int(std::round(raster.y))};
             return (pid.x>=0&&pid.x<int(mResolution.x) && pid.y>=0 && pid.y<int(mResolution.y));
         }
 
         inline VRay Cast(vfloat x,vfloat y,const vec2f& uv) const{
-            vvec3f raster_point = {x+uv.x,y+uv.y,0.0};
-            vvec3f view_dir = transform_point(mRasterToWorld,raster_point);
+            vec3vf raster_point = {x+uv.x,y+uv.y,0.0};
+            vec3vf view_dir = transform_point(mRasterToWorld,raster_point);
 
             VRay rr;
-            rr.o = transform_point(mCameraToWorld,vzero3f);
+            rr.o = transform_point(mCameraToWorld,zero3vf);
             rr.d = normalize(view_dir-rr.o);
             return rr;
         }
@@ -1217,7 +1129,7 @@ namespace vnx {
 			return materials[id];
 		}
 
-		bool set_translation(const std::string& idv, const vvec3f& amount) {
+		bool set_translation(const std::string& idv, const vec3vf& amount) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
 			node->set_translation(amount);
@@ -1230,7 +1142,7 @@ namespace vnx {
 			return true;
 		}
 
-		bool set_rotation(std::string n, const vvec3f& amount) {
+		bool set_rotation(std::string n, const vec3vf& amount) {
 			auto node = select(n);
 			if (node == nullptr) { return false; }
 			node->set_rotation(amount);
@@ -1243,7 +1155,7 @@ namespace vnx {
 			return true;
 		}
 
-		bool set_rotation_degs(const std::string& idv, const vvec3f& amount) {
+		bool set_rotation_degs(const std::string& idv, const vec3vf& amount) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
 			node->set_rotation_degs(amount);
@@ -1263,7 +1175,7 @@ namespace vnx {
 			return true;
 		}
 
-		bool set_scale(const std::string& idv, const vvec3f& amount) {
+		bool set_scale(const std::string& idv, const vec3vf& amount) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
 			node->set_scale(amount);
@@ -1278,7 +1190,7 @@ namespace vnx {
 		bool set_scale(const std::string& idv, vfloat amount) {
 			auto node = select(idv);
 			if (node == nullptr) { return false; }
-			node->set_scale(vvec3f{amount,amount,amount});
+			node->set_scale(vec3vf{amount,amount,amount});
 			return true;
 		}
 
@@ -1289,16 +1201,16 @@ namespace vnx {
 			return true;
 		}
 
-		inline VResult eval(const vvec3f& p) const {
+		inline VResult eval(const vec3vf& p) const {
 		    VResult res;
 			if (root != nullptr) {root->eval(p,res);res.wor_pos = p;} //ensure wor_pos is set to world coord
 			return res;
 		}
-		inline void eval(const vvec3f& p,VResult& res) const {
+		inline void eval(const vec3vf& p,VResult& res) const {
 			if (root != nullptr) {root->eval(p,res);res.wor_pos = p;} // ensure wor_pos is set to world coord
 		}
 
-		inline vvec3f eval_normals_tht(const VResult& vre,vfloat eps) const {
+		inline vec3vf eval_normals_tht(const VResult& vre,vfloat eps) const {
 			const auto p = vre.wor_pos;
                 VResult res;
                 root->eval(p + nv1*eps,res);
@@ -1312,22 +1224,22 @@ namespace vnx {
                 return normalize(n);
 		}
 
-		inline vvec3f eval_normals_cnt(const VResult& vre,vfloat eps) const {
+		inline vec3vf eval_normals_cnt(const VResult& vre,vfloat eps) const {
 			const auto p = vre.wor_pos;
 			VResult res;
 
-			vvec3f norm = vzero3f;
-			root->eval(p + vvec3f{eps,0,0},res);
+			vec3vf norm = zero3vf;
+			root->eval(p + vec3vf{eps,0,0},res);
 			norm.x = res.dist;
-			root->eval(p - vvec3f{eps,0,0},res);
+			root->eval(p - vec3vf{eps,0,0},res);
 			norm.x -= res.dist;
-			root->eval(p + vvec3f{0,eps,0},res);
+			root->eval(p + vec3vf{0,eps,0},res);
 			norm.y = res.dist;
-			root->eval(p - vvec3f{0,eps,0},res);
+			root->eval(p - vec3vf{0,eps,0},res);
 			norm.y -= res.dist;
-			root->eval(p + vvec3f{0,0,eps},res);
+			root->eval(p + vec3vf{0,0,eps},res);
 			norm.z = res.dist;
-			root->eval(p - vvec3f{0,0,eps},res);
+			root->eval(p - vec3vf{0,0,eps},res);
 			norm.z -= res.dist;
 
 			return normalize(norm);
@@ -1357,13 +1269,13 @@ namespace vnx {
         ///it simply cannot determine wether it is an "error" or a legit inside trace.
         ///TODO ,over rel & lipschitz fixer for "started inside" tracings
 		inline VResult intersect_rel(const VRay& ray,int miters,int& i) const{
-		    const vfloat hmaxf = maxvf/2.0; ///consider using this to avoid over/underflows (depending on sign of the leading expression, it might happen, needs testing) .
+		    //const vfloat hmaxf = maxvf/2.0; ///consider using this to avoid over/underflows (depending on sign of the leading expression, it might happen, needs testing) .
 		    ///P.S: DON'T use "maxf" , it WILL UNDERFlOW (of course...)
-		    const vfloat maxf_m1 = maxvf-1.0;
+		    constexpr static vfloat maxf_m1 = maxvf-1.0;
             vfloat t=0.0;
             vfloat pd=maxf_m1;
             vfloat os=0.0;
-            vfloat s = 1.0f;
+            vfloat s = 1.0;
             VResult vre;
             for(i=0;i<miters;i++){
                 eval(ray.o+ray.d*t,vre);
@@ -1524,14 +1436,14 @@ namespace vnx {
 		fclose(fp);
 	}
 
-	inline vvec3f rand_in_hemisphere_cos(const vvec3f& pos, const vvec3f& norm,const vec2f& rn) {
+	inline vec3vf rand_in_hemisphere_cos(const vec3vf& pos, const vec3vf& norm,const vec2f& rn) {
 		auto fp = ygl::make_frame_fromz(pos, norm);
-		auto rz = sqrtf(rn.x), rr = sqrtf(1 - rz * rz), rphi = 2 * ygl::pif * rn.y;
-		auto wi_local = vvec3f{ rr * cosf(rphi), rr * sinf(rphi), rz };
+		vfloat rz = std::sqrt(rn.x), rr = std::sqrt(1 - rz * rz), rphi = 2 * pivf * rn.y;
+		auto wi_local = vec3vf{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
 		return ygl::transform_direction(fp, wi_local);
 	}
 
-	inline VRay offsetted_ray(const vvec3f& o,VRay rr, const vvec3f& d, const vfloat tmin, const vfloat tmax, const vvec3f& offalong, const vfloat dist, vfloat fmult = 2.0) {
+	inline VRay offsetted_ray(const vec3vf& o,VRay rr, const vec3vf& d, const vfloat tmin, const vfloat tmax, const vec3vf& offalong, const vfloat dist, vfloat fmult = 2.0) {
 		rr.o = o + (offalong*(fmult * std::max(tmin, std::abs(dist))));
 		rr.d = d;
 		rr.tmin = tmin;
@@ -1548,47 +1460,47 @@ namespace vnx {
         return (v>=vref-eps) && (v<=vref+eps);
 	}
 
-	vframe3f calculate_frame(const VNode* node,const vframe3f& parent = identity_vframe3f){
-		if (node == nullptr) { return identity_vframe3f; }
+	frame3vf calculate_frame(const VNode* node,const frame3vf& parent = identity_frame3vf){
+		if (node == nullptr) { return identity_frame3vf; }
 		auto fr = parent*ygl::translation_frame(node->translation);
 
 			switch(node->rotation_order){
             case VRO_XYZ:
-                fr=fr*ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x)*
-                    ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y)*
-                    ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z);
+                fr=fr*ygl::rotation_frame(vec3vf{ 1,0,0 }, node->rotation.x)*
+                    ygl::rotation_frame(vec3vf{ 0,1,0 }, node->rotation.y)*
+                    ygl::rotation_frame(vec3vf{ 0,0,1 }, node->rotation.z);
                 break;
             case VRO_XZY:
-                fr=fr*ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x)*
-                    ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z)*
-                    ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y);
+                fr=fr*ygl::rotation_frame(vec3vf{ 1,0,0 }, node->rotation.x)*
+                    ygl::rotation_frame(vec3vf{ 0,0,1 }, node->rotation.z)*
+                    ygl::rotation_frame(vec3vf{ 0,1,0 }, node->rotation.y);
                 break;
             case VRO_YXZ:
-                fr=fr*ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y)*
-                    ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x)*
-                    ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z);
+                fr=fr*ygl::rotation_frame(vec3vf{ 0,1,0 }, node->rotation.y)*
+                    ygl::rotation_frame(vec3vf{ 1,0,0 }, node->rotation.x)*
+                    ygl::rotation_frame(vec3vf{ 0,0,1 }, node->rotation.z);
                 break;
             case VRO_YZX:
-                fr=fr*ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y)*
-                    ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z)*
-                    ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x);
+                fr=fr*ygl::rotation_frame(vec3vf{ 0,1,0 }, node->rotation.y)*
+                    ygl::rotation_frame(vec3vf{ 0,0,1 }, node->rotation.z)*
+                    ygl::rotation_frame(vec3vf{ 1,0,0 }, node->rotation.x);
                 break;
             case VRO_ZXY:
-                fr=fr*ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z)*
-                    ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x)*
-                    ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y);
+                fr=fr*ygl::rotation_frame(vec3vf{ 0,0,1 }, node->rotation.z)*
+                    ygl::rotation_frame(vec3vf{ 1,0,0 }, node->rotation.x)*
+                    ygl::rotation_frame(vec3vf{ 0,1,0 }, node->rotation.y);
                 break;
             case VRO_ZYX:
-                fr=fr*ygl::rotation_frame(vvec3f{ 0,0,1 }, node->rotation.z)*
-                    ygl::rotation_frame(vvec3f{ 0,1,0 }, node->rotation.y)*
-                    ygl::rotation_frame(vvec3f{ 1,0,0 }, node->rotation.x);
+                fr=fr*ygl::rotation_frame(vec3vf{ 0,0,1 }, node->rotation.z)*
+                    ygl::rotation_frame(vec3vf{ 0,1,0 }, node->rotation.y)*
+                    ygl::rotation_frame(vec3vf{ 1,0,0 }, node->rotation.x);
                 break;
 			}
-			auto n_scale = !cmpf(node->scale,vzero3f) ? vone3f/node->scale : vone3f;
+			auto n_scale = !cmpf(node->scale,zero3vf) ? one3vf/node->scale : one3vf;
 			return fr*scaling_frame(n_scale);
 	}
 
-	void apply_transforms(VNode* node, const vframe3f& parent = identity_vframe3f) {
+	void apply_transforms(VNode* node, const frame3vf& parent = identity_frame3vf) {
 		node->_frame = calculate_frame(node,parent);
 		auto chs = node->get_childs();
 		if (chs.empty()) { return; }
@@ -1663,19 +1575,19 @@ namespace vnx {
         return stats;
     }*/
 
-    inline vec2i precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,vfloat ieps,vfloat neps,bool verbose,vframe3f parent_frame = identity_vframe3f) {
+    inline vec2i precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,vfloat ieps,vfloat neps,bool verbose,frame3vf parent_frame = identity_frame3vf) {
 		if (ptr == nullptr) { return {0,0}; }
 		vec2i stats = {0,0};
 
 		//std::string id = p_prefix+ptr->id;
         VResult vre;
         auto fr = calculate_frame(ptr,parent_frame); //HACK : risultato esatto , TODO test
-        auto epv = transform_point(fr, vzero3f);
+        auto epv = transform_point(fr, zero3vf);
         scn.eval(epv,vre);
 
         vre._found = true;
         auto vre_material = *vre.mat;
-        vvec3f norm = scn.NORMALS_ALGO(vre, neps);
+        vec3vf norm = scn.NORMALS_ALGO(vre, neps);
         if(vre_material.mutator!=nullptr){
             vre_material.eval_mutator(rng, vre, norm, vre_material);
         };
@@ -1693,7 +1605,7 @@ namespace vnx {
 
                 if(!vre.found()){
                     dir = sample_sphere_direction_vf(ygl::get_random_vec2f(rng));
-                    ray = offsetted_ray(fvre.wor_pos,{},dir,ieps,1000.0,vzero3f,0.0);
+                    ray = offsetted_ray(fvre.wor_pos,{},dir,ieps,1000.0,zero3vf,0.0);
                     stats.y++;
                     continue;
                 }
@@ -1709,7 +1621,7 @@ namespace vnx {
                 dir = ygl::transform_direction(fp, wh_local);*/
                 //
                 auto rn = ygl::get_random_vec2f(rng);
-                auto fp = dot(ray.d,norm) > 0.0 ? ygl::make_frame_fromz(vzero3f, -norm) : ygl::make_frame_fromz(vzero3f, norm); // TEST -norm && norm
+                auto fp = dot(ray.d,norm) > 0.0 ? ygl::make_frame_fromz(zero3vf, -norm) : ygl::make_frame_fromz(zero3vf, norm); // TEST -norm && norm
                 dir = ygl::transform_direction(fp,sample_hemisphere_direction_vf(rn));
 
                 dir = -ygl::reflect(ray.d,dir);
@@ -1747,7 +1659,7 @@ namespace vnx {
 		return stats;
 	}
 
-	inline vec2i populate_emissive_hints(VScene& scn,int n_em_e,float ieps,float neps,bool verbose = false) {
+	inline vec2i populate_emissive_hints(VScene& scn,int n_em_e,vfloat ieps,vfloat neps,bool verbose = false) {
 	    auto rng = ygl::make_rng(ygl::get_time());
 		std::map<std::string, std::vector<VResult>> tmpMap;
 		vec2i stats = LIGHT_PRECALC_ALGO(scn, rng, tmpMap, scn.root, "", n_em_e, ieps, neps, verbose);
@@ -1758,20 +1670,20 @@ namespace vnx {
 	}
 
 	///Procedural patterns utilities
-    inline bool on_pattern_gradient_oblique(const vvec3f& loc_pos,vfloat angle,float sx){
+    inline bool on_pattern_gradient_oblique(const vec3vf& loc_pos,vfloat angle,float sx){
         angle = radians(angle);
         const vfloat cangle = std::cos(angle);
         const vfloat sangle = std::sin(angle);
 
         vfloat s = loc_pos.x * cangle - loc_pos.y * sangle;
-        vfloat t = loc_pos.y * cangle + loc_pos.x * sangle;
+        //vfloat t = loc_pos.y * cangle + loc_pos.x * sangle;
         if((modulo(s * sx) < 0.5)){
             return true;
         }
         return false;
     }
 
-    inline bool on_pattern_gradient_checker(const vvec3f& loc_pos,vfloat angle,const vec2f& sc){
+    inline bool on_pattern_gradient_checker(const vec3vf& loc_pos,vfloat angle,const vec2f& sc){
         angle = radians(angle);
         const vfloat cangle = std::cos(angle);
         const vfloat sangle = std::sin(angle);
