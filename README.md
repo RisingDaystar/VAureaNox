@@ -27,7 +27,7 @@ There is basilar support for homogeneous and scattering media, so far (v 0.07) o
 Materials can be attached with a mutator , which allows to change the evaluated material at runtime , accounting also for normals and object loc/world pos...
 
 <h4>
-  <b>SDFs</b>
+  <b color="#d00">SDFs</b>
   <hr />
 </h4>
 
