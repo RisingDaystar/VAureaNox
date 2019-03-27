@@ -7,7 +7,9 @@ It uses [***Yocto/GL***](https://github.com/xelatihy/yocto-gl) library, written 
 
 
 VAureaNox is structured in 2 parts:
-A "Switch" part, responsable for initialization,Pre-render tasks, thread initialization and switching between implemented renderers and scenes (TODO: scenes as parseable files)
+
+A "Switch" part, responsable for initialization,Pre-render tasks, thread initialization, switching between implemented renderers and selecting/parsing scene (basic external scenes support is done)
+
 A "Renderer" part : the selected renderer processes the scene
 
 
