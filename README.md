@@ -22,6 +22,8 @@ Diffuse model which accounts for energy conservation, that allows for proper ( i
 
 Refractive materials with fixed or variable ior accounting for ray wavelength (keeps track of wl/speed/frequency[at first shoot]/ior) to simulate dispersion. Material parametrizable with a fixed ior or with Sellmeier coefficients (for dispersion)
 
+There is basilar support for homogeneous and scattering media, so far (v 0.07) only uniform phase function.
+
 Materials can be attached with a mutator , which allows to change the evaluated material at runtime , accounting also for normals and object loc/world pos...
 
 <h4>
