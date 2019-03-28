@@ -93,7 +93,7 @@ This scene uses a huge sphere as "floor" (***radius 3000***)
 
 Using ***floats***, precision related artifacts appeared (intersection precision related, not renderer related) 
 
-Using ***doubles***, first artifacts appear using a sphere of ***radius 3000000000000*** !
+Using ***doubles***, first artifacts appear with a radius value of more than ***800000000000***
 (Of course this depends on the host system) 
 
 <table>
