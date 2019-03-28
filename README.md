@@ -94,6 +94,7 @@ Changed system to use doubles instead of floats , this fixed a lot of issues (mo
 This scene uses a huge sphere as "floor" (***radius 3000***)
 
 Using ***floats***, precision related artifacts appeared (intersection precision related, not renderer related) 
+Increasing "ray_tmin" (lowering intersection precision) helped, but that is a rather heavy trade-off (the drop in fidelity is especially noticeable in more complex scenes)
 
 Using ***doubles***, first artifacts appear with a radius value of more than ***800000000000***
 (Of course this depends on the host system) 
