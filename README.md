@@ -50,7 +50,7 @@ For example (shallow explaination) : union operator considers the abs(cur_dist)<
 
 This scene is made with a large use of twist operator and other "non distance conserving" operators combinations, which makes the distance field not lipschitz continuous.
 
-<i>{settings : ray_tmin = 0.0001; ray_tmax = 10000.0; normal_eps = 0.001; max_march_iters = 512; ray_samples = 32;}</i>
+<i>{settings : ray_tmin = 0.0001; ray_tmax = 10000.0; normal_eps = 0.001; max_march_iters = 512; ray_samples = 256;}</i>
 
 <table>
   <tr>
@@ -97,6 +97,8 @@ Using ***floats***, precision related artifacts appeared (intersection precision
 
 Using ***doubles***, first artifacts appear with a radius value of more than ***800000000000***
 (Of course this depends on the host system) 
+
+<i>{settings : ray_tmin = 0.0001; ray_tmax = 10000.0; normal_eps = 0.001; max_march_iters = 512; ray_samples = 32;}</i>
 
 <table>
   <tr>
