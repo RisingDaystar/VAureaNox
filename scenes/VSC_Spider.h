@@ -378,9 +378,9 @@ namespace vscndef {
 
 		auto grey_diffuse_no_refl_adv = scn.add_material("grey_diffuse_no_refl_adv");
 		grey_diffuse_no_refl_adv->ior_type = non_wl_dependant;
-		grey_diffuse_no_refl_adv->ior = 1.35f;
-		grey_diffuse_no_refl_adv->kr = { 0.5f,0.5f,0.5f };
-		grey_diffuse_no_refl_adv->rs = 0.2f;
+		grey_diffuse_no_refl_adv->ior = 1.35;
+		grey_diffuse_no_refl_adv->kr = { 0.5,0.5,0.5 };
+		grey_diffuse_no_refl_adv->rs = 0.2;
 		/*auto mtor = [](ygl::rng_state& rng, const VResult& hit,const ygl::vec3f& n, VMaterial& mat) {
             if (std::abs(sin(hit.loc_pos.x*5)) < 0.07f || std::abs(sin(hit.loc_pos.z*5)) < 0.07f) {
                 mat.kr = zero3f;
@@ -393,7 +393,7 @@ namespace vscndef {
 			float dv = ygl::dot(loc_pos, ygl::normalize(vec3vf{ 0,1,0 }));
 
 			dv += sin(wor_pos.x)*sin(wor_pos.y)*sin(wor_pos.z);
-			return dv*(1.0f / 2.0f);
+			return dv*(1.0f / 2.0);
 		};
 		auto base_plane = new vvo_shadered("base_plane", grey_diffuse_no_refl_adv, ftor);
 		auto base_plane_v = new vvo_sd_plane("base_plane_v", grey_diffuse_no_refl_adv);

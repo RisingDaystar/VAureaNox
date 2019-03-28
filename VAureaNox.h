@@ -100,9 +100,12 @@ namespace vnx {
 	constexpr vec3vf zero3vf = zero3<vfloat>;//vec3vf{0.0,0.0,0.0};
 	constexpr vec2vf zero2vf = zero2<vfloat>;//vec2vf{0.0,0.0};
 
-    template<typename T> inline vec<T,4> toVec4(T v){return {v,v,v,v};}
-    template<typename T> inline vec<T,3> toVec3(T v){return {v,v,v};}
-    template<typename T> inline vec<T,2> toVec2(T v){return {v,v};}
+    template<typename T>
+    inline vec<T,4> toVec4(T v){return {v,v,v,v};}
+    template<typename T>
+    inline vec<T,3> toVec3(T v){return {v,v,v};}
+    template<typename T>
+    inline vec<T,2> toVec2(T v){return {v,v};}
 
 
 	constexpr vfloat KC = 299792e3;
@@ -291,22 +294,22 @@ namespace vnx {
         return def;
     }
 
-    inline vfloat try_strToVFloat(const std::string& ss,vfloat def){
+    inline vfloat try_strtovf(const std::string& ss,vfloat def){
         if(ss.empty()) return def;
         return std::atof(ss.c_str());
     }
 
-    inline float try_strToFloat(const std::string& ss,float def){
+    inline float try_strtof(const std::string& ss,float def){
         if(ss.empty()) return def;
         return std::atof(ss.c_str());
     }
 
-    inline int try_strToInt(const std::string& ss,int def){
+    inline int try_strtoi(const std::string& ss,int def){
         if(ss.empty()) return def;
         return std::atoi(ss.c_str());
     }
 
-    inline bool try_strToBool(const std::string& ss,bool def){
+    inline bool try_strtob(const std::string& ss,bool def){
         if(ss.empty()) return def;
         if(ss.length()>1){
             if(stricmp(ss,"true")) return true;
@@ -322,14 +325,14 @@ namespace vnx {
             auto cpnts = strDeGroup(ss);
             vec4i v = zero4i;
             for(int i=0;i<cpnts.size() && i<4;i++){
-                if(i==0)v.x = try_strToInt(cpnts[i],0);
-                else if(i==1)v.y = try_strToInt(cpnts[i],0);
-                else if(i==2)v.z = try_strToInt(cpnts[i],0);
-                else if(i==3)v.w = try_strToInt(cpnts[i],0);
+                if(i==0)v.x = try_strtoi(cpnts[i],0);
+                else if(i==1)v.y = try_strtoi(cpnts[i],0);
+                else if(i==2)v.z = try_strtoi(cpnts[i],0);
+                else if(i==3)v.w = try_strtoi(cpnts[i],0);
             }
             return v;
         }else{
-            auto cpnt = try_strToInt(ss,0);
+            auto cpnt = try_strtoi(ss,0);
             return vec4i{cpnt,cpnt,cpnt,cpnt};
         }
     }
@@ -341,13 +344,13 @@ namespace vnx {
             auto cpnts = strDeGroup(ss);
             vec3i v = zero3i;
             for(int i=0;i<cpnts.size() && i<3;i++){
-                if(i==0)v.x = try_strToInt(cpnts[i],0);
-                else if(i==1)v.y = try_strToInt(cpnts[i],0);
-                else if(i==2)v.z = try_strToInt(cpnts[i],0);
+                if(i==0)v.x = try_strtoi(cpnts[i],0);
+                else if(i==1)v.y = try_strtoi(cpnts[i],0);
+                else if(i==2)v.z = try_strtoi(cpnts[i],0);
             }
             return v;
         }else{
-            auto cpnt = try_strToInt(ss,0);
+            auto cpnt = try_strtoi(ss,0);
             return vec3i{cpnt,cpnt,cpnt};
         }
     }
@@ -359,12 +362,12 @@ namespace vnx {
             auto cpnts = strDeGroup(ss);
             vec2i v = zero2i;
             for(int i=0;i<cpnts.size() && i<2;i++){
-                if(i==0)v.x = try_strToInt(cpnts[i],0);
-                else if(i==1)v.y = try_strToInt(cpnts[i],0);
+                if(i==0)v.x = try_strtoi(cpnts[i],0);
+                else if(i==1)v.y = try_strtoi(cpnts[i],0);
             }
             return v;
         }else{
-            auto cpnt = try_strToInt(ss,0);
+            auto cpnt = try_strtoi(ss,0);
             return vec2i{cpnt,cpnt};
         }
     }
@@ -377,14 +380,14 @@ namespace vnx {
             auto cpnts = strDeGroup(ss);
             vec<bool,4> v = {false,false,false,false};
             for(int i=0;i<cpnts.size() && i<4;i++){
-                if(i==0)v.x = try_strToBool(cpnts[i],false);
-                else if(i==1)v.y = try_strToBool(cpnts[i],false);
-                else if(i==2)v.z = try_strToBool(cpnts[i],false);
-                else if(i==3)v.w = try_strToBool(cpnts[i],false);
+                if(i==0)v.x = try_strtob(cpnts[i],false);
+                else if(i==1)v.y = try_strtob(cpnts[i],false);
+                else if(i==2)v.z = try_strtob(cpnts[i],false);
+                else if(i==3)v.w = try_strtob(cpnts[i],false);
             }
             return v;
         }else{
-            auto cpnt = try_strToBool(ss,false);
+            auto cpnt = try_strtob(ss,false);
             return vec<bool,4>{cpnt,cpnt,cpnt,cpnt};
         }
     }
@@ -396,13 +399,13 @@ namespace vnx {
             auto cpnts = strDeGroup(ss);
             vec<bool,3> v = {false,false,false};
             for(int i=0;i<cpnts.size() && i<3;i++){
-                if(i==0)v.x = try_strToBool(cpnts[i],false);
-                else if(i==1)v.y = try_strToBool(cpnts[i],false);
-                else if(i==2)v.z = try_strToBool(cpnts[i],false);
+                if(i==0)v.x = try_strtob(cpnts[i],false);
+                else if(i==1)v.y = try_strtob(cpnts[i],false);
+                else if(i==2)v.z = try_strtob(cpnts[i],false);
             }
             return v;
         }else{
-            auto cpnt = try_strToBool(ss,false);
+            auto cpnt = try_strtob(ss,false);
             return vec<bool,3>{cpnt,cpnt,cpnt};
         }
     }
@@ -414,17 +417,17 @@ namespace vnx {
             auto cpnts = strDeGroup(ss);
             vec<bool,2> v = {false,false};
             for(int i=0;i<cpnts.size() && i<2;i++){
-                if(i==0)v.x = try_strToBool(cpnts[i],false);
-                else if(i==1)v.y = try_strToBool(cpnts[i],false);
+                if(i==0)v.x = try_strtob(cpnts[i],false);
+                else if(i==1)v.y = try_strtob(cpnts[i],false);
             }
             return v;
         }else{
-            auto cpnt = try_strToBool(ss,false);
+            auto cpnt = try_strtob(ss,false);
             return vec<bool,2>{cpnt,cpnt};
         }
     }
 
-    inline vec4vf try_strToVec4f(const std::string& ss,vec4vf def){
+    inline vec4vf try_strToVec4vf(const std::string& ss,vec4vf def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
@@ -442,7 +445,7 @@ namespace vnx {
             return vec4vf{cpnt,cpnt,cpnt,cpnt};
         }
     }
-    inline vec3vf try_strToVec3f(const std::string& ss,vec3vf def){
+    inline vec3vf try_strToVec3vf(const std::string& ss,vec3vf def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
@@ -459,7 +462,7 @@ namespace vnx {
             return vec3vf{cpnt,cpnt,cpnt};
         }
     }
-    inline vec2vf try_strToVec2f(const std::string& ss,vec2vf def){
+    inline vec2vf try_strToVec2vf(const std::string& ss,vec2vf def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
@@ -833,16 +836,16 @@ namespace vnx {
             entry->ptr = this;
             type = try_strToMaterialType(entry->try_at(1),type);
             ior_type = try_strToIorType(entry->try_at(2),ior_type);
-            kr = try_strToVec3f(entry->try_at(3),kr);
-            ka = try_strToVec3f(entry->try_at(4),ka);
+            kr = try_strToVec3vf(entry->try_at(3),kr);
+            ka = try_strToVec3vf(entry->try_at(4),ka);
 
-            k_sca = try_strToFloat(entry->try_at(5),k_sca);
+            k_sca = try_strtof(entry->try_at(5),k_sca);
 
-            e_temp = try_strToFloat(entry->try_at(6),e_temp);
-            e_power = try_strToFloat(entry->try_at(7),e_power);
+            e_temp = try_strtof(entry->try_at(6),e_temp);
+            e_power = try_strtof(entry->try_at(7),e_power);
 
-            ior = try_strToFloat(entry->try_at(8),ior);
-            rs = try_strToFloat(entry->try_at(9),rs);
+            ior = try_strtof(entry->try_at(8),ior);
+            rs = try_strtof(entry->try_at(9),rs);
             //vmaterial("light_mat",d,nwl,0.0,0.0,-1.0,6000,120)
 		}
 
@@ -1056,10 +1059,10 @@ namespace vnx {
         mat4vf mRasterToCamera = identity_mat4vf;
 
         void Relate(const VEntry* entry){
-            yfov = radians(try_strToFloat(entry->try_at(1),45.0));
-            mOrigin = try_strToVec3f(entry->try_at(2),mOrigin);
-            mTarget = try_strToVec3f(entry->try_at(3),mTarget);
-            mUp = try_strToVec3f(entry->try_at(4),mUp);
+            yfov = radians(try_strtof(entry->try_at(1),45.0));
+            mOrigin = try_strToVec3vf(entry->try_at(2),mOrigin);
+            mTarget = try_strToVec3vf(entry->try_at(3),mTarget);
+            mUp = try_strToVec3vf(entry->try_at(4),mUp);
         }
 
         inline void Setup(const vec2f& resolution){

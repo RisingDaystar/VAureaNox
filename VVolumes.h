@@ -31,9 +31,9 @@ struct vvo_shadered : public VVolume {
 	vvo_shadered(std::string ids, VMaterial* mtl, std::function<float(const vec3vf& p, vec3vf& ep, const VNode* tref) > ftor): VVolume(ids,mtl),mShader(ftor) { }
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 
@@ -60,9 +60,9 @@ struct vvo_sd_plane : public VVolume {
 	vvo_sd_plane(std::string ids, VMaterial* mtl,vfloat offset): VVolume(ids,mtl),mOffset(offset){}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 
@@ -83,11 +83,11 @@ struct vvo_sd_sphere : public VVolume {
 	vvo_sd_sphere(std::string ids, VMaterial* mtl, vfloat radius): VVolume(ids,mtl),mRadius(radius) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
-        mRadius = try_strToVFloat(entry->try_at(6),mRadius);
+        mRadius = try_strtovf(entry->try_at(6),mRadius);
 	}
 
 	inline const char* type(){return "vvo_sd_sphere";}
@@ -108,9 +108,9 @@ struct vvo_sd_box : public VVolume {
 	vvo_sd_box(std::string ids, VMaterial* mtl, vfloat dims): VVolume(ids,mtl),mDims(vec3vf{dims,dims,dims}) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 
@@ -132,9 +132,9 @@ struct vvo_sd_ellipsoid : public VVolume {
 	vvo_sd_ellipsoid(std::string ids, VMaterial* mtl, vec3vf sizes): VVolume(ids,mtl),mSizes(sizes) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 
@@ -155,9 +155,9 @@ struct vvo_sd_cylinder : public VVolume {
 	vvo_sd_cylinder(std::string ids, VMaterial* mtl, vec2vf dims): VVolume(ids,mtl),mDims(dims) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 
@@ -181,9 +181,9 @@ struct vvo_sd_capsule : public VVolume {
 	vvo_sd_capsule(std::string ids, VMaterial* mtl, vfloat baseRadius, vec3vf a, vec3vf b): VVolume(ids,mtl),mBaseRadius(baseRadius),mA(a),mB(b) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 
@@ -206,9 +206,9 @@ struct vvo_sd_hex_prism : public VVolume {
 	vvo_sd_hex_prism(std::string ids, VMaterial* mtl, vec2vf dims): VVolume(ids,mtl),mDims(dims) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 
@@ -230,9 +230,9 @@ struct vvo_sd_tri_prism : public VVolume {
 	vvo_sd_tri_prism(std::string ids, VMaterial* mtl, vec2vf dims): VVolume(ids,mtl),mDims(dims) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 
@@ -254,9 +254,9 @@ struct vvo_sd_capped_cone : public VVolume {
 	vvo_sd_capped_cone(std::string ids, VMaterial* mtl, vec3vf dims): VVolume(ids,mtl),mDims(dims) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 
@@ -285,9 +285,9 @@ struct vvo_sd_pyramid4 : public VVolume {
 	vvo_sd_pyramid4(std::string ids, VMaterial* mtl, vec3vf dims): VVolume(ids,mtl),mDims(dims) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 
@@ -318,9 +318,9 @@ struct vvo_sd_diamond : public VVolume {
 	vvo_sd_diamond(std::string ids, VMaterial* mtl): VVolume(ids,mtl) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(2),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(4),scale));
+        set_translation(try_strToVec3vf(entry->try_at(2),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(3),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(4),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(5),rotation_order));
 	}
 

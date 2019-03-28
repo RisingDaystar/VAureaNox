@@ -29,11 +29,11 @@ struct vop_union : public VOperator {
 	vop_union(std::string idv, std::vector<VNode*> chs) : VOperator(idv, chs), mBlendFactor(0.0) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(1),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(3),scale));
+        set_translation(try_strToVec3vf(entry->try_at(1),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(3),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(4),rotation_order));
-        mBlendFactor = try_strToVFloat(entry->try_at(5),mBlendFactor);
+        mBlendFactor = try_strtovf(entry->try_at(5),mBlendFactor);
 	}
 
 	inline const char* type(){return "vop_union";}
@@ -98,12 +98,12 @@ struct vop_intersection : public VOperator {
 	vop_intersection(std::string idv, std::vector<VNode*> chs) : VOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(false) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(1),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(3),scale));
+        set_translation(try_strToVec3vf(entry->try_at(1),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(3),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(4),rotation_order));
-        mBlendFactor = try_strToVFloat(entry->try_at(5),mBlendFactor);
-        mPreserveMtl = try_strToBool(entry->try_at(6),mPreserveMtl);
+        mBlendFactor = try_strtovf(entry->try_at(5),mBlendFactor);
+        mPreserveMtl = try_strtob(entry->try_at(6),mPreserveMtl);
 	}
 
 
@@ -170,12 +170,12 @@ struct vop_subtraction : public VOperator {
 	vop_subtraction(std::string idv, std::vector<VNode*> chs) : VOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(false) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(1),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(3),scale));
+        set_translation(try_strToVec3vf(entry->try_at(1),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(3),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(4),rotation_order));
-        mBlendFactor = try_strToVFloat(entry->try_at(5),mBlendFactor);
-        mPreserveMtl = try_strToBool(entry->try_at(6),mPreserveMtl);
+        mBlendFactor = try_strtovf(entry->try_at(5),mBlendFactor);
+        mPreserveMtl = try_strtob(entry->try_at(6),mPreserveMtl);
 	}
 
 
@@ -242,12 +242,12 @@ struct vop_twist : public VOperator {
 	vop_twist(std::string idv, VAxis ax, vfloat am, VNode* chs) : VOperator(idv, { chs }), mAxis(ax), mAmount(am) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(1),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(3),scale));
+        set_translation(try_strToVec3vf(entry->try_at(1),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(3),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(4),rotation_order));
         mAxis = try_strToAxis(entry->try_at(5),mAxis);
-        mAmount = try_strToVFloat(entry->try_at(6),mAmount);
+        mAmount = try_strtovf(entry->try_at(6),mAmount);
 	}
 
 	inline const char* type(){return "vop_twist";}
@@ -312,11 +312,11 @@ struct vop_repeat : public VOperator {
 	vop_repeat(std::string idv,const vec3vf& cells,const vec<bool,3>& axis, VNode* chs) : VOperator(idv, { chs }), mCells(cells),mAxis(axis) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(1),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(3),scale));
+        set_translation(try_strToVec3vf(entry->try_at(1),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(3),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(4),rotation_order));
-        mCells = try_strToVec3f(entry->try_at(5),mCells);
+        mCells = try_strToVec3vf(entry->try_at(5),mCells);
         mAxis = try_strToVec3b(entry->try_at(6),mAxis);
 	}
 
@@ -353,9 +353,9 @@ struct vop_invert : public VOperator {
 	vop_invert(std::string idv, VNode* chs) : VOperator(idv, { chs }){}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(1),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(3),scale));
+        set_translation(try_strToVec3vf(entry->try_at(1),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(3),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(4),rotation_order));
 	}
 
@@ -392,12 +392,12 @@ struct vop_onion : public VOperator {
 	vop_onion(std::string idv, vfloat thickness,bool preserve, VNode* chs) : VOperator(idv, { chs }), mThickness(thickness),mPreserveVolume(preserve){}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(1),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(3),scale));
+        set_translation(try_strToVec3vf(entry->try_at(1),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(3),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(4),rotation_order));
-        mThickness = try_strToVFloat(entry->try_at(5),mThickness);
-        mPreserveVolume = try_strToBool(entry->try_at(6),mPreserveVolume);
+        mThickness = try_strtovf(entry->try_at(5),mThickness);
+        mPreserveVolume = try_strtob(entry->try_at(6),mPreserveVolume);
 	}
 
 	inline const char* type(){return "vop_onion";}
@@ -439,13 +439,13 @@ struct vop_cut : public VOperator {
 	vop_cut(std::string idv,const vec3i& axis,const vec3vf& offset,vfloat bfactor, VNode* chs) : VOperator(idv, { chs }),mAxis(axis),mOffset(offset),mBlendFactor(bfactor) {}
 
 	void DoRelate(const VEntry* entry){
-        set_translation(try_strToVec3f(entry->try_at(1),translation));
-        set_rotation_degs(try_strToVec3f(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
-        set_scale(try_strToVec3f(entry->try_at(3),scale));
+        set_translation(try_strToVec3vf(entry->try_at(1),translation));
+        set_rotation_degs(try_strToVec3vf(entry->try_at(2),vec3vf{rotation.x,rotation.y,rotation.z}));
+        set_scale(try_strToVec3vf(entry->try_at(3),scale));
         set_rotation_order(try_strToRotationOrder(entry->try_at(4),rotation_order));
         mAxis = try_strToVec3i(entry->try_at(5),mAxis);
-        mOffset = try_strToVec3f(entry->try_at(6),mOffset);
-        mBlendFactor = try_strToVFloat(entry->try_at(7),mBlendFactor);
+        mOffset = try_strToVec3vf(entry->try_at(6),mOffset);
+        mBlendFactor = try_strtovf(entry->try_at(7),mBlendFactor);
 	}
 
 	inline const char* type(){return "vop_cut";}
