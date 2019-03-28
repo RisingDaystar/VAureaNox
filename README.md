@@ -50,6 +50,8 @@ For example (shallow explaination) : union operator considers the abs(cur_dist)<
 
 This scene is made with a large use of twist operator and other "non distance conserving" operators combinations, which makes the distance field not lipschitz continuous.
 
+<i>{settings : ray_tmin = 0.0001; ray_tmax = 10000.0; normal_eps = 0.001; max_march_iters = 512; ray_samples = 32;}</i>
+
 <table>
   <tr>
     <th>Standard algorithm</th>
