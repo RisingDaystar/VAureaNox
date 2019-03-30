@@ -591,15 +591,12 @@ namespace vnx {
                 vfloat e_power;
                 vfloat e_temp;
 		    };
-            VResult hit;
-            VMaterial material;
-            VRay wi;
-            VTroughput troughput;
-            vec3vf n;
+            const VResult& hit;
+            const VMaterial& material;
+            const VRay& wi;
+            const VTroughput& troughput;
+            const vec3vf& n;
             VertexType type = SURFACE;
-
-            vfloat vc;
-            vfloat vcm;
 		};
 
 		inline vec3vf ConnectToEmissive(const VScene& scn,ygl::rng_state& rng,const VRay& wo,const VVertex& v1,const VResult& em){
@@ -703,7 +700,7 @@ namespace vnx {
                     vfloat pdf = std::exp(-(vmt.k_sca)*tFar);
 
                     if(dist<tFar){
-                        auto incoming = sample.ray;
+                        //auto incoming = sample.ray;
                         sample.ray.o = sample.ray.o+(sample.ray.d*dist);
 
                         poll = poll_volume_noray(scn, rng, sample.ray);
@@ -711,7 +708,7 @@ namespace vnx {
                         if(!scn.emissive_hints.empty()){
                             int idl = 0;
                             auto emissive = sample_emissive(scn,rng,idl);
-                            VVertex ev = {poll.eres,poll.emat,sample.ray,{w,0.0,0.0},zero3vf,VOLUME,0.0,0.0};
+                            VVertex ev = {poll.eres,poll.emat,sample.ray,{w,0.0,0.0},zero3vf,VOLUME};
                             output += ConnectToEmissive(scn,rng,sample.ray,ev,emissive);
                             //VVertex lev = {emissive,{},{},{w,0.0f,0.0f},scn.NORMALS_ALGO(emissive,f_normal_eps),EMISSIVE,0.0f,0.0f};
                             //output += ConnectVertex(scn,rng,ev,lev,incoming,pdf,1);
@@ -772,7 +769,7 @@ namespace vnx {
                     if(!scn.emissive_hints.empty()){
                         int idl = 0;
                         auto emissive = sample_emissive(scn,rng,idl);
-                        VVertex ev = {hit,material,wi,{w,0.0,0.0},n,SURFACE,0.0,0.0};
+                        VVertex ev = {hit,material,wi,{w,0.0,0.0},n,SURFACE};
                         output += ConnectToEmissive(scn,rng,wo,ev,emissive);
                         //VVertex lev = {emissive,{},{},{w,0.0f,0.0f},scn.NORMALS_ALGO(emissive,f_normal_eps),EMISSIVE,0.0f,0.0f};
                         //output += ConnectVertex(scn,rng,ev,lev,wo,pdf,1);
