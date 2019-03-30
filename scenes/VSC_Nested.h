@@ -1,6 +1,6 @@
 /*
 VAureaNox : Distance Fields Pathtracer
-Copyright (C) 2017-2018  Alessandro Berti
+Copyright (C) 2017-2019  Alessandro Berti
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -26,7 +26,7 @@ using namespace vnx;
 namespace vscndef {
 
 	void init_nested_scene(vnx::VScene& scn) {
-        scn.camera.yfov = radians(45);
+        scn.camera.yfov = radians(45.0);
         scn.camera.mOrigin = {0,10,15.0f};
         scn.camera.mTarget = {0,0,0};
         scn.camera.mUp = {0,1.0f,0};

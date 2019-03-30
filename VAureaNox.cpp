@@ -1,6 +1,6 @@
 /*
 VAureaNox : Distance Fields Pathtracer
-Copyright (C) 2017-2018  Alessandro Berti
+Copyright (C) 2017-2019  Alessandro Berti
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -44,7 +44,7 @@ struct VFileConfigs{
         std::string name = "";
         std::string section = "";
         int state = 0;
-        for(int i=0;i<line.size();i++){
+        for(std::string::size_type i=0;i<line.size();i++){
             if(line[i]==':' && state==0){state = 1;continue;}
             if(line[i]==':' && state!=0){break;}
             if(line[i] == ';') break;

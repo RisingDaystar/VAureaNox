@@ -1,6 +1,6 @@
 /*
 VAureaNox : Distance Fields Pathtracer
-Copyright (C) 2017-2018  Alessandro Berti
+Copyright (C) 2017-2019  Alessandro Berti
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -133,7 +133,7 @@ namespace vnx {
 		}*/
 
 		inline bool russian_roulette(ygl::rng_state& rng,vec3vf& w){
-            auto rrprob = min(max_element(w), 0.95);
+            auto rrprob = std::min(max_element(w), 0.95);
             if (get_random_float(rng) > rrprob) return false;
             w *= 1.0 / rrprob;
             return true;
@@ -168,10 +168,10 @@ namespace vnx {
 		}
 		inline vfloat brdf_cook_torrance_D(vfloat rs,vfloat ndi,vfloat ndo,vfloat ndh,vfloat odh){
             auto a2 = rs*rs;
-            a2 = max(a2,0.00001);
+            a2 = std::max(a2,0.00001);
             auto ndh2 = ndh*ndh;
             auto andh4 = ndh2*ndh2;
-            return (1.0/(pivf*a2*andh4))*exp((ndh2-1.0)/(a2*ndh2));
+            return (1.0/(pivf*a2*andh4))*std::exp((ndh2-1.0)/(a2*ndh2));
         }
         inline vfloat brdf_cook_torrance_DG(vfloat rs,vfloat ndi,vfloat ndo,vfloat ndh,vfloat odh){
             auto D = brdf_cook_torrance_G(ndi,ndo,ndh,odh);
@@ -181,7 +181,7 @@ namespace vnx {
 
 		inline vfloat brdf_ggx_G(vfloat rs,vfloat ndi,vfloat ndo,vfloat ndh){
 			auto a2 = rs * rs;
-			a2 = max(a2,0.00001);
+			a2 = std::max(a2,0.00001);
 			auto goDN = std::abs(ndo) + std::sqrt(a2 + (1 - a2) * ndo * ndo);
 			if(cmpf(goDN,0.0)) return 0.0;
 			auto giDN = std::abs(ndi) + std::sqrt(a2 + (1 - a2) * ndi * ndi);
@@ -194,7 +194,7 @@ namespace vnx {
 
         inline vfloat brdf_ggx_D(vfloat rs,vfloat ndi,vfloat ndo,vfloat ndh){
             auto a2 = rs*rs;
-            a2 = max(a2,0.00001);
+            a2 = std::max(a2,0.00001);
             auto ndh2 = ndh*ndh;
             auto dn = ((ndh2*a2)+(1.0-(ndh2)));
             dn*=dn;
@@ -220,7 +220,7 @@ namespace vnx {
 
            vfloat cosi2 = cosi * cosi;
            vfloat sini2 = 1 - cosi2;
-           vec3vf etai2 = toVec3(etai * etai);
+           vec3vf etai2 = toVec<vfloat,3>(etai * etai);
            vec3vf etak2 = etak * etak;
 
            vec3vf t0 = etai2 - etak2 - vec3vf{sini2,sini2,sini2};
@@ -230,7 +230,7 @@ namespace vnx {
            vec3vf t2 = 2 * a * cosi;
            vec3vf Rs = (t1 - t2) / (t1 + t2);
 
-           vec3vf t3 = cosi2 * a2plusb2 + toVec3(sini2 * sini2);
+           vec3vf t3 = cosi2 * a2plusb2 + toVec<vfloat,3>(sini2 * sini2);
            vec3vf t4 = t2 * sini2;
            vec3vf Rp = Rs * (t3 - t4) / (t3 + t4);
 
@@ -284,8 +284,8 @@ namespace vnx {
                 if(hmat.is_transmissive() && !cmpf(old_rr.ior,rr.ior)){
                     if(b>2){if(!russian_roulette(rng,w)) break;}
 
-                    if(has_inf(w)){std::cout<<"*<!>Eval light loop--> Not finite number detected--> b:"<<b<<"--->"<<_p(w)<<"\n";break;}
-                    if(status.bDebugMode)std::cout<<"*<!>Eval light Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
+                    if(has_inf(w)){std::cout<<"*<!>Eval light loop--> Not finite number detected--> b:"<<b<<"--->"<<w<<"\n";break;}
+                    if(status.bDebugMode)std::cout<<"*<!>Eval light Loop--> b:"<<b<<"--->"<<w<<"\n";
 
                     bool outside = dot(rr.d,ln) > 0;
                     vec3vf offBy = outside ? -ln : ln;
@@ -465,15 +465,15 @@ namespace vnx {
                     vfloat ior = poll_ray.ior;
 
                     auto F = eval_fresnel_dielectric(-wo.d,n,wo.ior,ior);
-                    if(ndo*ndi<=epsvf) li+= toVec3(1.0-F);
-                    else li+= toVec3(F);
+                    if(ndo*ndi<=epsvf) li+= toVec<vfloat,3>(1.0-F);
+                    else li+= toVec<vfloat,3>(F);
                 }
 		    }else{
                 if(material.is_transmissive()){
                     auto ir = (ndo >= 0) ? ygl::reflect(-wi.d, n) : ygl::reflect(-wi.d, -n);
                     auto hv = normalize(ir + wo.d);
                     auto irdn = dot(ir,n);
-                    auto F = toVec3(eval_fresnel_dielectric(-wo.d,hv,wo.ior,material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral)));
+                    auto F = toVec<vfloat,3>(eval_fresnel_dielectric(-wo.d,hv,wo.ior,material.eval_ior(wo.wl,f_min_wl,f_max_wl,b_do_spectral)));
                     if(ndo*ndi<epsvf) li+= ((one3vf-F)*(brdf_ggx_DG(material.rs,irdn,ndo,dot(n,hv))) / (4*std::abs(irdn)*std::abs(ndo)));
                     else li+= (F*(brdf_ggx_DG(material.rs,irdn,ndo,dot(n,hv))) / (4*std::abs(irdn)*std::abs(ndo)));
                 }else{
@@ -496,7 +496,7 @@ namespace vnx {
                         li += (material.kr/pivf)*(1.0+fd90*m1_ndi5)*(1.0+fd90*m1_ndo5)*(one3vf-F);
 
                         if(ndh==0.0) return li*std::abs(ndi);
-                        li+=brdf_ggx_D(material.rs,ndi,ndo,ndh) / (4.0 * std::abs(dot(wi.d, h)) * max(std::abs(ndi), std::abs(ndo))) * F;
+                        li+=brdf_ggx_D(material.rs,ndi,ndo,ndh) / (4.0 * std::abs(dot(wi.d, h)) * std::max(std::abs(ndi), std::abs(ndo))) * F;
                     }
                 }
                 li*=std::abs(ndi);
@@ -650,8 +650,8 @@ namespace vnx {
                 if(!tmat.is_transmissive() || tmat.is_refractive()){break;}
                 if (b>2){if(!russian_roulette(rng,trw)) break;}
 
-                if(has_inf(trw)){std::cout<<"*<!>Connection loop--> Not finite number detected--> b:"<<b<<"--->"<<_p(trw)<<"\n";break;}
-                if(status.bDebugMode)std::cout<<"*<!>Connection Loop--> b:"<<b<<"--->"<<trw.x<<","<<trw.y<<","<<trw.z<<"\n";
+                if(has_inf(trw)){std::cout<<"*<!>Connection loop--> Not finite number detected--> b:"<<b<<"--->"<<trw<<"\n";break;}
+                if(status.bDebugMode)std::cout<<"*<!>Connection Loop--> b:"<<b<<"--->"<<trw<<"\n";
 
                 //continue ray
                 auto offby = dot(to_em.d,tn) > 0 ? -tn : tn;
@@ -698,8 +698,8 @@ namespace vnx {
                     else {tFar = ygl::distance(sample.ray.o,hit.wor_pos);}
                     auto vmt = poll.emat;
 
-                    vfloat dist = -logf(1-ygl::get_random_float(rng)) / (vmt.k_sca);
-                    vfloat pdf = exp(-(vmt.k_sca)*tFar);
+                    vfloat dist = -std::log(1-ygl::get_random_float(rng)) / (vmt.k_sca);
+                    vfloat pdf = std::exp(-(vmt.k_sca)*tFar);
 
                     if(dist<tFar){
                         auto incoming = sample.ray;
@@ -802,8 +802,8 @@ namespace vnx {
                 if (is_zero_or_has_ltz(w) || has_inf(w)) break;
 
 
-                if(has_inf(w)){std::cout<<"*<!>Main loop--> Not finite number detected: pdf: "<<pdf<<"; w:"<<_p(w)<<"\n";break;}
-                if(status.bDebugMode)std::cout<<"*<!>Main Loop--> b:"<<b<<"--->"<<w.x<<","<<w.y<<","<<w.z<<"\n";
+                if(has_inf(w)){std::cout<<"*<!>Main loop--> Not finite number detected: pdf: "<<pdf<<"; w:"<<w<<"\n";break;}
+                if(status.bDebugMode)std::cout<<"*<!>Main Loop--> b:"<<b<<"--->"<<w<<"\n";
             };
 
 			return output;

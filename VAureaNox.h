@@ -1,6 +1,6 @@
 /*
 VAureaNox : Distance Fields Pathtracer
-Copyright (C) 2017-2018  Alessandro Berti
+Copyright (C) 2017-2019  Alessandro Berti
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -92,21 +92,13 @@ namespace vnx {
 	template<typename T>
 	constexpr vec<T,2> one2 = vec<T,2>{1,1};
 
-	constexpr vec4vf one4vf = one4<vfloat>;//vec4vf{1.0,1.0,1.0,1.0};
-	constexpr vec3vf one3vf = one3<vfloat>;//vec3vf{1.0,1.0,1.0};
-	constexpr vec2vf one2vf = one2<vfloat>;//vec2vf{1.0,1.0};
+	constexpr vec4vf one4vf = one4<vfloat>;
+	constexpr vec3vf one3vf = one3<vfloat>;
+	constexpr vec2vf one2vf = one2<vfloat>;
 
-	constexpr vec4vf zero4vf = zero4<vfloat>;//vec4vf{0.0,0.0,0.0,0.0};
-	constexpr vec3vf zero3vf = zero3<vfloat>;//vec3vf{0.0,0.0,0.0};
-	constexpr vec2vf zero2vf = zero2<vfloat>;//vec2vf{0.0,0.0};
-
-    template<typename T>
-    inline vec<T,4> toVec4(T v){return {v,v,v,v};}
-    template<typename T>
-    inline vec<T,3> toVec3(T v){return {v,v,v};}
-    template<typename T>
-    inline vec<T,2> toVec2(T v){return {v,v};}
-
+	constexpr vec4vf zero4vf = zero4<vfloat>;
+	constexpr vec3vf zero3vf = zero3<vfloat>;
+	constexpr vec2vf zero2vf = zero2<vfloat>;
 
 	constexpr vfloat KC = 299792e3;
     constexpr vfloat KH = 6.63e-34;
@@ -188,7 +180,6 @@ namespace vnx {
         inline void setADR(bool v){_adr = v;}
     };
 
-
     inline vec3vf sample_sphere_direction_vf(const vec2f& ruv) {
         auto z   = 2 * ruv.y - 1;
         auto r   = std::sqrt(1 - z * z);
@@ -210,22 +201,13 @@ namespace vnx {
         return {r * std::cos(phi), r * std::sin(phi), z};
     }
 
-    template<typename T>
-    inline vec<T,3> gamma_to_linear(const vec<T,3>& srgb, T gamma = 2.2f) {
-        return {std::pow(srgb.x, gamma), std::pow(srgb.y, gamma), std::pow(srgb.z, gamma)};
-    }
-    template<typename T>
-    inline vec<T,3> linear_to_gamma(const vec<T,3>& lin, T gamma = 2.2f) {
-        return {std::pow(lin.x, 1 / gamma), std::pow(lin.y, 1 / gamma), std::pow(lin.z, 1 / gamma)};
-    }
-    template<typename T>
-    inline vec<T,4> gamma_to_linear(const vec<T,4>& srgb, T gamma = 2.2f) {
-        return {std::pow(srgb.x, gamma), std::pow(srgb.y, gamma), std::pow(srgb.z, gamma), srgb.w};
-    }
-    template<typename T>
-    inline vec<T,4> linear_to_gamma(const vec<T,4>& lin, T gamma = 2.2f) {
-        return {std::pow(lin.x, 1 / gamma), std::pow(lin.y, 1 / gamma), std::pow(lin.z, 1 / gamma),
-            lin.w};
+    template<typename T,int N>
+    inline vec<T,N> toVec(T v){
+        static_assert(N>0 && N<5,"N must be in range 1 | 4");
+        if constexpr(N<=1) return {v};
+        else if constexpr(N==2) return {v,v};
+        else if constexpr(N==3) return {v,v,v};
+        else if constexpr(N>3) return {v,v,v,v};
     }
 
 	inline float rand1f_r(rng_state& rng, float a, float b) {
@@ -237,8 +219,11 @@ namespace vnx {
     inline vec3f rand3f_r(rng_state& rng, float a, float b) {
         return {rand1f_r(rng,a,b),rand1f_r(rng,a,b),rand1f_r(rng,a,b)};
     }
+    inline vec4f rand4f_r(rng_state& rng, float a, float b) {
+        return {rand1f_r(rng,a,b),rand1f_r(rng,a,b),rand1f_r(rng,a,b),rand1f_r(rng,a,b)};
+    }
 
-	inline bool stricmp(std::string str1, std::string str2) {
+	inline bool stricmp(const std::string& str1,const std::string& str2) {
 	    if(str1.size()!=str2.size()) return false;
 		return std::equal(str1.begin(), str1.end(), str2.begin(), [](const char& a, const char& b) {
 			return (std::tolower(a) == std::tolower(b));
@@ -253,7 +238,7 @@ namespace vnx {
         if(!strIsGroup(ss)) return {ss};
         int idx = 0;
         std::vector<std::string> tokens = {""};
-        for(int i=1;i<ss.length()-1;i++){
+        for(auto i=1;i<ss.length()-1;i++){
             char c = ss[i];
             if(c==','){tokens.push_back("");idx++;continue;}
             tokens[idx]+=c;
@@ -318,26 +303,91 @@ namespace vnx {
         return (bool)std::atoi(ss.c_str());
     }
 
-    inline vec4i try_strToVec4i(const std::string& ss,vec4i def){
+    template<int N>
+    inline vec<int,N> try_strToVec_i(const std::string& ss,const vec<int,N>& def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
-            vec4i v = zero4i;
-            for(int i=0;i<cpnts.size() && i<4;i++){
-                if(i==0)v.x = try_strtoi(cpnts[i],0);
-                else if(i==1)v.y = try_strtoi(cpnts[i],0);
-                else if(i==2)v.z = try_strtoi(cpnts[i],0);
-                else if(i==3)v.w = try_strtoi(cpnts[i],0);
+            vec<int,N> v;
+            for(auto i=0;i<cpnts.size() && i<N;i++){
+                if constexpr(N>=1){if(i==0){v.x = try_strtoi(cpnts[0],0);continue;}}
+                if constexpr(N>=2){if(i==1){v.y = try_strtoi(cpnts[1],0);continue;}}
+                if constexpr(N>=3){if(i==2){v.z = try_strtoi(cpnts[2],0);continue;}}
+                if constexpr(N>=4){if(i==3){v.w = try_strtoi(cpnts[3],0);}}
             }
             return v;
         }else{
             auto cpnt = try_strtoi(ss,0);
-            return vec4i{cpnt,cpnt,cpnt,cpnt};
+            return toVec<int,N>(cpnt);
         }
     }
 
-    inline vec3i try_strToVec3i(const std::string& ss,vec3i def){
+    template<int N>
+    inline vec<bool,N> try_strToVec_b(const std::string& ss,const vec<bool,N>& def){
+        static_assert(N>0 && N<5, "N must be in range 1 | 4");
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            vec<bool,N> v;
+            for(auto i=0;i<cpnts.size() && i<N;i++){
+                if constexpr(N>=1){if(i==0){v.x = try_strtoi(cpnts[0],0);continue;}}
+                if constexpr(N>=2){if(i==1){v.y = try_strtoi(cpnts[1],0);continue;}}
+                if constexpr(N>=3){if(i==2){v.z = try_strtoi(cpnts[2],0);continue;}}
+                if constexpr(N>=4){if(i==3){v.w = try_strtoi(cpnts[3],0);}}
+            }
+            return v;
+        }else{
+            auto cpnt = try_strtoi(ss,0);
+            return toVec<bool,N>(cpnt);
+        }
+    }
+
+    template<int N>
+    inline vec<float,N> try_strToVec_f(const std::string& ss,const vec<float,N>& def){
+        static_assert(N>0 && N<5, "N must be in range 1 | 4");
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            vec<float,N> v;
+            for(auto i=0;i<cpnts.size() && i<N;i++){
+                if constexpr(N>=1){if(i==0){v.x = try_strtof(cpnts[0],0);continue;}}
+                if constexpr(N>=2){if(i==1){v.y = try_strtof(cpnts[1],0);continue;}}
+                if constexpr(N>=3){if(i==2){v.z = try_strtof(cpnts[2],0);continue;}}
+                if constexpr(N>=4){if(i==3){v.w = try_strtof(cpnts[3],0);}}
+            }
+            return v;
+        }else{
+            auto cpnt = try_strtof(ss,0);
+            return toVec<float,N>(cpnt);
+        }
+    }
+
+    template<int N>
+    inline vec<vfloat,N> try_strToVec_vf(const std::string& ss,const vec<vfloat,N>& def){
+        static_assert(N>0 && N<5, "N must be in range 1 | 4");
+        if(ss.empty()) return def;
+
+        if(strIsGroup(ss)){
+            auto cpnts = strDeGroup(ss);
+            vec<vfloat,N> v;
+            for(auto i=0;i<cpnts.size() && i<N;i++){
+                if constexpr(N>=1){if(i==0){v.x = try_strtof(cpnts[0],0);continue;}}
+                if constexpr(N>=2){if(i==1){v.y = try_strtof(cpnts[1],0);continue;}}
+                if constexpr(N>=3){if(i==2){v.z = try_strtof(cpnts[2],0);continue;}}
+                if constexpr(N>=4){if(i==3){v.w = try_strtof(cpnts[3],0);}}
+            }
+            return v;
+        }else{
+            auto cpnt = try_strtof(ss,0);
+            return toVec<vfloat,N>(cpnt);
+        }
+    }
+
+    /*
+    inline vec3i try_strToVec_i(const std::string& ss,vec3i def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
@@ -373,6 +423,7 @@ namespace vnx {
     }
 
 
+
     inline vec<bool,4> try_strToVec4b(const std::string& ss,vec<bool,4> def){
         if(ss.empty()) return def;
 
@@ -392,7 +443,7 @@ namespace vnx {
         }
     }
 
-    inline vec<bool,3> try_strToVec3b(const std::string& ss,vec<bool,3> def){
+    inline vec<bool,3> try_strToVec_b(const std::string& ss,vec<bool,3> def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
@@ -445,7 +496,7 @@ namespace vnx {
             return vec4vf{cpnt,cpnt,cpnt,cpnt};
         }
     }
-    inline vec3vf try_strToVec3vf(const std::string& ss,vec3vf def){
+    inline vec3vf try_strToVec_vf(const std::string& ss,vec3vf def){
         if(ss.empty()) return def;
 
         if(strIsGroup(ss)){
@@ -478,6 +529,7 @@ namespace vnx {
             return vec2vf{cpnt,cpnt};
         }
     }
+    */
 
 	inline void print_hhmmss(long long seconds) {
 		int min = seconds / 60;
@@ -485,204 +537,282 @@ namespace vnx {
 		std::cout << (hours % 60) << "h : " << (min % 60) << "m : " << (seconds % 60) << "s\n";
 	}
 
-    template<typename T>
+    template <typename T>
 	inline vec<T,3> rgbto(T r,T g,T b) {
 		return { r / 255.0,g / 255.0,b / 255.0 };
 	}
+    template <typename T>
+	inline vec<T,3> rgbto(const vec<T,3>& rgb) {
+		return { rgb.x / 255.0,rgb.y / 255.0,rgb.z / 255.0 };
+	}
 
-    template<typename T>
+    template <typename T>
     inline T modulo(const T& x){return x - std::floor(x);}
 
-	inline vfloat sign(vfloat v) {
+    template <typename T>
+	inline T sign(T v) {
 		if (v > 0.0) { return 1.0; }
 		else if (v < 0.0) { return -1.0; }
 		return 0.0;
 	}
 
-	inline vfloat nz_sign(vfloat v) { //zero is 1.0f
+    template <typename T>
+	inline T nz_sign(T v) { //zero is 1.0f
 		if (v >= 0.0) { return 1.0; }
 		return -1.0;
 	}
 
-	inline vfloat nz_nz_sign(vfloat v) { //zero is -1.0f
+    template <typename T>
+	inline T nz_nz_sign(T v) { //zero is -1.0f
 		if (v >0.0) { return 1.0; }
 		return -1.0;
 	}
 
-    inline vfloat cotan(vfloat x){
+    template <typename T>
+    inline T cotan(T x){
         return 1.0/(std::tan(x));
     }
 
-	inline vfloat radians(vfloat in) {
-		return (in*pivf) / 180.0;
+    template <typename T>
+	inline T radians(T in) {
+		return (in*pi<T>) / 180.0;
 	}
 
-	inline vfloat degrees(vfloat in){
-        return (in/pivf) * 180.0;
+    template <typename T>
+	inline vfloat degrees(T in){
+        return (in/pi<T>) * 180.0;
 	}
+
 
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
-	inline vfloat gl_fract(vfloat x) {
+	template <typename T>
+	inline T gl_fract(T x) {
 		return x - std::floor(x);
 	}
 
     //SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
-	inline vfloat gl_mod(vfloat x,vfloat y){
-        return x - y * floor(x/y);
+    template <typename T>
+	inline T gl_mod(T x,T y){
+        return x - y * std::floor(x/y);
 	}
 
-	//SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
-	inline vfloat hash(vfloat seed){
-		return gl_fract(sin(seed)*43758.5453);
+
+    //SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
+    template <typename T>
+	inline T hash(T seed){
+		return gl_fract(std::sin(seed)*43758.5453);
 	}
 
-	template <typename T> inline T max_element(const ygl::vec<T, 3>& v) { return std::max(v.x, std::max(v.y, v.z)); }
-	template <typename T> inline T max_element(const ygl::vec<T, 2>& v) { return std::max(v.x, v.y); }
-	template <typename T> inline T min_element(const ygl::vec<T, 3>& v) { return std::min(v.x, std::min(v.y, v.z)); }
-	template <typename T> inline T min_element(const ygl::vec<T, 2>& v) { return std::min(v.x, v.y); }
-	template <typename T> inline ygl::vec<T, 3> vabs(const ygl::vec<T, 3>& v) { return { std::abs(v.x),std::abs(v.y),std::abs(v.z) }; }
-	template <typename T> inline ygl::vec<T, 2> vabs(const ygl::vec<T, 2>& v) { return { std::abs(v.x),std::abs(v.y) }; }
-	template <typename T> inline ygl::vec<T, 3> vgt(const ygl::vec<T, 3>& v1, const ygl::vec<T, 3>& v2) { return { std::max(v1.x,v2.x),std::max(v1.y,v2.y),std::max(v1.z,v2.z) }; }
-	template <typename T> inline ygl::vec<T, 2> vgt(const ygl::vec<T, 2>& v1, const ygl::vec<T, 2>& v2) { return { std::max(v1.x,v2.x),std::max(v1.y,v2.y) }; }
 
-    using std::exp;
-    template <typename T> inline ygl::vec<T,3> exp(const ygl::vec<T,3>& v){return ygl::vec<T,3>{exp(v.x),exp(v.y),exp(v.z)};}
-    template <typename T> inline ygl::vec<T,3> gl_mod(const ygl::vec<T,3>& v1,const ygl::vec<T,3>& v2){return ygl::vec<T,3>{gl_mod(v1.x,v2.x),gl_mod(v1.y,v2.y),gl_mod(v1.z,v2.z)};}
-    template <typename T> inline ygl::vec<T,3> gl_fract(const ygl::vec<T,3>& v){return ygl::vec<T,3>{gl_fract(v.x),gl_fract(v.y),gl_fract(v.z)};}
+	template <typename T,int N>
+	inline T max_element(const ygl::vec<T, N>& v) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return v.x;
+	    else if constexpr(N==2) return std::max(v.x, v.y);
+	    else if constexpr(N==3) return std::max(v.x, std::max(v.y, v.z));
+	    else if constexpr(N==4) return std::max(std::max(v.x,v.y), std::max(v.z, v.w));
+    }
 
-    using std::log;
-    template <typename T> inline ygl::vec<T,3> log(const ygl::vec<T,3>& v){return ygl::vec<T,3>{log(v.x),log(v.y),log(v.z)};}
+	template <typename T,int N>
+	inline T min_element(const ygl::vec<T, N>& v) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return v.x;
+	    else if constexpr(N==2) return std::min(v.x, v.y);
+	    else if constexpr(N==3) return std::min(v.x, std::min(v.y, v.z));
+	    else if constexpr(N==4) return std::min(std::min(v.x,v.y), std::min(v.z, v.w));
+    }
 
-    using std::max;
-    template <typename T> inline ygl::vec<T,3> max(const ygl::vec<T,3>& v1,const ygl::vec<T,3>& v2){return ygl::vec<T,3>{max(v1.x,v2.x),max(v1.y,v2.y),max(v1.z,v2.z)};}
-    template <typename T> inline ygl::vec<T,2> max(const ygl::vec<T,2>& v1,const ygl::vec<T,2>& v2){return ygl::vec<T,2>{max(v1.x,v2.x),max(v1.y,v2.y)};}
+	template <typename T,int N>
+	vec<T,N> abs(const ygl::vec<T, N>& v) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return {std::abs(v.x)};
+	    else if constexpr(N==2) return {std::abs(v.x),std::abs(v.y)};
+	    else if constexpr(N==3) return {std::abs(v.x),std::abs(v.y),std::abs(v.z)};
+	    else if constexpr(N==4) return {std::abs(v.x),std::abs(v.y),std::abs(v.z),std::abs(v.w)};
+    }
 
-    using std::min;
-    template <typename T> inline ygl::vec<T,3> min(const ygl::vec<T,3>& v1,const ygl::vec<T,3>& v2){return ygl::vec<T,3>{min(v1.x,v2.x),min(v1.y,v2.y),min(v1.z,v2.z)};}
-    template <typename T> inline ygl::vec<T,2> min(const ygl::vec<T,2>& v1,const ygl::vec<T,2>& v2){return ygl::vec<T,2>{min(v1.x,v2.x),min(v1.y,v2.y)};}
+	template <typename T,int N>
+	inline vec<T,N> exp(const ygl::vec<T, N>& v) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return {std::exp(v.x)};
+	    else if constexpr(N==2) return {std::exp(v.x),std::exp(v.y)};
+	    else if constexpr(N==3) return {std::exp(v.x),std::exp(v.y),std::exp(v.z)};
+	    else if constexpr(N==4) return {std::exp(v.x),std::exp(v.y),std::exp(v.z),std::exp(v.w)};
+    }
 
-    using std::abs;
-    template <typename T> inline ygl::vec<T,3> abs(const ygl::vec<T,3>& v){return ygl::vec<T,3>{std::abs(v.x),std::abs(v.y),std::abs(v.z)};}
-    template <typename T> inline ygl::vec<T,2> abs(const ygl::vec<T,2>& v){return ygl::vec<T,2>{std::abs(v.x),std::abs(v.y)};}
+	template <typename T,int N>
+	inline vec<T,N> pow(const ygl::vec<T, N>& v,T p) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return {std::pow(v.x,p)};
+	    else if constexpr(N==2) return {std::pow(v.x,p),std::pow(v.y,p)};
+	    else if constexpr(N==3) return {std::pow(v.x,p),std::pow(v.y,p),std::pow(v.z,p)};
+	    else if constexpr(N==4) return {std::pow(v.x,p),std::pow(v.y,p),std::pow(v.z,p),std::pow(v.w,p)};
+    }
 
-    using std::sqrt;
-    template <typename T> inline ygl::vec<T,3> sqrt(const ygl::vec<T,3>& v){return ygl::vec<T,3>{std::sqrt(v.x),std::sqrt(v.y),std::sqrt(v.z)};}
-    template <typename T> inline ygl::vec<T,2> sqrt(const ygl::vec<T,2>& v){return ygl::vec<T,2>{std::sqrt(v.x),std::sqrt(v.y)};}
+	template <typename T,int N>
+	vec<T,N> log(const ygl::vec<T, N>& v) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return {std::log(v.x)};
+	    else if constexpr(N==2) return {std::log(v.x),std::log(v.y)};
+	    else if constexpr(N==3) return {std::log(v.x),std::log(v.y),std::log(v.z)};
+	    else if constexpr(N==4) return {std::log(v.x),std::log(v.y),std::log(v.z),std::log(v.w)};
+    }
 
-    template <typename T> inline T adot(const ygl::vec<T,2>& v1,const ygl::vec<T,2>& v2){ return std::abs(dot(v1,v2));}
-    template <typename T> inline T adot(const ygl::vec<T,3>& v1,const ygl::vec<T,3>& v2){ return std::abs(dot(v1,v2));}
-    template <typename T> inline T adot(const ygl::vec<T,4>& v1,const ygl::vec<T,4>& v2){ return std::abs(dot(v1,v2));}
+	template <typename T,int N>
+	inline vec<T,N> sqrt(const ygl::vec<T, N>& v) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return {std::sqrt(v.x)};
+	    else if constexpr(N==2) return {std::sqrt(v.x),std::sqrt(v.y)};
+	    else if constexpr(N==3) return {std::sqrt(v.x),std::sqrt(v.y),std::sqrt(v.z)};
+	    else if constexpr(N==4) return {std::sqrt(v.x),std::sqrt(v.y),std::sqrt(v.z),std::sqrt(v.w)};
+    }
+
+	template <typename T,int N>
+	inline vec<T,N> min(const ygl::vec<T, N>& v1,const ygl::vec<T, N>& v2) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return {std::min(v1.x,v2.x)};
+	    else if constexpr(N==2) return {std::min(v1.x,v2.x),std::min(v1.y,v2.y)};
+	    else if constexpr(N==3) return {std::min(v1.x,v2.x),std::min(v1.y,v2.y),std::min(v1.z,v2.z)};
+	    else if constexpr(N==4) return {std::min(v1.x,v2.x),std::min(v1.y,v2.y),std::min(v1.z,v2.z),std::min(v1.w,v2.w)};
+    }
+
+	template <typename T,int N>
+	inline vec<T,N> max(const ygl::vec<T, N>& v1,const ygl::vec<T, N>& v2) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return {std::max(v1.x,v2.x)};
+	    else if constexpr(N==2) return {std::max(v1.x,v2.x),std::max(v1.y,v2.y)};
+	    else if constexpr(N==3) return {std::max(v1.x,v2.x),std::max(v1.y,v2.y),std::max(v1.z,v2.z)};
+	    else if constexpr(N==4) return {std::max(v1.x,v2.x),std::max(v1.y,v2.y),std::max(v1.z,v2.z),std::max(v1.w,v2.w)};
+    }
+
+	template <typename T,int N>
+	inline vec<T,N> gl_mod(const ygl::vec<T, N>& v1,const ygl::vec<T, N>& v2) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return {gl_mod(v1.x,v2.x)};
+	    else if constexpr(N==2) return {gl_mod(v1.x,v2.x),gl_mod(v1.y,v2.y)};
+	    else if constexpr(N==3) return {gl_mod(v1.x,v2.x),gl_mod(v1.y,v2.y),gl_mod(v1.z,v2.z)};
+	    else if constexpr(N==4) return {gl_mod(v1.x,v2.x),gl_mod(v1.y,v2.y),gl_mod(v1.z,v2.z),gl_mod(v1.w,v2.w)};
+    }
+
+	template <typename T,int N>
+	inline vec<T,N> gl_fract(const ygl::vec<T, N>& v1,const ygl::vec<T, N>& v2) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return {gl_fract(v1.x,v2.x)};
+	    else if constexpr(N==2) return {gl_fract(v1.x,v2.x),gl_fract(v1.y,v2.y)};
+	    else if constexpr(N==3) return {gl_fract(v1.x,v2.x),gl_fract(v1.y,v2.y),gl_fract(v1.z,v2.z)};
+	    else if constexpr(N==4) return {gl_fract(v1.x,v2.x),gl_fract(v1.y,v2.y),gl_fract(v1.z,v2.z),gl_fract(v1.w,v2.w)};
+    }
+
+	template <typename T,int N>
+	inline T adot(const ygl::vec<T, N>& v1,const ygl::vec<T, N>& v2) {
+	    return std::abs(dot(v1,v2));
+    }
+
 
     template<typename T>
     inline bool cmpf(T a, T b){
-        constexpr const static T minT = mint<T>();
-        constexpr const static T maxT = maxt<T>();
-        constexpr const static T epsT = epst<T>();
-
-
         const T absA = std::abs(a);
 		const T absB = std::abs(b);
 		const T diff = std::abs(a - b);
 		if (a == b) {
 			return true;
-		} else if (a == 0 || b == 0 || diff < minT) {
-			return diff < (epsT * minT);
+		} else if (a == 0 || b == 0 || diff < mint<T>()) {
+			return diff < (epst<T>() * mint<T>());
 		} else {
-			return diff / std::min((absA + absB), maxT) < epsT;
+			return diff / std::min((absA + absB), maxt<T>()) < epst<T>();
 		}
     }
 
-    template<typename T>
-    inline bool cmpf(const vec<T,2>& a,const vec<T,2>& b){
-        return cmpf(a.x,b.x) && cmpf(a.y,b.y);
+    template<typename T,int N>
+    inline bool cmpf(const vec<T,N>& a,const vec<T,N>& b){
+        static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return cmpf(a.x,b.x);
+	    else if constexpr(N==2) return cmpf(a.x,b.x) && cmpf(a.y,b.y);
+	    else if constexpr(N==3) return cmpf(a.x,b.x) && cmpf(a.y,b.y) && cmpf(a.z,b.z);
+	    else if constexpr(N==4) return cmpf(a.x,b.x) && cmpf(a.y,b.y) && cmpf(a.z,b.z) && cmpf(a.w,b.w);
     }
-    template<typename T>
-    inline bool cmpf(const vec<T,3>& a,const vec<T,3>& b){
-        return cmpf(a.x,b.x) && cmpf(a.y,b.y) && cmpf(a.z,b.z);
+
+    template<typename T,int N>
+    inline bool has_nan(const vec<T,N>& a){
+        static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return std::isnan(a.x);
+	    else if constexpr(N==2) return std::isnan(a.x) || std::isnan(a.y);
+	    else if constexpr(N==3) return std::isnan(a.x) || std::isnan(a.y) || std::isnan(a.z);
+	    else if constexpr(N==4) return std::isnan(a.x) || std::isnan(a.y) || std::isnan(a.z) || std::isnan(a.w);
     }
-    template<typename T>
-    inline bool cmpf(const vec<T,4>& a,const vec<T,4>& b){
-        return cmpf(a.x,b.x) && cmpf(a.y,b.y) && cmpf(a.z,b.z) && cmpf(a.w,b.w);
+
+    template<typename T,int N>
+    inline bool has_nnormal(const vec<T,N>& a){
+        static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return !(std::isnormal(a.x));
+	    else if constexpr(N==2) return !(std::isnormal(a.x) && std::isnormal(a.y));
+	    else if constexpr(N==3) return !(std::isnormal(a.x) && std::isnormal(a.y) && std::isnormal(a.z));
+	    else if constexpr(N==4) return !(std::isnormal(a.x) && std::isnormal(a.y) && std::isnormal(a.z) && std::isnormal(a.w));
+    }
+
+    template<typename T,int N>
+    inline bool has_inf(const vec<T,N>& a){
+        static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return !(std::isfinite(a.x));
+	    else if constexpr(N==2) return !(std::isfinite(a.x) && std::isfinite(a.y));
+	    else if constexpr(N==3) return !(std::isfinite(a.x) && std::isfinite(a.y) && std::isfinite(a.z));
+	    else if constexpr(N==4) return !(std::isfinite(a.x) && std::isfinite(a.y) && std::isfinite(a.z) && std::isfinite(a.w));
+    }
+
+    template<typename T,int N>
+    inline bool is_zero_or_has_ltz(const vec<T,N>& a){
+        static_assert(N>0 && N<5,"N must be in range 1 | 4");
+        if constexpr(N==1) return cmpf(a,{0}) || a.x<-epst<T>();
+        else if constexpr(N==2) return cmpf(a,zero2<T>) || a.x<-epst<T>() || a.y<-epst<T>();
+        else if constexpr(N==3) return cmpf(a,zero3<T>) || a.x<-epst<T>() || a.y<-epst<T>() || a.z<-epst<T>();
+        else if constexpr(N==4) return cmpf(a,zero4<T>) || a.x<-epst<T>() || a.y<-epst<T>() || a.z<-epst<T>() || a.w<-epst<T>();
     }
 
     template<typename T>
-    inline bool has_nan(const vec<T,2>& a){
-        return std::isnan(a.x) || std::isnan(a.y);
-    }
-    template<typename T>
-    inline bool has_nan(const vec<T,3>& a){
-        return std::isnan(a.x) || std::isnan(a.y) || std::isnan(a.z);
-    }
-    template<typename T>
-    inline bool has_nan(const vec<T,4>& a){
-        return std::isnan(a.x) || std::isnan(a.y) || std::isnan(a.z) || std::isnan(a.w);
-    }
+	inline bool in_range_eps(T v,T vref,T eps){
+        return (v>=vref-eps) && (v<=vref+eps);
+	}
 
-    template<typename T>
-    inline bool has_nnormal(const vec<T,2>& a){
-        return !(std::isnormal(a.x) && std::isnormal(a.y));
-    }
-    template<typename T>
-    inline bool has_nnormal(const vec<T,3>& a){
-        return !(std::isnormal(a.x) && std::isnormal(a.y) && std::isnormal(a.z));
-    }
-    template<typename T>
-    inline bool has_nnormal(const vec<T,4>& a){
-        return !(std::isnormal(a.x) && std::isnormal(a.y) && std::isnormal(a.z) && std::isnormal(a.w));
-    }
-
-    template<typename T>
-    inline bool has_inf(const vec<T,2>& a){
-        return !(std::isfinite(a.x) && std::isfinite(a.y));
-    }
-    template<typename T>
-    inline bool has_inf(const vec<T,3>& a){
-        return !(std::isfinite(a.x) && std::isfinite(a.y) && std::isfinite(a.z));
-    }
-    template<typename T>
-    inline bool has_inf(const vec<T,4>& a){
-        return !(std::isfinite(a.x) && std::isfinite(a.y) && std::isfinite(a.z) && std::isfinite(a.w));
-    }
-
-    template<typename T>
-    inline is_zero_or_has_ltz(const vec<T,2>& a){
-        constexpr const static T epsT = epst<T>();
-        return cmpf(a,zero2<T>) || a.x<-epsT || a.y<-epsT;
-    }
-    template<typename T>
-    inline is_zero_or_has_ltz(const vec<T,3>& a){
-        constexpr const static T epsT = epst<T>();
-        return cmpf(a,zero3<T>) || a.x<-epsT || a.y<-epsT || a.z<-epsT;
-    }
-    template<typename T>
-    inline is_zero_or_has_ltz(const vec<T,4>& a){
-        constexpr const static T epsT = epst<T>();
-        return cmpf(a,zero4<T>) || a.x<-epsT || a.y<-epsT || a.z<-epsT || a.w<-epsT;
-    }
-
-    inline std::string _p(const vec3vf& v){
-        std::ostringstream oss;
-        oss << v.x << "," << v.y << "," << v.z;
-        return oss.str();
-    }
-    inline std::string _p(const vec2f& v){
-        std::ostringstream oss;
-        oss << v.x << "," << v.y;
-        return oss.str();
+    template<typename T,int N>
+    inline std::ostream& operator<<(std::ostream& os, const vec<T,N>& s){
+        static_assert(N>0 && N<5,"N must be in range 1 | 4");
+        if constexpr(N==1) os<<'{'<<s.x<<'}';
+        else if constexpr(N==2) os<<'{'<<s.x<<'}';
+        else if constexpr(N==3) os<<'{'<<s.x<<','<<s.y<<','<<s.z<<'}';
+        else if constexpr(N==4) os<<'{'<<s.x<<','<<s.y<<','<<s.z<<','<<s.w<<'}';
+        return os;
     }
 
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/
-	inline vfloat smin(vfloat a, vfloat b, vfloat k)
-	{
-		vfloat h = ygl::clamp(0.5 + 0.5*(b - a) / k, 0.0, 1.0);
+	template<typename T>
+	inline T smin(T a, T b, T k){
+		T h = ygl::clamp(0.5 + 0.5*(b - a) / k, 0.0, 1.0);
 		return ygl::lerp(b, a, h) - k*h*(1.0 - h);
 	}
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/
-	inline vfloat smax(vfloat a, vfloat b, vfloat k)
-	{
-		float h = ygl::clamp(0.5 + 0.5*(b - a) / k, 0.0, 1.0);
+	template<typename T>
+	inline T smax(T a, T b, T k){
+		T h = ygl::clamp(0.5 + 0.5*(b - a) / k, 0.0, 1.0);
 		return ygl::lerp(a, b, h) + k*h*(1.0 - h);
 	}
+
+    template<typename T>
+    inline vec<T,3> gamma_to_linear(const vec<T,3>& srgb, T gamma = 2.2f) {
+        return pow(srgb,gamma);//{std::pow(srgb.x, gamma), std::pow(srgb.y, gamma), std::pow(srgb.z, gamma)};
+    }
+    template<typename T>
+    inline vec<T,3> linear_to_gamma(const vec<T,3>& lin, T gamma = 2.2f) {
+        return pow(lin,1.0 / gamma);
+    }
+    template<typename T>
+    inline vec<T,4> gamma_to_linear(const vec<T,4>& srgb, T gamma = 2.2f) {
+        return {std::pow(srgb.x, gamma), std::pow(srgb.y, gamma), std::pow(srgb.z, gamma), srgb.w};
+    }
+    template<typename T>
+    inline vec<T,4> linear_to_gamma(const vec<T,4>& lin, T gamma = 2.2f) {
+        return {std::pow(lin.x, 1.0 / gamma), std::pow(lin.y, 1.0 / gamma), std::pow(lin.z, 1.0 / gamma),
+            lin.w};
+    }
 
     ///Credits : http://bl.ocks.org/benjaminabel/4355926 ///
 	inline vec3vf spectral_to_rgb(vfloat w){ // RGB <0,1> <- lambda w <380,780> [nm]
@@ -732,7 +862,7 @@ namespace vnx {
 	inline vfloat blackbody_planks_law_wl(vfloat t,vfloat c,vfloat wl) {
 	    wl = wl*1e-9;
 	    auto wl5 = wl*wl*wl*wl*wl;
-        return (2*KH*c*c) / (wl5*(exp((KH*c)/(wl*KB*t)) -1));
+        return (2.0*KH*c*c) / (wl5*(std::exp((KH*c)/(wl*KB*t)) -1.0));
 	}
 
 	inline vfloat blackbody_planks_law_wl_normalized(vfloat t,vfloat c,vfloat wl) {
@@ -804,6 +934,19 @@ namespace vnx {
         }
 	};
 
+	inline VRay offsetted_ray(const vec3vf& o,VRay rr, const vec3vf& d, const vfloat tmin, const vfloat tmax, const vec3vf& offalong, const vfloat dist, vfloat fmult = 2.0) {
+		rr.o = o + (offalong*(fmult * std::max(tmin, std::abs(dist))));
+		rr.d = d;
+		rr.tmin = tmin;
+		rr.tmax = tmax;
+		return rr;
+	}
+
+	inline VRay flip_ray(VRay rr){
+        rr.d=-rr.d;
+        return rr;
+	}
+
 	struct VMaterial {
 	    VMaterial(): id(""){}
 	    VMaterial(std::string idv){id=idv;}
@@ -836,8 +979,8 @@ namespace vnx {
             entry->ptr = this;
             type = try_strToMaterialType(entry->try_at(1),type);
             ior_type = try_strToIorType(entry->try_at(2),ior_type);
-            kr = try_strToVec3vf(entry->try_at(3),kr);
-            ka = try_strToVec3vf(entry->try_at(4),ka);
+            kr = try_strToVec_vf(entry->try_at(3),kr);
+            ka = try_strToVec_vf(entry->try_at(4),ka);
 
             k_sca = try_strtof(entry->try_at(5),k_sca);
 
@@ -1060,9 +1203,9 @@ namespace vnx {
 
         void Relate(const VEntry* entry){
             yfov = radians(try_strtof(entry->try_at(1),45.0));
-            mOrigin = try_strToVec3vf(entry->try_at(2),mOrigin);
-            mTarget = try_strToVec3vf(entry->try_at(3),mTarget);
-            mUp = try_strToVec3vf(entry->try_at(4),mUp);
+            mOrigin = try_strToVec_vf(entry->try_at(2),mOrigin);
+            mTarget = try_strToVec_vf(entry->try_at(3),mTarget);
+            mUp = try_strToVec_vf(entry->try_at(4),mUp);
         }
 
         inline void Setup(const vec2f& resolution){
@@ -1117,7 +1260,7 @@ namespace vnx {
 
 		inline void shut() {
 			if (root) delete root;
-			for (auto m : materials) {
+			for (auto& m : materials) {
 				if (m.second != nullptr) { delete m.second; }
 			}
 			materials.clear();
@@ -1274,7 +1417,7 @@ namespace vnx {
 		inline VResult intersect_rel(const VRay& ray,int miters,int& i) const{
 		    //const vfloat hmaxf = maxvf/2.0; ///consider using this to avoid over/underflows (depending on sign of the leading expression, it might happen, needs testing) .
 		    ///P.S: DON'T use "maxf" , it WILL UNDERFlOW (of course...)
-		    constexpr static vfloat maxf_m1 = maxvf-1.0;
+		    constexpr vfloat maxf_m1 = maxvf-1.0;
             vfloat t=0.0;
             vfloat pd=maxf_m1;
             vfloat os=0.0;
@@ -1283,7 +1426,7 @@ namespace vnx {
             for(i=0;i<miters;i++){
                 eval(ray.o+ray.d*t,vre);
                 auto d = vre.dist;
-                auto absd = abs(d);
+                auto absd = std::abs(d);
 
                 if(i==0){s = nz_sign(vre.vdist);pd = maxf_m1;}
                 if(s<0){ //started inside
@@ -1291,13 +1434,13 @@ namespace vnx {
                     t+=absd;
                     pd = d;
                 }else{  //started outside
-                    if(absd>=abs(os)){
+                    if(absd>=std::abs(os)){
                         if(absd<ray.tmin){vre._found = true;/*vre.wor_pos+=(abs(d)*ray.d);*/ return vre;}
-                        os=d*min(1.0,0.5*d/pd);
+                        os=d*std::min(1.0,0.5*d/pd);
                         t+=d+os;
                         pd=d;
                     }else{
-                        t-=abs(os); // os
+                        t-=std::abs(os); // os
                         pd=maxf_m1; //hmaxf
                         os=0.0;
                     }
@@ -1334,7 +1477,7 @@ namespace vnx {
 
 		void print() {
 			printf("*%s parsed : \n", fname.c_str());
-			for (auto pms : params) {
+			for (auto const& pms : params) {
 				printf("\t%s : %s\n", pms.first.c_str(), pms.second.c_str());
 			}
 			printf("\n");
@@ -1364,7 +1507,7 @@ namespace vnx {
 			if (line.empty() || line[0] == ';') { return; }
 			int stage = 0;
 			std::string name = "", value = "";
-			for (int i = 0; i < line.size(); i++) {
+			for (auto i = 0; i < line.size(); i++) {
 				if (line[i] == ';') { break; }
 				if (line[i] == ':') { stage = 1; continue; }
 				if (line[i] == ' ' || line[i] == '\t') { continue; }
@@ -1439,30 +1582,6 @@ namespace vnx {
 		fclose(fp);
 	}
 
-	inline vec3vf rand_in_hemisphere_cos(const vec3vf& pos, const vec3vf& norm,const vec2f& rn) {
-		auto fp = ygl::make_frame_fromz(pos, norm);
-		vfloat rz = std::sqrt(rn.x), rr = std::sqrt(1 - rz * rz), rphi = 2 * pivf * rn.y;
-		auto wi_local = vec3vf{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
-		return ygl::transform_direction(fp, wi_local);
-	}
-
-	inline VRay offsetted_ray(const vec3vf& o,VRay rr, const vec3vf& d, const vfloat tmin, const vfloat tmax, const vec3vf& offalong, const vfloat dist, vfloat fmult = 2.0) {
-		rr.o = o + (offalong*(fmult * std::max(tmin, std::abs(dist))));
-		rr.d = d;
-		rr.tmin = tmin;
-		rr.tmax = tmax;
-		return rr;
-	}
-
-	inline VRay flip_ray(VRay rr){
-        rr.d=-rr.d;
-        return rr;
-	}
-
-	inline bool in_range_eps(vfloat v,vfloat vref,vfloat eps){
-        return (v>=vref-eps) && (v<=vref+eps);
-	}
-
 	frame3vf calculate_frame(const VNode* node,const frame3vf& parent = identity_frame3vf){
 		if (node == nullptr) { return identity_frame3vf; }
 		auto fr = parent*ygl::translation_frame(node->translation);
@@ -1507,7 +1626,7 @@ namespace vnx {
 		node->_frame = calculate_frame(node,parent);
 		auto chs = node->get_childs();
 		if (chs.empty()) { return; }
-		for (auto child : chs) { apply_transforms(child, node->_frame); }
+		for (auto& child : chs) { apply_transforms(child, node->_frame); }
 	}
 
     //TODO : FIX
@@ -1578,7 +1697,8 @@ namespace vnx {
         return stats;
     }*/
 
-    inline vec2i precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr, std::string p_prefix,int n_em_e,vfloat ieps,vfloat neps,bool verbose,frame3vf parent_frame = identity_frame3vf) {
+
+    inline vec2i precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,vfloat ieps,vfloat neps,bool verbose,frame3vf parent_frame = identity_frame3vf) {
 		if (ptr == nullptr) { return {0,0}; }
 		vec2i stats = {0,0};
 
@@ -1656,7 +1776,7 @@ namespace vnx {
 		auto chs = ptr->get_childs();
 		if (chs.empty()) { return stats; }
 		for (auto node : chs) {
-			stats+=precalc_emissive_hints(scn, rng, emap, node,ptr->id, n_em_e, ieps, neps, verbose,fr);
+			stats+=precalc_emissive_hints(scn, rng, emap, node, n_em_e, ieps, neps, verbose,fr);
 		}
 
 		return stats;
@@ -1665,7 +1785,7 @@ namespace vnx {
 	inline vec2i populate_emissive_hints(VScene& scn,int n_em_e,vfloat ieps,vfloat neps,bool verbose = false) {
 	    auto rng = ygl::make_rng(ygl::get_time());
 		std::map<std::string, std::vector<VResult>> tmpMap;
-		vec2i stats = LIGHT_PRECALC_ALGO(scn, rng, tmpMap, scn.root, "", n_em_e, ieps, neps, verbose);
+		vec2i stats = LIGHT_PRECALC_ALGO(scn, rng, tmpMap, scn.root, n_em_e, ieps, neps, verbose);
 		for (auto ceh : tmpMap) {
             scn.emissive_hints.push_back(ceh.second);
 		}
@@ -1679,7 +1799,6 @@ namespace vnx {
         const vfloat sangle = std::sin(angle);
 
         vfloat s = loc_pos.x * cangle - loc_pos.y * sangle;
-        //vfloat t = loc_pos.y * cangle + loc_pos.x * sangle;
         if((modulo(s * sx) < 0.5)){
             return true;
         }
