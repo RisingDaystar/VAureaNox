@@ -80,7 +80,7 @@ namespace vnx {
 		vfloat f_min_wl = 400;
 		vfloat f_max_wl = 700;
 
-		VRE_Pathtracer(std::string cf) : VRenderer(cf) {} ///TODO inizializzazione stile c++
+		VRE_Pathtracer(VConfigurable& shared_cfg,std::string cf) : VRenderer(shared_cfg,cf) {} ///TODO inizializzazione stile c++
 
 		inline std::string type() const {return "PathTracer";}
 
@@ -94,17 +94,17 @@ namespace vnx {
 			n_ray_samples = try_get("n_ray_samples", n_ray_samples);
 			if (n_ray_samples <= 0) { throw VException("n_ray_samples <= 0"); }
 
-			n_max_march_iterations = try_get("n_max_march_iterations", n_max_march_iterations);
-			if (n_max_march_iterations <= 0) { throw VException("n_max_march_iterations < 0"); }
+			n_max_march_iterations = mSharedCfg->try_get("n_max_march_iterations", n_max_march_iterations);
+			//if (n_max_march_iterations <= 0) { throw VException("n_max_march_iterations < 0"); }
 
-			f_ray_tmin = try_get("f_ray_tmin", f_ray_tmin);
-			if (f_ray_tmin <= 0.0) { throw VException("f_ray_tmin <= 0.0"); }
+			f_ray_tmin = mSharedCfg->try_get("f_ray_tmin", f_ray_tmin);
+			//if (f_ray_tmin <= 0.0) { throw VException("f_ray_tmin <= 0.0"); }
 
-			f_ray_tmax = try_get("f_ray_tmax", f_ray_tmax);
-			if (f_ray_tmax <= 0.0) { throw VException("f_ray_tmax <= 0.0"); }
+			f_ray_tmax = mSharedCfg->try_get("f_ray_tmax", f_ray_tmax);
+			//if (f_ray_tmax <= 0.0) { throw VException("f_ray_tmax <= 0.0"); }
 
-			f_normal_eps = try_get("f_normal_eps", f_normal_eps);
-			if (f_normal_eps <= 0.0) { throw VException("f_normal_eps <= 0.0"); }
+			f_normal_eps = mSharedCfg->try_get("f_normal_eps", f_normal_eps);
+			//if (f_normal_eps <= 0.0) { throw VException("f_normal_eps <= 0.0"); }
 
 			f_refracted_ray_eps_mult = try_get("f_refracted_ray_eps_mult", f_refracted_ray_eps_mult);
 			if (f_refracted_ray_eps_mult <= 0.0) { throw VException("f_refracted_ray_eps_mult <= 0.0"); }

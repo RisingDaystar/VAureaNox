@@ -1550,7 +1550,9 @@ namespace vnx {
 	};
 
 	struct VRenderer : VConfigurable{
-		VRenderer(std::string cf) : VConfigurable(cf){}
+	    VConfigurable* mSharedCfg = nullptr;
+		VRenderer(VConfigurable& shared_cfg,std::string cf) : VConfigurable(cf), mSharedCfg(&shared_cfg){
+		}
 
 		VStatus status;
 
@@ -1698,7 +1700,7 @@ namespace vnx {
     }*/
 
 
-    inline vec2i precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,vfloat ieps,vfloat neps,bool verbose,frame3vf parent_frame = identity_frame3vf) {
+    inline vec2i precalc_emissive_hints(VScene& scn,ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,vfloat tmin,vfloat tmax,vfloat neps,bool verbose,frame3vf parent_frame = identity_frame3vf) {
 		if (ptr == nullptr) { return {0,0}; }
 		vec2i stats = {0,0};
 
@@ -1720,15 +1722,15 @@ namespace vnx {
         };
         if(vre_vmaterial.is_emissive() || vre_material.is_emissive()){
             auto dir = sample_sphere_direction_vf(ygl::get_random_vec2f(rng));
-            auto ray = VRay{epv,dir,ieps,1000.0};
+            auto ray = VRay{epv,dir,tmin,tmax};
             VResult fvre = vre;
             for (int i=0; i < n_em_e; i++) {
                 int n_iters = 0;
-                vre = scn.INTERSECT_ALGO(ray,512,n_iters);
+                vre = scn.INTERSECT_ALGO(ray,n_max_iters,n_iters);
 
                 if(!vre.found()){
                     dir = sample_sphere_direction_vf(ygl::get_random_vec2f(rng));
-                    ray = offsetted_ray(fvre.wor_pos,{},dir,ieps,1000.0,zero3vf,0.0);
+                    ray = offsetted_ray(fvre.wor_pos,{},dir,tmin,tmax,zero3vf,0.0);
                     stats.y++;
                     continue;
                 }
@@ -1748,7 +1750,7 @@ namespace vnx {
                 dir = ygl::transform_direction(fp,sample_hemisphere_direction_vf(rn));
 
                 dir = -ygl::reflect(ray.d,dir);
-                ray = offsetted_ray(vre.wor_pos,{},dir,ieps,1000.0,dot(ray.d,norm)>0 ? -norm : norm,vre.dist); //TEST -norm && norm
+                ray = offsetted_ray(vre.wor_pos,{},dir,tmin,tmax,dot(ray.d,norm)>0 ? -norm : norm,vre.dist); //TEST -norm && norm
 
                 auto er_material = *vre.mat;
                 if(er_material.mutator!=nullptr){
@@ -1776,16 +1778,16 @@ namespace vnx {
 		auto chs = ptr->get_childs();
 		if (chs.empty()) { return stats; }
 		for (auto node : chs) {
-			stats+=precalc_emissive_hints(scn, rng, emap, node, n_em_e, ieps, neps, verbose,fr);
+			stats+=precalc_emissive_hints(scn, rng, emap, node, n_em_e, n_max_iters, tmin, tmax, neps, verbose,fr);
 		}
 
 		return stats;
 	}
 
-	inline vec2i populate_emissive_hints(VScene& scn,int n_em_e,vfloat ieps,vfloat neps,bool verbose = false) {
+	inline vec2i populate_emissive_hints(VScene& scn,int n_em_evals,int n_max_march_iterations,vfloat f_ray_tmin,vfloat f_ray_tmax,vfloat f_normal_eps,bool verbose = false) {
 	    auto rng = ygl::make_rng(ygl::get_time());
 		std::map<std::string, std::vector<VResult>> tmpMap;
-		vec2i stats = LIGHT_PRECALC_ALGO(scn, rng, tmpMap, scn.root, n_em_e, ieps, neps, verbose);
+		vec2i stats = LIGHT_PRECALC_ALGO(scn, rng, tmpMap, scn.root, n_em_evals, n_max_march_iterations, f_ray_tmin, f_ray_tmax, f_normal_eps, verbose);
 		for (auto ceh : tmpMap) {
             scn.emissive_hints.push_back(ceh.second);
 		}

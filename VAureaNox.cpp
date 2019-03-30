@@ -71,7 +71,7 @@ namespace vnx {
 		if (renderer != nullptr) { delete renderer; renderer = nullptr; }
 	}
 
-	void init(VScene& scn, VRenderer** renderer, image3vf& img, const VConfigurable& config) {
+	void init(VScene& scn, VRenderer** renderer, image3vf& img,VConfigurable& config) {
 
 		auto renderer_type = config.try_get("renderer_type", "");
 		auto scn_to_render = config.try_get("render_scene", "cornell");
@@ -95,7 +95,7 @@ namespace vnx {
 
         printf("**Loading Renderer...\n");
 		if (stricmp(renderer_type,"pathtracer")) {
-			*renderer = new vnx::VRE_Pathtracer("configs/VRE_Pathtracer.ini");
+			*renderer = new vnx::VRE_Pathtracer(config,"configs/VRE_Pathtracer.ini");
 		}
 		if (renderer == nullptr) { throw VException("Invalid Renderer."); }
         (*renderer)->init();
@@ -188,10 +188,23 @@ int main() {
 	try {
 		printf("<--- VAureaNox - Distance Fields Renderer - v: %s --->\n\n", vnx::version);
 		config.parse();
-		init(scn, &renderer, img, config);
 
-		auto n_em_evals = config.try_get("n_em_evals", 0);
-		if (n_em_evals < 0) { throw VException("n_em_evals < 0"); }
+        int n_em_evals = config.try_get("n_em_evals",10000);
+        if (n_em_evals <= 0) { throw VException("n_em_evals <= 0"); }
+
+        int n_max_march_iterations = config.try_get("n_max_march_iterations",512);
+        if (n_max_march_iterations <= 0) { throw VException("n_max_march_iterations <= 0"); }
+
+        vfloat f_ray_tmin = config.try_get("f_ray_tmin",0.0001);
+        if (f_ray_tmin < 0.0) { throw VException("f_ray_tmin < 0.0"); }
+
+        vfloat f_ray_tmax = config.try_get("f_ray_tmax",1000.0);
+        if (f_ray_tmax < 0.0 || f_ray_tmax<f_ray_tmin) { throw VException("f_ray_tmax < 0.0 || < f_ray_tmin"); }
+
+        vfloat f_normal_eps = config.try_get("f_normal_eps",0.001);
+        if (f_normal_eps < 0.0) { throw VException("f_normal_eps < 0.0"); }
+
+		init(scn, &renderer, img, config);
 
 		b_start_monitor = config.try_get("b_start_monitor",false);
 		//
@@ -204,9 +217,8 @@ int main() {
         printf("**Transforming nodes coordinates...\n");
 		apply_transforms(scn.root);
 		printf("**Calculating emissive hints...\n");
-		auto lc_stats = populate_emissive_hints(scn, n_em_evals, renderer->try_get("f_ray_tmin",0.001f), renderer->try_get("f_normal_eps",0.0001f),config.try_get("b_verbose_precalc",false));
+		auto lc_stats = populate_emissive_hints(scn,n_em_evals,n_max_march_iterations,f_ray_tmin,f_ray_tmax,f_normal_eps,config.try_get("b_verbose_precalc",false));
         int n_lights = scn.emissive_hints.size();
-        //for (auto ep : scn.emissive_hints) {n_emiss += ep.size();}
 		printf("**Calculated : \"%d\" lights -> \"%d\" emissive hints --> (\"%d\" misses)\n\n",n_lights,lc_stats.x,lc_stats.y);
 		renderer->post_init(scn);
 	}
