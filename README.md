@@ -5,6 +5,7 @@ Started as an university project for the Computer Graphics course @ "Sapienza Un
 
 It uses [***Yocto/GL***](https://github.com/xelatihy/yocto-gl) library, written by [***Fabio Pellacini***](https://github.com/xelatihy) , for utility functions (3d transforms, mathematic utilities , matrices etc..) 
 
+Relies on ***C++17*** feature set.
 
 VAureaNox is structured in 2 parts:
 
