@@ -7,12 +7,16 @@
 ;vvo_sd_plane("plane","diffuse_mat",{0.0,-1.0,0.0},0.0,1.0,XYZ)
 vvo_sd_sphere("plane","diffuse_mat",{0,-3002.0,0},0.0,1.0,XYZ,3000.0)
 vvo_sd_box("box","diffuse_mat2",{0.0,-1.0,0.0},{45,45,45},1.0,XYZ)
+vvo_sd_box("box2","diffuse_mat2",{-0.8,0.0,0.0},{-25,0,0},{0.2,1.0,18.0},XYZ)
+;vvo_sd_box("pbox","partecipating",0.0,0.0,40.0,XYZ)
 vvo_sd_sphere("light","light_mat",{-8.0,20.0,8.0},0.0,1.0,XYZ,10)
 
-vop_union("root_union",{0.0,0.0,0.0},0.0,1.0,XYZ,1.0,{"box","plane","light"})
+vop_union("u_blend",0.0,0.0,1.0,XYZ,{box,box2,plane})
+vop_union("root_union",{0.0,0.0,0.0},0.0,1.0,XYZ,0.0,{u_blend,light})
 
+vmaterial("partecipating",d,nwl,0.0,0.02,0.0002)
 vmaterial("diffuse_mat2",d,nwl,{0.5,0.5,0.5})
-vmaterial("diffuse_mat",d,nwl,{0.8,0.3,0.3},0,-1.0,0,0)
+vmaterial("diffuse_mat",d,nwl,{0.8,0.3,0.3})
 vmaterial("light_mat",d,nwl,0.0,0.0,-1.0,6000,320)
 
 vcamera(45.0,{0.0,0.0,-10.0},0.0,{0.0,1.0,0.0})

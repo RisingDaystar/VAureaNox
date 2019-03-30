@@ -270,12 +270,16 @@ int main() {
         monitor = nullptr;
     }
 
+    std::cout<<"\n*Rays Evaluated : "<<renderer->status.mRaysEvaled<<"\n";
+
 	auto t_end = std::chrono::steady_clock::now();
 	auto seconds = std::chrono::duration_cast<std::chrono::seconds>(t_end - t_start).count();
 
 	if(!renderer->status.bStopped) printf("\n*Rendering completed in : ");
 	else printf("\n*Rendering stopped after : ");
 	print_hhmmss(seconds);
+
+
 
 	auto fname = "VAureaNox_"+scn.id+"_"+std::to_string(img.size.x) + "x" + std::to_string(img.size.y) + ("_"+renderer->type())+renderer->img_affix(scn);
 	if(renderer->status.bStopped) fname+="_UNCOMPLETED";

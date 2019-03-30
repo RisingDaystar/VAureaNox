@@ -13,10 +13,10 @@ namespace vnx{
             return c==mTchars[0] || c==mTchars[1] || c==mTchars[2];
         }
 
-        inline nextTokenIsControlCH(const std::string& line, int i){
+        inline nextTokenIsControlCH(const std::string& line, std::string::size_type i){
             if(i+1>line.size())return true;
 
-            for(auto n=i+1;n<line.size();n++){
+            for(std::string::size_type n=i+1;n<line.size();n++){
                 auto c = line[n];
                 if(isControlCH(c) || c==';') break;
                 if(c==' ') continue;
@@ -68,7 +68,7 @@ namespace vnx{
         inline void eval_line(std::string line,std::string& scn_name,std::string& root_id,std::map<std::string,VEntry>& data){
             if (line.empty() || line[0] == ';') { return; }
             int mode = 0;
-            auto i = 0;
+            std::string::size_type i = 0;
 
             bool closed = false;
 

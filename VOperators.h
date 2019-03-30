@@ -48,7 +48,7 @@ struct vop_union : public VOperator {
 		auto vdist = res.vdist;
 		auto vmat = res.vmat;
 		auto vsur = res.vsur;
-		if (mBlendFactor < 0.0001) {
+		if (mBlendFactor < thvf) {
 			for (std::vector<VNode*>::size_type i = 1; i < mChilds.size(); i++) {
 				mChilds[i]->eval(p,vre);
 
@@ -123,7 +123,7 @@ struct vop_intersection : public VOperator {
         auto vdist = res.vdist;
         auto vmat = res.vmat;
         auto vsur = res.vsur;
-		if (mBlendFactor < 0.0001) {
+		if (mBlendFactor < thvf) {
 			for (std::vector<VNode*>::size_type i = 1; i < mChilds.size(); i++) {
 				mChilds[i]->eval(p,vre);
 				if (vre.dist > res.dist) { res = vre; }
@@ -195,7 +195,7 @@ struct vop_subtraction : public VOperator {
         auto vdist = res.vdist;
         auto vmat = res.vmat;
         auto vsur = res.vsur;
-		if (mBlendFactor < 0.0001) {
+		if (mBlendFactor < thvf) {
 			for (std::vector<VNode*>::size_type i = 1; i < mChilds.size(); i++) {
 				mChilds[i]->eval(p,vre);
 

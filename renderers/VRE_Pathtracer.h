@@ -168,7 +168,7 @@ namespace vnx {
 		}
 		inline vfloat brdf_cook_torrance_D(vfloat rs,vfloat ndi,vfloat ndo,vfloat ndh,vfloat odh){
             auto a2 = rs*rs;
-            a2 = std::max(a2,0.00001);
+            a2 = std::max(a2,thvf);
             auto ndh2 = ndh*ndh;
             auto andh4 = ndh2*ndh2;
             return (1.0/(pivf*a2*andh4))*std::exp((ndh2-1.0)/(a2*ndh2));
@@ -181,7 +181,7 @@ namespace vnx {
 
 		inline vfloat brdf_ggx_G(vfloat rs,vfloat ndi,vfloat ndo,vfloat ndh){
 			auto a2 = rs * rs;
-			a2 = std::max(a2,0.00001);
+			a2 = std::max(a2,thvf);
 			auto goDN = std::abs(ndo) + std::sqrt(a2 + (1 - a2) * ndo * ndo);
 			if(cmpf(goDN,0.0)) return 0.0;
 			auto giDN = std::abs(ndi) + std::sqrt(a2 + (1 - a2) * ndi * ndi);
@@ -194,7 +194,7 @@ namespace vnx {
 
         inline vfloat brdf_ggx_D(vfloat rs,vfloat ndi,vfloat ndo,vfloat ndh){
             auto a2 = rs*rs;
-            a2 = std::max(a2,0.00001);
+            a2 = std::max(a2,thvf);
             auto ndh2 = ndh*ndh;
             auto dn = ((ndh2*a2)+(1.0-(ndh2)));
             dn*=dn;
@@ -676,6 +676,7 @@ namespace vnx {
 			VResult hit = {};
 
             for(int b=0;;b++){
+                status.mRaysEvaled++;
                 int n_iters = 0;
                 VVolumePoll poll = poll_volume(scn, rng, sample.ray);
 

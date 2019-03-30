@@ -72,6 +72,8 @@ namespace vnx {
 	constexpr const auto maxvf = maxt<vfloat>();
 	constexpr const auto pivf  = ygl::pi<vfloat>;
 
+	constexpr const auto thvf = vfloat(0.00001);
+
 	constexpr frame3vf identity_frame3vf = frame3vf{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {0, 0, 0}};
 	constexpr vec4vf identity_quat4vf = vec4vf{0,0,0,1};
 	constexpr mat4vf identity_mat4vf = mat4vf{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
@@ -140,6 +142,8 @@ namespace vnx {
         bool bDebugMode = false;
         bool bFinished = false;
         bool bStopped = false;
+
+        long unsigned int mRaysEvaled = 0;
     };
 
 	class VException : public std::exception{
@@ -155,10 +159,10 @@ namespace vnx {
         VEntry(){}
         VEntry(std::vector<std::string> tks){for(auto tk : tks)tokens.push_back(tk);}
         void add_token(std::string tk){tokens.push_back(tk);}
-        std::string try_at(int idx) const{if(idx>=tokens.size())return std::string(); return tokens[idx];}
-        std::string& at(int idx){return tokens[idx];}
+        std::string try_at(std::vector<std::string>::size_type idx) const{if(idx>=tokens.size())return std::string(); return tokens[idx];}
+        std::string& at(std::vector<std::string>::size_type idx){return tokens[idx];}
         bool empty(){return tokens.empty();}
-        int size(){return tokens.size();}
+        std::vector<std::string>::size_type size(){return tokens.size();}
         bool allocated(){return ptr!=nullptr;}
 
 
@@ -238,7 +242,7 @@ namespace vnx {
         if(!strIsGroup(ss)) return {ss};
         int idx = 0;
         std::vector<std::string> tokens = {""};
-        for(auto i=1;i<ss.length()-1;i++){
+        for(std::string::size_type i=1;i<ss.length()-1;i++){
             char c = ss[i];
             if(c==','){tokens.push_back("");idx++;continue;}
             tokens[idx]+=c;
@@ -310,7 +314,7 @@ namespace vnx {
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
             vec<int,N> v;
-            for(auto i=0;i<cpnts.size() && i<N;i++){
+            for(std::vector<std::string>::size_type i=0;i<cpnts.size() && i<N;i++){
                 if constexpr(N>=1){if(i==0){v.x = try_strtoi(cpnts[0],0);continue;}}
                 if constexpr(N>=2){if(i==1){v.y = try_strtoi(cpnts[1],0);continue;}}
                 if constexpr(N>=3){if(i==2){v.z = try_strtoi(cpnts[2],0);continue;}}
@@ -331,7 +335,7 @@ namespace vnx {
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
             vec<bool,N> v;
-            for(auto i=0;i<cpnts.size() && i<N;i++){
+            for(std::vector<std::string>::size_type i=0;i<cpnts.size() && i<N;i++){
                 if constexpr(N>=1){if(i==0){v.x = try_strtoi(cpnts[0],0);continue;}}
                 if constexpr(N>=2){if(i==1){v.y = try_strtoi(cpnts[1],0);continue;}}
                 if constexpr(N>=3){if(i==2){v.z = try_strtoi(cpnts[2],0);continue;}}
@@ -352,7 +356,7 @@ namespace vnx {
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
             vec<float,N> v;
-            for(auto i=0;i<cpnts.size() && i<N;i++){
+            for(std::vector<std::string>::size_type i=0;i<cpnts.size() && i<N;i++){
                 if constexpr(N>=1){if(i==0){v.x = try_strtof(cpnts[0],0);continue;}}
                 if constexpr(N>=2){if(i==1){v.y = try_strtof(cpnts[1],0);continue;}}
                 if constexpr(N>=3){if(i==2){v.z = try_strtof(cpnts[2],0);continue;}}
@@ -373,7 +377,7 @@ namespace vnx {
         if(strIsGroup(ss)){
             auto cpnts = strDeGroup(ss);
             vec<vfloat,N> v;
-            for(auto i=0;i<cpnts.size() && i<N;i++){
+            for(std::vector<std::string>::size_type i=0;i<cpnts.size() && i<N;i++){
                 if constexpr(N>=1){if(i==0){v.x = try_strtof(cpnts[0],0);continue;}}
                 if constexpr(N>=2){if(i==1){v.y = try_strtof(cpnts[1],0);continue;}}
                 if constexpr(N>=3){if(i==2){v.z = try_strtof(cpnts[2],0);continue;}}
@@ -995,11 +999,11 @@ namespace vnx {
 		inline bool is_dielectric() const {return type==dielectric;}
 		inline bool is_conductor()const {return type==conductor;}
 
-		inline bool is_emissive()  const { return e_temp > 0.0001 && e_power > 0.0001; }
-		inline bool is_transmissive() const { return k_sca>=-0.0001;}
-		inline bool is_refractive() const { return is_transmissive() && (sm_b1>0.0001 || sm_b2>0.0001 || sm_b3>0.0001 || sm_c1>0.0001 || sm_c2>0.0001 || sm_c3>0.0001);}
+		inline bool is_emissive()  const { return e_temp > thvf && e_power > thvf; }
+		inline bool is_transmissive() const { return k_sca>=-thvf;}
+		inline bool is_refractive() const { return is_transmissive() && (sm_b1>thvf || sm_b2>thvf || sm_b3>thvf || sm_c1>thvf || sm_c2>thvf || sm_c3>thvf);}
 
-		inline bool is_delta() const{return ((is_conductor() && rs<=0.0001) || (is_transmissive() && rs<=0.0001) || (is_dielectric() && !is_transmissive() && cmpf(kr,zero3vf)));}
+		inline bool is_delta() const{return ((is_conductor() && rs<=thvf) || (is_transmissive() && rs<=thvf) || (is_dielectric() && !is_transmissive() && cmpf(kr,zero3vf)));}
 
 		inline bool has_kr(){return kr!=zero3vf;}
 
@@ -1070,9 +1074,9 @@ namespace vnx {
 
 		inline void set_rotation_order(VRotationOrder ro){rotation_order = ro;}
 
-        inline void set_scale(vfloat s){ if (s <= 0.0001) { scale = one3vf; return; }  scale = {s,s,s}; }
-		inline void set_scale(const vec3vf& a) { if (min_element(a) <= 0.0001) { scale = one3vf; return; }  scale = a; }
-		inline void set_scale(vfloat x, vfloat y, vfloat z) { if (min_element(vec3vf{ x,y,z }) <= 0.0001) { scale = one3vf; return; } scale = { x,y,z }; }
+        inline void set_scale(vfloat s){ if (s <= thvf) { scale = one3vf; return; }  scale = {s,s,s}; }
+		inline void set_scale(const vec3vf& a) { if (min_element(a) <= thvf) { scale = one3vf; return; }  scale = a; }
+		inline void set_scale(vfloat x, vfloat y, vfloat z) { if (min_element(vec3vf{ x,y,z }) <= thvf) { scale = one3vf; return; } scale = { x,y,z }; }
 
 		VNode* select(const std::string& n) {
 			auto chs = get_childs();
@@ -1507,7 +1511,7 @@ namespace vnx {
 			if (line.empty() || line[0] == ';') { return; }
 			int stage = 0;
 			std::string name = "", value = "";
-			for (auto i = 0; i < line.size(); i++) {
+			for (std::string::size_type i = 0; i < line.length(); i++) {
 				if (line[i] == ';') { break; }
 				if (line[i] == ':') { stage = 1; continue; }
 				if (line[i] == ' ' || line[i] == '\t') { continue; }
