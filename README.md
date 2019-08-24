@@ -63,6 +63,7 @@ This scene is made with a large use of twist operator and other "non distance co
     <th>"Naive" algorithm</th>
     <th>Custom "Relaxed" algorithm</th>
     <th>Custom "Enhanced" algorithm</th>
+    <th>#</th>
   </tr>
   <tr>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_naive_512mms_32spp_bf1_9.png" width="200"></td>
