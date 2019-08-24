@@ -217,7 +217,7 @@ int main() {
 	int i_output_depth = 255;
 
 	try {
-		printf("<--- VAureaNox - Distance Fields Renderer - v: 0.0.7 --->\n\n");
+		printf("<--- VAureaNox - Distance Fields Renderer - v: 0.0.8 --->\n\n");
 		config.parse();
 
         int i_em_evals = config.TryGet("i_em_evals",10000);
