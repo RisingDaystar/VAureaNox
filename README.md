@@ -52,9 +52,9 @@ For example (shallow explaination) : union operator considers the abs(cur_dist)<
 This scene is made with a large use of twist operator and other "non distance conserving" operators combinations, which makes the distance field not lipschitz continuous.
 
 <p size="10px" align="center">Algorithms comparrision</p>
-<p>Red : missing intersection with dist<0.0 (inside)</p>
-<p>Green : missing intersection with dist>0.0 (outside)</p>
-<p>Blue : missing intersection with dist>-ray_tmin && dist<0.0 (algorithms enforce dist>0.0 && dist<ray_tmin to accept intersection if started outside | dist<0.0 && dist>-ray_tmin if started inside)</p>
+<p>Red : missing intersection with dist&lt;0.0 (inside)</p>
+<p>Green : missing intersection with dist&gt;0.0 (outside)</p>
+<p>Blue : missing intersection with dist&gt;-ray_tmin && dist&lt;0.0 (algorithms enforce dist&gt;0.0 && dist&lt;ray_tmin to accept intersection if started outside | dist&lt;0.0 && dist&gt;-ray_tmin if started inside)</p>
 
 <i>{settings : ray_tmin = 0.0001; ray_tmax = 10000.0; normal_eps = 0.0001; max_march_iters = 512; ray_samples = 32;}</i>
 
