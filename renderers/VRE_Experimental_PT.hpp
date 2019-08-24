@@ -863,6 +863,7 @@ namespace vnx {
 
                         if(dist<tFar){
                             auto orig = vertex.wi;
+                            lastDelta = false;
                             vertex.wi.o = vertex.wi.o+(vertex.wi.d*dist);
                             poll = PollVolume<true>(scn, rng, vertex.wi);
                             output += vertex.weight*ConnectToEmissive(scn,rng,poll.eres,zero3d,poll.emat,VOLUME,-vertex.wi);
