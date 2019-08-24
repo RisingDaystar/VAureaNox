@@ -48,10 +48,10 @@ The distance function is calculated just once, the 2 distance values are obtaine
 For example (shallow explaination) : union operator considers the abs(cur_dist)&lt;abs(other_dist) to determine the nearest object, the abs is to allow internal volume march. For the "vdist" distance , it just considers cur_dist&lt;other_dist , to effectively determine "the object the ray is currently inside". This value needs to be saved along other "v" params in order for the behaviour to cascade to other operators in the scene tree).
 
 <hr />
-
-This scene is made with a large use of twist operator and other "non distance conserving" operators combinations, which makes the distance field not lipschitz continuous.
-
 <p size="10px" align="center"><b>Algorithms comparrision</b></p>
+
+The scene used for test is made with a large use of twist operator and other "non distance conserving" operators combinations, which makes the distance field not lipschitz continuous.
+
 <p>Red : missing intersection with dist&lt;0.0 (inside)</p>
 <p>Green : missing intersection with dist&gt;0.0 (outside)</p>
 <p>Blue : missing intersection with dist&gt;-ray_tmin && dist&lt;0.0 (algorithms enforce dist&gt;0.0 && dist&lt;ray_tmin to accept intersection if started outside | dist&lt;0.0 && dist&gt;-ray_tmin if started inside)</p>
