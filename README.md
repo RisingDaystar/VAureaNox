@@ -144,15 +144,15 @@ Other improvements include way less rays lost during emissive precalc (most of t
   <hr />
 </h4>
 
-4096 spp , partecipating sorrounding volume
+
 
 <p align="center">
+  <p>4096 spp , partecipating sorrounding volume</p>
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096_2.jpg">
 </p>
 
-When it still was a raytracer (Final image for the course)
-
 <p align="center">
+  <p>When it still was a raytracer (Final image for the course)</p>
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VRising_spider_1920x1080.png">
 </p>
 
