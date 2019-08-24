@@ -107,44 +107,9 @@ Work is in progress on finding a way to apply the improved behaviour also in thi
 
 <br />
 <h4>
-  <b>Post V 0.07 changes</b>
-  <hr />
-</h4>
-
-Changed system to use doubles instead of floats , this fixed a lot of issues (mostly false/missing intersections) and improved  overall rendering quality.
-
-This scene uses a huge sphere as "floor" (***radius 3000***)
-
-Using ***floats***, precision related artifacts appeared (intersection precision related, not renderer related)<br/> 
-Increasing "ray_tmin" (lowering intersection precision) helped, but that is a rather heavy trade-off (the drop in fidelity is especially noticeable in more complex scenes)
-
-Using ***doubles***, first artifacts appear with a radius value of more than ***800000000000***
-(Of course this depends on the host system) 
-
-<i>{settings : ray_tmin = 0.0001; ray_tmax = 10000.0; normal_eps = 0.001; max_march_iters = 512; ray_samples = 32;}</i>
-
-<table>
-  <tr>
-    <th>Floats</th>
-    <th>Doubles</th>
-  </tr>
-  <tr>
-    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32.jpg" width="400"></td>
-    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32_doubles.jpg" width="400"></td>
-  </tr>
-</table>
-
-Preformance wise , didn't notice any drop
-
-Other improvements include way less rays lost during emissive precalc (most of the times, in trivial settings , 0)
-
-<br />
-<h4>
   <b>Images</b>
   <hr />
 </h4>
-
-
 
 <p align="center">
   4096 spp , partecipating sorrounding volume
