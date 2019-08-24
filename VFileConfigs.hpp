@@ -24,9 +24,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 namespace vnx{
 
     struct VFileConfigs{
-        std::map<std::string,std::map<std::string,std::string>> mappings;
 
-        void eval(const std::string& line);
+        struct VFCException : public VException{
+            VFCException(std::string msg):VException(msg),bFatal(true){}
+            VFCException(bool fatal,std::string msg):VException(msg),bFatal(fatal){}
+            bool bFatal = true;
+        };
+
+        std::map<std::string,std::map<std::string,std::string>> mMappings;
+        std::string mFilename;
+
+        VFileConfigs(std::string fn){
+            mFilename = fn;
+        }
+
+        void parse();
+        void eval(const std::string& line,int lid,std::string& cur_section);
+
+        inline void ExceptionAtLine(const std::string& msg,int lid,bool fatal = true){
+            throw VFCException(fatal,msg+" | line : "+std::to_string(lid));
+        }
     };
 
 };

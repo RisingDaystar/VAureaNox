@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "VSceneParser.hpp"
+#include "VFileConfigs.hpp"
 
 #include "scenes\VSC_Spider.hpp"
 #include "scenes\VSC_Pathtracing.hpp"
@@ -202,7 +203,6 @@ namespace vnx {
 
 
 int main() {
-
 	std::mutex mtx;
 	std::atomic<int> lastRow;
 	lastRow.store(0);
