@@ -36,7 +36,7 @@ namespace vscndef {
 
         auto emissive = scn.add_material("emissive");
         emissive->e_temp = 6500; //orig : 15
-        emissive->e_power = 18800; //orig : 15
+        emissive->e_power = 24800; //orig : 15
         auto emissive_dim = scn.add_material("emissive_dim");
         emissive_dim->e_temp = 6500; //orig : 15
         emissive_dim->e_power = 880; //orig : 15
