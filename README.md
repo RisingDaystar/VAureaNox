@@ -21,7 +21,7 @@ Microfacet brdf for specular surfaces using GGX
 
 Diffuse model which accounts for energy conservation, that allows for proper ( i hope...) handling of mixed specular / diffuse surfaces , especially when fresnel effect kicks in.
 
-Refractive materials with fixed or variable ior accounting for ray wavelength (keeps track of wl/speed/frequency[at first shoot]/ior) to simulate dispersion. Material parametrizable with a fixed ior or with Sellmeier coefficients (for dispersion)
+Refractive materials with fixed or variable ior accounting for ray wavelength (keeps track of original_wl/wl/ior) to simulate dispersion. Material parametrizable with a fixed ior or with Sellmeier coefficients (for dispersion)
 
 There is basilar support for homogeneous and scattering media, so far (v 0.07) only uniform phase function.
 
