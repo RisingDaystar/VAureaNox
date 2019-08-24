@@ -27,7 +27,9 @@ There is basilar support for homogeneous and scattering media, so far (v 0.07) o
 
 Materials can be attached with a mutator , which allows to change the evaluated material at runtime , accounting also for normals and object loc/world pos...
 
+<br />
 The enforced floating point precision is ***double*** : Dealing with SDFs is, by nature, very error prone precision wise , using ***float***s (before version 0.0.7) lead to many lingering (yet , "show changing") precision errors . Errors that would grow a lot in non trivial scenes (lots of SDFs, non distance preserving operators , etc...). 
+
 Switching to doubles reduced this kind of errors to an acceptable level while not giving a noticeable slowdown, indeed the increased precision made the whole sphere tracing process a bit faster (more faithfull distance estimation), and reduced false "missing intersection" phenomena.
 
 <br />
