@@ -261,11 +261,11 @@ namespace vnx{
 
                         }
 
+                        //auto cc = std::abs((d-os)/pd)*std::max(std::abs(d/pd),std::abs(os/pd)) ///gives a strange miss in the cornell box scene, might be prone to undetected overstep
+                        auto cc = std::max(std::abs(d/pd),std::abs(os/pd));
+                        os = d*std::max(-cc,std::min(cc,0.5*(d/pd)));
 
-                        //auto cc = std::abs((d-os)/pd)*std::max(std::abs(d/pd),std::abs(os/pd));
-                        //os = d*std::max(-cc,std::min(cc,0.5*(d/pd)));
-
-                        os = d*std::max(-1.0,std::min(1.0,0.5*(d/pd)));
+                        //os = d*std::max(-1.0,std::min(1.0,0.5*(d/pd)));
                         t+=d+os;
                         pd=d;
 
