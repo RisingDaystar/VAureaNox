@@ -153,6 +153,6 @@ Other improvements include way less rays lost during emissive precalc (most of t
 When it still was a raytracer (Final image for the course)
 
 <p align="center">
-  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VRising_spider_1920x1080.png>
+  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VRising_spider_1920x1080.png">
 </p>
 
