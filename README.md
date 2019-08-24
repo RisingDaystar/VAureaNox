@@ -1,4 +1,4 @@
-# VAureaNox
+<h1><img alt="VAureaNox" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_LOGO.png" width=320></h1>
 Experimental CPU C++ Pathtracer for Signed Distance Fields
 
 Started as an university project for the Computer Graphics course @ "Sapienza University of Rome" held by professor/researcher [***Fabio Pellacini***](https://github.com/xelatihy), i kept working on it , adding and improving features as i kept learning more about rendering and about (signed) distance fields.
@@ -26,6 +26,11 @@ Refractive materials with fixed or variable ior accounting for ray wavelength (k
 There is basilar support for homogeneous and scattering media, so far (v 0.07) only uniform phase function.
 
 Materials can be attached with a mutator , which allows to change the evaluated material at runtime , accounting also for normals and object loc/world pos...
+
+
+The enforced floating point precision is ***double*** : Dealing with SDFs is, by nature, very error prone precision wise , using ***float*** (before version 0.0.7) lead to many lingering (yet , "show changing") precision errors . Errors that would grow a lot in non trivial scenes (lots of SDFs, non distance preserving operators , etc...). 
+
+Switching to doubles reduced this kind of errors to an acceptable level while not giving a noticeable slowdown, indeed the increased precision made the whole sphere tracing process a bit faster (more faithfull distance estimation), and reduced false "missing intersection" phenomena.
 
 <br />
 <h4>
@@ -107,56 +112,17 @@ Work is in progress on finding a way to apply the improved behaviour also in thi
 
 <br />
 <h4>
-  <b>Post V 0.07 changes</b>
-  <hr />
-</h4>
-
-Changed system to use doubles instead of floats , this fixed a lot of issues (mostly false/missing intersections) and improved  overall rendering quality.
-
-This scene uses a huge sphere as "floor" (***radius 3000***)
-
-Using ***floats***, precision related artifacts appeared (intersection precision related, not renderer related)<br/> 
-Increasing "ray_tmin" (lowering intersection precision) helped, but that is a rather heavy trade-off (the drop in fidelity is especially noticeable in more complex scenes)
-
-Using ***doubles***, first artifacts appear with a radius value of more than ***800000000000***
-(Of course this depends on the host system) 
-
-<i>{settings : ray_tmin = 0.0001; ray_tmax = 10000.0; normal_eps = 0.001; max_march_iters = 512; ray_samples = 32;}</i>
-
-<table>
-  <tr>
-    <th>Floats</th>
-    <th>Doubles</th>
-  </tr>
-  <tr>
-    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32.jpg" width="400"></td>
-    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_ParsingTest_648x480_PathTracer_spec_spp32_doubles.jpg" width="400"></td>
-  </tr>
-</table>
-
-Preformance wise , didn't notice any drop
-
-Other improvements include way less rays lost during emissive precalc (most of the times, in trivial settings , 0)
-
-<br />
-<h4>
   <b>Images</b>
   <hr />
 </h4>
 
-4096 spp , dispersion enabled
+<p align="center">
+  4096 spp , partecipating sorrounding volume
+  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096_2.jpg">
+</p>
 
-![4096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096.jpg)
-
-8096 spp , dispersion enabled
-
-![8096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp8192.jpg)
-
-4096 spp , dispersion enabled, partecipating sorrounding volume
-
-![4096spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096_2.jpg)
-
-When it still was a raytracer (Final image for the course)
-
-![1spp](https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VRising_spider_1920x1080.png)
+<p align="center">
+  When it still was a raytracer (Final image for the course)
+  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VRising_spider_1920x1080.png">
+</p>
 
