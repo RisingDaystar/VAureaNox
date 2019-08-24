@@ -51,7 +51,7 @@ For example (shallow explaination) : union operator considers the abs(cur_dist)&
 
 This scene is made with a large use of twist operator and other "non distance conserving" operators combinations, which makes the distance field not lipschitz continuous.
 
-<p size="10px" align="center">Algorithms comparrision</p>
+<p size="10px" align="center"><b>Algorithms comparrision</b></p>
 <p>Red : missing intersection with dist&lt;0.0 (inside)</p>
 <p>Green : missing intersection with dist&gt;0.0 (outside)</p>
 <p>Blue : missing intersection with dist&gt;-ray_tmin && dist&lt;0.0 (algorithms enforce dist&gt;0.0 && dist&lt;ray_tmin to accept intersection if started outside | dist&lt;0.0 && dist&gt;-ray_tmin if started inside)</p>
@@ -69,25 +69,25 @@ This scene is made with a large use of twist operator and other "non distance co
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_naive_512mms_32spp_bf1_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_relaxed_512mms_32spp_bf1_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_enhanced_512mms_32spp_bf1_9.png" width="200"></td>
-    <td>Twist factor : 1.9</td>
+    <td><i>Twist factor : 1.9</i></td>
   </tr>
   <tr>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_naive_512mms_bf1_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_relaxed_512mms_bf1_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_enhanced_512mms_bf1_9.png" width="200"></td>
-    <td>Iterations View</td>
+    <td><i>Iterations View</i></td>
   </tr>
     <tr>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_naive_512mms_32spp_bf9_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_relaxed_512mms_32spp_bf9_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_enhanced_512mms_32spp_bf9_9.png" width="200"></td>
-      <td>Twist factor : 9.9</td>
+      <td><i>Twist factor : 9.9</i></td>
   </tr>
   <tr>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_naive_512mms_bf9_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_relaxed_512mms_bf9_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_enhanced_512mms_bf9_9.png" width="200"></td>
-    <td>Iterations View</td>
+    <td><i>Iterations View</i></td>
   </tr>
 </table>
 
@@ -133,7 +133,7 @@ Using ***doubles***, first artifacts appear with a radius value of more than ***
 
 Preformance wise , didn't notice any drop
 
-Other improvements include way less rays lost during emissive precalc (most of the times , 0)
+Other improvements include way less rays lost during emissive precalc (most of the times, in trivial settings , 0)
 
 <br />
 <h4>
