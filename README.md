@@ -1,4 +1,4 @@
-# VAureaNox
+<img alt="VAureaNox" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox.png">
 Experimental CPU C++ Pathtracer for Signed Distance Fields
 
 Started as an university project for the Computer Graphics course @ "Sapienza University of Rome" held by professor/researcher [***Fabio Pellacini***](https://github.com/xelatihy), i kept working on it , adding and improving features as i kept learning more about rendering and about (signed) distance fields.
