@@ -51,25 +51,40 @@ For example (shallow explaination) : union operator considers the abs(cur_dist)<
 
 This scene is made with a large use of twist operator and other "non distance conserving" operators combinations, which makes the distance field not lipschitz continuous.
 
-<i>{settings : ray_tmin = 0.0001; ray_tmax = 10000.0; normal_eps = 0.001; max_march_iters = 512; ray_samples = 256;}</i>
+<p size="10px" align="center">Algorithms comparrision</p>
+<p>Red : missing intersection with dist<0.0 (inside)</p>
+<p>Green : missing intersection with dist>0.0 (outside)</p>
+<p>Blue : missing intersection with -ray_tmin<dist<0.0 (algorithms enforce dist>0.0 && dist<ray.tmin to accept intersection if started outside ; dist<0.0 && dist>-rya.tmin if started inside)</p>
+
+<i>{settings : ray_tmin = 0.0001; ray_tmax = 10000.0; normal_eps = 0.0001; max_march_iters = 512; ray_samples = 32;}</i>
 
 <table>
   <tr>
     <th>Standard algorithm</th>
-    <th>Custom algorithm</th>
+    <th>Custom "Relaxed" algorithm</th>
+    <th>Custom "Enhanced" algorithm</th>
   </tr>
   <tr>
-    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_img01.jpg" width="400"></td>
-    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_img00.jpg" width="400"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_naive_512mms_32spp_bf1_9.png" width="200"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_relaxed_512mms_32spp_bf1_9.png" width="200"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_enhanced_512mms_32spp_bf1_9.png" width="200"></td>
+    <td>Twist factor : 1.9</td>
   </tr>
-</table>
-
-<p size="10px" align="center">Iterations debug view</p>
-
-<table>
   <tr>
-    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_img03.jpg" width="400"></td>
-    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_img02.jpg" width="400"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_naive_512mms_bf1_9.png" width="200"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_relaxed_512mms_bf1_9.png" width="200"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_enhanced_512mms_bf1_9.png" width="200"></td>
+  </tr>
+    <tr>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_naive_512mms_32spp_bf9_9.png" width="200"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_relaxed_512mms_32spp_bf9_9.png" width="200"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_enhanced_512mms_32spp_bf9_9.png" width="200"></td>
+      <td>Twist factor : 9.9</td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_naive_512mms_bf9_9.png" width="200"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_relaxed_512mms_bf9_9.png" width="200"></td>
+    <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_enhanced_512mms_bf9_9.png" width="200"></td>
   </tr>
 </table>
 
@@ -80,7 +95,7 @@ Also, the horizon line seems to be "lower" compared to the Custom algorithm rend
 Finally, the custom algorithm runs about 15% faster on average than the standard one.
 
 
-***TODO*** : both algorithms can march inside volumes natively, by the way custom algorithm will not use the overrelaxing solution if "tracing inside" (determined by initial "vdist"), thus falling back to standard behaviour.
+***TODO*** : Each algorithm can march inside volumes natively, by the way custom algorithms will not use the overrelaxing solution if "tracing inside" (determined by initial "vdist"), thus falling back to standard behaviour.
 
 Work is in progress on finding a way to apply the improved behaviour also in this case.
 
