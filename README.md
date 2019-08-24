@@ -74,6 +74,7 @@ This scene is made with a large use of twist operator and other "non distance co
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_naive_512mms_bf1_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_relaxed_512mms_bf1_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_enhanced_512mms_bf1_9.png" width="200"></td>
+    <td>Iterations View</td>
   </tr>
     <tr>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_pt_naive_512mms_32spp_bf9_9.png" width="200"></td>
@@ -85,6 +86,7 @@ This scene is made with a large use of twist operator and other "non distance co
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_naive_512mms_bf9_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_relaxed_512mms_bf9_9.png" width="200"></td>
     <td><img src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/intersect_iters_enhanced_512mms_bf9_9.png" width="200"></td>
+    <td>Iterations View</td>
   </tr>
 </table>
 
