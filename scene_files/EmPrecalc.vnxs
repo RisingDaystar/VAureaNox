@@ -1,0 +1,15 @@
+#EmPrecalcTest
+
+vop_union("root_union",{0.0,0.0,0.0},0.0,1.0,XYZ,0.0,{light1,light2,light3,light4,light5})
+
+vvo_sd_sphere("light1","emissive",{-2.2,2.2,0},{0,0,0},1.0,XYZ,1.0)
+vvo_sd_box("light2","emissive",{2.2,2.2,0},{0,0,0},1.0,XYZ,1.0)
+vvo_sd_tri_prism("light3","emissive",{-2.2,-2.2,0},{0,0,0},1.0,XYZ,{1.0,1.0})
+vvo_sd_hex_prism("light4","emissive",{2.2,-2.2,0},{0,0,0},1.0,XYZ,{1.0,1.0})
+vvo_sd_box("light5","emissive",{0,0,0},{0,0,0},1.0,XYZ,{1.0,1.0,0.002})
+
+vmaterial("emissive",diel,nwl,0.0,0.0,-1.0,6500,80000.0)
+
+vcamera(45.0,{0.0,0.0,-10.0},0.0,{0.0,1.0,0.0})
+
+@root_union

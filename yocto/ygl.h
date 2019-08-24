@@ -1767,7 +1767,7 @@ constexpr inline vec<T, 3> transform_vector(
 template <typename T>
 constexpr inline vec<T, 3> transform_vector(
     const mat<T, 4, 4>& a, const vec<T, 3>& b) {
-    auto tvb = a * vec4f{b.x, b.y, b.z, 0};
+    auto tvb = a * vec<T,4>{b.x, b.y, b.z, 0};
     return vec<T, 3>{tvb.x, tvb.y, tvb.z};
 }
 template <typename T, int N>
