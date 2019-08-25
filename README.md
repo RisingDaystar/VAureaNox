@@ -103,7 +103,7 @@ Notice the amount of artifacts for the naive algorithm , caused by rays "overste
 
 Also, the horizon line seems to be "lower" compared to the Custom algorithms render, that's because the naive algorithm reaches the max number of iterations much faster (Custom algorithms uses overrelaxing).
 
-Finally, the custom algorithms runs about 15% faster on average than the standard one.
+Finally, the custom algorithms run about 15% faster on average than the naive one.
 
 
 ***TODO*** : Each algorithm can march inside volumes natively, by the way custom algorithms will not use the overrelaxing solution if "tracing inside" (determined by initial "vdist"), thus falling back to standard behaviour.
