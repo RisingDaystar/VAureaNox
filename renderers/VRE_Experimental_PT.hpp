@@ -2,6 +2,7 @@
 #define VRE_EXPERIMENTAL_PT_HPP_INCLUDED
 
 #include "../VRenderer.hpp"
+#include <stack>
 
 namespace vnx {
     struct VRE_Experimental_PT : VRenderer {
@@ -345,7 +346,7 @@ namespace vnx {
             evmat.eval_mutator(rng, ev, evnorm, evmat);
 
             if constexpr(upray){
-                if(ev.vdist<epsd) {
+                if(ev.vdist<0.0) {
                     update_ray_physics(ray,evmat.eval_ior(ray.owl,f_min_wl,f_max_wl,true));
                     //SELLMEIER NEEDS VACUUM Wavelength !! : ray.owl;
                 }
@@ -846,6 +847,8 @@ namespace vnx {
             VResult hit;
             vec3d normal;
 
+            //std::stack<VMaterial> volStack; //TODO
+
 
             VSdfPoll poll = PollVolume(scn,rng,vertex.wi);
             if(poll.is_stuck()) return zero3d;
@@ -856,7 +859,36 @@ namespace vnx {
                 hit = scn.intersect(vertex.wi,i_max_march_iterations);
                 mStatus.mRaysEvaled++;
 
-                if(poll.is_in_transmissive() && poll.has_absorption()){
+                if(poll.is_in_participating()){
+                    double tFar = (!hit.isFound()) ?  vertex.wi.tmax : ygl::distance(vertex.wi.o,hit.wor_pos);
+                    double omega = (poll.emat.k_sca);
+                    double dist = -std::log(1.0-ygl::get_random_float(rng)) / (omega);
+
+                    pdf = std::exp(-omega*tFar);
+                    bsdf = one3d;
+
+                    if(dist<tFar){
+                        auto orig = vertex.wi;
+                        lastDelta = false;
+                        vertex.wi.o = vertex.wi.o+(vertex.wi.d*dist);
+                        poll = PollVolume<true>(scn, rng, vertex.wi);
+                        output += vertex.weight*ConnectToEmissive(scn,rng,poll.eres,zero3d,poll.emat,VOLUME,-vertex.wi);
+                        vertex.wi.d =  sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
+                        vertex.wo = -vertex.wi;
+                        vertex.hit = poll.eres;
+                        vertex.weight *= (exp(-poll.emat.ka*dist))/(pdf+(4.0*pid));
+                        if(b>3){if(!russian_roulette(rng,vertex.weight)) break;}
+                        b--;
+                        continue;
+                    }else{
+                        if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
+                        if(poll.has_absorption()) vertex.weight = vertex.weight*exp(-poll.emat.ka*tFar)/(pdf);
+                    }
+                }else{
+                    if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
+                }
+
+                if(poll.is_in_transmissive()){
                     if(poll.is_in_participating()){
                         double tFar = (!hit.isFound()) ?  vertex.wi.tmax : ygl::distance(vertex.wi.o,hit.wor_pos);
                         double omega = (poll.emat.k_sca);
@@ -880,11 +912,11 @@ namespace vnx {
                             continue;
                         }else{
                             if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
-                            vertex.weight = vertex.weight*exp(-poll.emat.ka*tFar)/(pdf);
+                            if(poll.has_absorption()) vertex.weight = vertex.weight*exp(-poll.emat.ka*tFar)/(pdf);
                         }
                     }else if(poll.is_in_not_participating()){
                         if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
-                        vertex.weight*= exp(-poll.emat.ka*ygl::distance(poll.eres.wor_pos,hit.wor_pos));
+                        if(poll.has_absorption()) vertex.weight*= exp(-poll.emat.ka*ygl::distance(poll.eres.wor_pos,hit.wor_pos));
                     }
                 }else{
                     if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}

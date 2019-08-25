@@ -117,18 +117,19 @@ namespace vscndef {
 
                 //new vop_twist("distorted_obj",X,0.8,new vvo_sd_ellipsoid("glass_ball3_t",dispersive_material,{0.3,3.0,5.2})),
 
-                /*
+
                 new vop_union("glass",{
                     new vop_union("glass_water_group",{
                         new vop_cut("glass_cylinder",{0,1,0},{0,-2.1,0},0.05,new vop_onion("_gc_eo",0.1,false,new vvo_sd_cylinder("_gc_e",dispersive_material,{1.3,2.3}))),
-                        new vvo_sd_cylinder("inner_water",water_material_tinted,{1.25,1.0}),
+                        new vvo_sd_cylinder("inner_water",water_material_tinted,{1.18,1.0}),
                     }),
                     new vop_twist("obs",Z,0.8,new vvo_sd_cylinder("obs_t",dielectric_complex_material,{0.1,3.0})),
                     new vvo_sd_box("ice_cube",water_material,0.3),
                 }),
-                */
+
 
                 new vop_cut("mirror",{0,1,1},{0,0,0},0.1,new vop_onion("mirror_o",0.06,new vvo_sd_sphere("mirror_i",sp_mat))),
+
 
                 new vop_union("box_blend",0.2,{
                     new vvo_sd_box("box2",diff_white,0.5),
