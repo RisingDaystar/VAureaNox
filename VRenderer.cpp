@@ -19,11 +19,5 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VRenderer.hpp"
 
 namespace vnx{
-
-    void VRenderer::Init(){
-        try{parse();}catch(VException& ex){
-            std::cout<<"Renderer: "<<Type()<<" -> Could not parse config file -> Using Defaults\n";
-        }
-    };
-
+    //TODO
 };

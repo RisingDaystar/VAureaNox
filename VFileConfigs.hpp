@@ -41,8 +41,48 @@ namespace vnx{
         void parse();
         void eval(const std::string& line,int lid,std::string& cur_section);
 
+        inline const std::map<std::string,std::string>* getSection(const std::string& s) const{
+            auto ms = mMappings.find(s);
+            if(ms == mMappings.end()) return nullptr;
+            return &ms->second;
+        }
+
         inline void ExceptionAtLine(const std::string& msg,int lid,bool fatal = true){
             throw VFCException(fatal,msg+" | line : "+std::to_string(lid));
+        }
+
+
+        inline std::string TryGet(const std::string& section,const std::string& k, std::string dVal) const {
+            auto ms = getSection(section);
+            if(!ms) return dVal;
+            auto match = ms->find(k);
+            if (match == ms->end()) { return dVal; }
+            return match->second;
+        }
+        inline double TryGet(const std::string& section,const std::string& k, double dVal) const {
+            auto ms = getSection(section);
+            if(!ms) return dVal;
+            auto match = ms->find(k);
+            if (match == ms->end()) { return dVal; }
+            return strto_d(match->second);
+        }
+        inline float TryGet(const std::string& section,const std::string& k, float dVal) const {
+            auto ms = getSection(section);
+            if(!ms) return dVal;
+            auto match = ms->find(k);
+            if (match == ms->end()) { return dVal; }
+            return strto_f(match->second);
+        }
+        inline int TryGet(const std::string& section,const std::string& k, int dVal) const { //also bool
+            auto ms = getSection(section);
+            if(!ms) return dVal;
+            auto match = ms->find(k);
+            if (match == ms->end()) { return dVal; }
+
+            if (stricmp(match->second, std::string("true"))) { return 1; }
+            if (stricmp(match->second, std::string("false"))) { return 0; }
+
+            return strto_i(match->second);
         }
     };
 

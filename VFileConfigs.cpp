@@ -49,7 +49,6 @@ namespace vnx{
         std::string value = "";
         std::string name = "";
         int state = 0;
-        //TODO EXCEPTIONS
         for(std::string::size_type i=0;i<line.size();i++){
             if(line[i]==':'){
                 if(cur_section.empty())ExceptionAtLine("Syntax Error-> Cannot define key/value while a tag is not opened",lid,false);

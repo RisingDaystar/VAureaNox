@@ -24,14 +24,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 namespace vnx{
 
 	struct VRenderer : VConfigurable{
-	    VConfigurable* mSharedCfg = nullptr;
 	    VStatus mStatus;
-		VRenderer(VConfigurable& shared_cfg,std::string cf) : VConfigurable(cf), mSharedCfg(&shared_cfg){
+		VRenderer(const VFileConfigs& cfgs,std::string section) : VConfigurable(cfgs,section){
 		}
 
 		virtual ~VRenderer() {Shut();}
 		virtual void Shut() {}
-		virtual void Init();
+		virtual void Init() {};
 		virtual void PostInit(VScene& scn) = 0;
 		virtual std::string Type() const = 0;
 		virtual std::string ImgAffix(const VScene& scn) const {return std::string("");};

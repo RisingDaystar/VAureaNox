@@ -93,10 +93,10 @@ namespace vnx {
 		if (renderer != nullptr) { delete renderer; renderer = nullptr; }
 	}
 
-	void init(VScene& scn, VRenderer** renderer, image3d& img,VConfigurable& config) {
+	void init(VScene& scn, VRenderer** renderer, image3d& img,const VFileConfigs& config) {
 
-		auto renderer_type = config.TryGet("renderer_type", "");
-		auto scn_to_render = config.TryGet("render_scene", "cornell");
+		auto renderer_type = config.TryGet("VAureaNox","renderer_type", "");
+		auto scn_to_render = config.TryGet("VAureaNox","render_scene", "cornell");
 
 
 		if(scn_to_render.substr(scn_to_render.find_last_of(".") + 1) == "vnxs"){
@@ -119,15 +119,15 @@ namespace vnx {
 		/*if (stricmp(renderer_type,std::string("pathtracer"))) {
 			*renderer = new vnx::VRE_Pathtracer(config,"configs/VRE_Pathtracer.ini");
 		}else */if (stricmp(renderer_type,std::string("experimental_pt"))) {
-			*renderer = new vnx::VRE_Experimental_PT(config,"configs/VRE_Experimental_PT.ini");
+			*renderer = new vnx::VRE_Experimental_PT(config,"VRE_Experimental_PT");
 		}
 
 		if (*renderer == nullptr) { throw VException("Invalid Renderer."); }
         (*renderer)->Init();
         std::cout<<"**Loaded Renderer : \""<<(*renderer)->Type()<<"\"\n";
 
-		int w = config.TryGet("i_image_width", 648);
-		int h = config.TryGet("i_image_height", 480);
+		int w = config.TryGet("VAureaNox","i_image_width", 648);
+		int h = config.TryGet("VAureaNox","i_image_height", 480);
 		if (w <= 0 || h <= 0) { throw VException("Invalid image dimensions."); }
 		init_image(img,{w, h});
 		std::cout<<"**Output resolution:  \""<<img.size.x<<"\" x \""<<img.size.y<<"\"\n";
@@ -208,7 +208,10 @@ int main() {
 	lastRow.store(0);
 	std::atomic<int> rowCounter;
 	rowCounter.store(0);
-	VConfigurable config("configs/VAureaNox.ini");
+
+	VFileConfigs config("VAureaNox.vcfg");
+
+
 	VScene scn;
 	VRenderer* renderer = nullptr;
 	image3d img;
@@ -216,30 +219,34 @@ int main() {
 
 	int i_output_depth = 255;
 
+	const std::string section = "VAureaNox";
+
 	try {
 		printf("<--- VAureaNox - Distance Fields Renderer - v: 0.0.8 --->\n\n");
 		config.parse();
 
-        int i_em_evals = config.TryGet("i_em_evals",10000);
+
+
+        int i_em_evals = config.TryGet(section,"i_em_evals",10000);
         if (i_em_evals <= 0) { throw VException("i_em_evals <= 0"); }
 
-        int i_max_march_iterations = config.TryGet("i_max_march_iterations",512);
+        int i_max_march_iterations = config.TryGet(section,"i_max_march_iterations",512);
         if (i_max_march_iterations <= 0) { throw VException("i_max_march_iterations <= 0"); }
 
-        double f_ray_tmin = config.TryGet("f_ray_tmin",0.0001);
+        double f_ray_tmin = config.TryGet(section,"f_ray_tmin",0.0001);
         if (f_ray_tmin < 0.0) { throw VException("f_ray_tmin < 0.0"); }
 
-        double f_ray_tmax = config.TryGet("f_ray_tmax",1000.0);
+        double f_ray_tmax = config.TryGet(section,"f_ray_tmax",1000.0);
         if (f_ray_tmax < 0.0 || f_ray_tmax<f_ray_tmin) { throw VException("f_ray_tmax < 0.0 || < f_ray_tmin"); }
 
-        double f_normal_eps = config.TryGet("f_normal_eps",0.001);
+        double f_normal_eps = config.TryGet(section,"f_normal_eps",0.001);
         if (f_normal_eps < 0.0) { throw VException("f_normal_eps < 0.0"); }
 
-        std::string i_st_algo = config.TryGet("i_st_algo","naive");
-        std::string i_normals_algo = config.TryGet("i_normals_algo","tht");
-        std::string i_eh_precalc_algo = config.TryGet("i_eh_precalc_algo","progressive");
+        std::string i_st_algo = config.TryGet(section,"i_st_algo","naive");
+        std::string i_normals_algo = config.TryGet(section,"i_normals_algo","tht");
+        std::string i_eh_precalc_algo = config.TryGet(section,"i_eh_precalc_algo","progressive");
 
-        i_output_depth = config.TryGet("i_output_depth",255);
+        i_output_depth = config.TryGet(section,"i_output_depth",255);
         if(i_output_depth<2 || i_output_depth>65535){ throw VException("i_output_depth must be in range 2 - 65535 inclusive.");}
 
 		init(scn, &renderer, img, config);
@@ -256,12 +263,8 @@ int main() {
 		else if(stricmp(i_eh_precalc_algo,std::string("strict"))) scn.eh_precalc_algo = &VScene::precalc_emissive_hints_strict;
 		else scn.eh_precalc_algo = &VScene::precalc_emissive_hints_full;
 
-		b_start_monitor = config.TryGet("b_start_monitor",false);
+		b_start_monitor = config.TryGet(section,"b_start_monitor",false);
 		//
-        if(config.TryGet("b_verbose_parsing",false)){
-            config.print();
-            renderer->print();
-        }
 
         printf("\n**Preparing scene...\n");
         printf("**Transforming nodes coordinates...\n");
@@ -272,7 +275,7 @@ int main() {
 
 		printf("\n**Calculating emissive hints...\n");
 		auto t_start = std::chrono::steady_clock::now();
-		auto lc_stats = scn.populate_emissive_hints(i_em_evals,i_max_march_iterations,f_ray_tmin,f_ray_tmax,f_normal_eps,config.TryGet("b_verbose_precalc",false));
+		auto lc_stats = scn.populate_emissive_hints(i_em_evals,i_max_march_iterations,f_ray_tmin,f_ray_tmax,f_normal_eps,config.TryGet(section,"b_verbose_precalc",false));
         auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t_start).count();
         int n_lights = scn.emissive_hints.size();
 
@@ -291,7 +294,7 @@ int main() {
 		return -1;
 	}
 
-	int i_max_threads = config.TryGet("i_max_threads", 0);
+	int i_max_threads = config.TryGet(section,"i_max_threads", 0);
 	int nThreads = std::thread::hardware_concurrency();
 	if (i_max_threads>0) nThreads = std::min(nThreads, i_max_threads);
 

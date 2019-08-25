@@ -179,7 +179,7 @@ namespace vnx{
             else if(stricmp(type,std::string("vop_repeat"))) e = new vop_repeat(id,nodes.empty() ? nullptr : nodes[0]);
             else if(stricmp(type,std::string("vop_onion"))) e = new vop_onion(id,nodes.empty() ? nullptr : nodes[0]);
 
-            //if(!e) throw VException("Unerecognized Operator \""+type+"\""); //NON NECESSARIO
+            if(!e) throw VException("Unerecognized Operator \""+type+"\""); //NON NECESSARIO
 
             e->Relate(entry);
             scn.nodes.push_back(e);
@@ -204,7 +204,7 @@ namespace vnx{
             else if(stricmp(type,std::string("vvo_sd_pyramid4"))) e = new vvo_sd_pyramid4(id,mtl);
             else if(stricmp(type,std::string("vvo_sd_diamond"))) e = new vvo_sd_diamond(id,mtl);
 
-            if(e==nullptr) throw VException("Unerecognized Entity \""+type+"\"");
+            if(!e) throw VException("Unerecognized Entity \""+type+"\"");
 
             e->Relate(entry);
             scn.nodes.push_back(e);

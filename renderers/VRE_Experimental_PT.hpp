@@ -82,13 +82,15 @@ namespace vnx {
         bool b_gather_direct_light = true;
         bool b_gather_indirect_light = true;
 
-        VRE_Experimental_PT(VConfigurable& shared_cfg,std::string cf) : VRenderer(shared_cfg,cf) {}
+        VRE_Experimental_PT(const VFileConfigs& cfgs,std::string section) : VRenderer(cfgs,section) {}
         std::string Type() const {return "ExperimentalPT";}
 
         using VRenderer::TryGet; //permette di vedere gli altri overload
-		inline VRenderingMode TryGet(std::string k, VRenderingMode dVal) const {
-			auto match = mParams.find(k);
-			if (match == mParams.end()) { return dVal; }
+		inline VRenderingMode TryGet(const std::string& k, VRenderingMode dVal) const {
+            auto ms = mConfigsRef.getSection(mSection);
+            if(!ms) return dVal;
+            auto match = ms->find(k);
+            if (match == ms->end()) { return dVal; }
 
 			if(stricmp(match->second,std::string("eyetracing"))) return EYETRACING;
 			if(stricmp(match->second,std::string("bidirectional"))) return BIDIRECTIONAL;
@@ -96,9 +98,11 @@ namespace vnx {
 			return dVal;
 		}
 
-		inline VDebugPrimary TryGet(std::string k, VDebugPrimary dVal) const {
-			auto match = mParams.find(k);
-			if (match == mParams.end()) { return dVal; }
+		inline VDebugPrimary TryGet(const std::string& k, VDebugPrimary dVal) const {
+            auto ms = mConfigsRef.getSection(mSection);
+            if(!ms) return dVal;
+            auto match = ms->find(k);
+            if (match == ms->end()) { return dVal; }
 
 			if(stricmp(match->second,std::string("none"))) return DBG_NONE;
 			if(stricmp(match->second,std::string("eyelight"))) return DBG_EYELIGHT;
@@ -111,10 +115,10 @@ namespace vnx {
         void Init(){
             VRenderer::Init();
 			i_ray_samples = TryGet("i_ray_samples", i_ray_samples);if (i_ray_samples <= 0) { throw VException("i_ray_samples <= 0"); }
-			i_max_march_iterations = mSharedCfg->TryGet("i_max_march_iterations", i_max_march_iterations);
-			f_ray_tmin = mSharedCfg->TryGet("f_ray_tmin", f_ray_tmin);
-			f_ray_tmax = mSharedCfg->TryGet("f_ray_tmax", f_ray_tmax);
-			f_normal_eps = mSharedCfg->TryGet("f_normal_eps", f_normal_eps);
+			i_max_march_iterations = TryGet("VAureaNox","i_max_march_iterations", i_max_march_iterations);
+			f_ray_tmin = TryGet("VAureaNox","f_ray_tmin", f_ray_tmin);
+			f_ray_tmax = TryGet("VAureaNox","f_ray_tmax", f_ray_tmax);
+			f_normal_eps = TryGet("VAureaNox","f_normal_eps", f_normal_eps);
 			f_min_wl = TryGet("f_min_wl", f_min_wl);if (f_min_wl <= 0.0) { throw VException("f_min_wl <= 0.0"); }
 			f_max_wl = TryGet("f_max_wl", f_min_wl);if (f_max_wl <= 0.0) { throw VException("f_max_wl <= 0.0"); }
 			i_rendering_mode = TryGet("i_rendering_mode",i_rendering_mode);
