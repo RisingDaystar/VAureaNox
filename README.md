@@ -127,6 +127,13 @@ Work is in progress on finding a way to apply the improved behaviour also in thi
 </p>
 
 <p align="center">
+  2048, experimental lighttracer, showing volumetric caustic
+  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_ExperimentalPT_lighttracing_spp2048.png">
+</p>
+
+
+
+<p align="center">
   When it still was a raytracer (Final image for the course)
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VRising_spider_1920x1080.png">
 </p>
