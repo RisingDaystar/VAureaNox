@@ -101,7 +101,7 @@ The scene used for test is made with a large use of twist operator and other "no
 
 Notice the amount of artifacts for the naive algorithm , caused by rays "overstepping" the boundary of the volume and then going further inside reaching the maximum number of iterations (at this point are considered as a "miss") , the same happens along the spiral surface: the holes seen on the whole surface are caused by the same phenomena.
 
-Also, the horizon line seems to be "lower" compared to the Custom algorithms render, that's because the naive algorithm reaches the max number of iterations much faster (Custom algorithms uses overrelaxing).
+Also, the horizon line seems to be "lower" compared to the Custom algorithms render, that's because the naive algorithm reaches the max number of iterations much faster (Custom algorithms use overrelaxing).
 
 Finally, the custom algorithms run about 15% faster on average than the naive one.
 
@@ -117,12 +117,12 @@ Work is in progress on finding a way to apply the improved behaviour also in thi
 </h4>
 
 <p align="center">
-  2048 spp , partecipating sorrounding volume
+  2048 spp , participating sorrounding volume
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_ExperimentalPT_eyetracing_spp2048.png">
 </p>
 
 <p align="center">
-  4096 spp , partecipating sorrounding volume
+  4096 spp , participating sorrounding volume
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096_2.jpg">
 </p>
 
