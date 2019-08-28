@@ -117,12 +117,12 @@ Work is in progress on finding a way to apply the improved behaviour also in thi
 </h4>
 
 <p align="center">
-  2048 spp , partecipating sorrounding volume
+  2048 spp , participating sorrounding volume
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_ExperimentalPT_eyetracing_spp2048.png">
 </p>
 
 <p align="center">
-  4096 spp , partecipating sorrounding volume
+  4096 spp , participating sorrounding volume
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096_2.jpg">
 </p>
 
