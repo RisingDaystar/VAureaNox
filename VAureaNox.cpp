@@ -180,7 +180,9 @@ namespace vnx {
                 if(!renderer->mStatus.bPauseMode)mtx.lock();
                     auto fname = "VAureaNox_"+scn.id+"_"+std::to_string(img.size.x) + "x" + std::to_string(img.size.y) + ("_"+renderer->Type())+renderer->ImgAffix(scn)+"_PREVIEW";
                     printf("\n*Saving Preview image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_output_depth);
-                    if(vnx::save_ppm(fname, img, i_output_depth)) printf("OK\n\n");
+                    image3d img_tmp = img;
+                    scn.camera.mFrameBuffer.MergeToImg(img_tmp);
+                    if(vnx::save_ppm(fname, img_tmp, i_output_depth)) printf("OK\n\n");
                     else printf("FAIL\n\n");
                 if(!renderer->mStatus.bPauseMode)mtx.unlock();
             }else if(k=='2'){ //DEBUG
@@ -349,6 +351,7 @@ int main() {
 	if(renderer->mStatus.bStopped) fname+="_UNCOMPLETED";
 
 	printf("\n*Saving image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_output_depth);
+	scn.camera.mFrameBuffer.MergeToImg(img);
     if(vnx::save_ppm(fname, img, i_output_depth)) printf("OK\n");
     else {
         printf("FAIL\n");

@@ -924,11 +924,12 @@ namespace vnx {
         wl*=wl;
         double n2=1.0;
         const auto s = smc.size();
-        for(std::vector<sellmeier_coeff>::size_type i=0;i<s;i++){
+        std::vector<sellmeier_coeff>::size_type i=0;
+        for(;i<s;i++){
             const auto sm = smc[i];
             n2+=((sm.mB*wl) / (wl-sm.mC));
         }
-        return std::sqrt( n2 );
+        return i ? std::sqrt( n2 ) : 1.0;
 	}
 
 	/////////////////////////

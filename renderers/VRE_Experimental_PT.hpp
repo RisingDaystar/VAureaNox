@@ -53,6 +53,7 @@ namespace vnx {
             VRay wo = {};
             vec3d weight = one3d;
             VVertexType type = SURFACE;
+
             double vc = 0.0;
             double vcm = 0.0;
         };
@@ -67,6 +68,7 @@ namespace vnx {
             constexpr bool is_in_transmissive(){return (emat.k_sca>-thrd && eres.vdist<0.0);}
             constexpr bool is_stuck(){return (eres.vdist<0.0 || eres.dist<0.0) && !is_in_transmissive();}
 		};
+
 
         double f_min_wl = 400;
         double f_max_wl = 700;
@@ -260,6 +262,7 @@ namespace vnx {
                 *bsdf+=brdf_ggx_D(mtl.rs,ndh) / (4.0 * std::abs(dot(wi.d, h)) * std::max(std::abs(ndi), std::abs(ndo))) * F * std::abs(ndi);
             }
         }
+
         ///
 
         /////////RAY INITS
@@ -283,7 +286,11 @@ namespace vnx {
                 emr.getVMaterial(mtl);
                 auto normal = scn.eval_normals(emr,f_normal_eps);
                 mtl.eval_mutator(rng,emr,normal,mtl);
-                if(!mtl.is_emissive()) return false;
+                if(!mtl.is_emissive()){
+                    emr.getMaterial(mtl);
+                    mtl.eval_mutator(rng,emr,normal,mtl);
+                    if(!mtl.is_emissive()){return false;}
+                }
 
                 if(emr.dist>-f_ray_tmin && emr.dist<0.0){
                     double lpdf;
@@ -317,7 +324,12 @@ namespace vnx {
                 emr.getMaterial(mtl);
                 lvert.normal = scn.eval_normals(emr,f_normal_eps);
                 mtl.eval_mutator(rng,emr,lvert.normal,mtl);
-                if(!mtl.is_emissive()) return false;
+                if(!mtl.is_emissive()){
+                    emr.getVMaterial(mtl);
+                    mtl.eval_mutator(rng,emr,lvert.normal,mtl);
+                    if(!mtl.is_emissive()){return false;}
+                }
+
 
                 double lpdf;
                 auto dir = sample_diffuse<double>(ygl::get_random_vec2f(rng),lvert.normal,lvert.normal,&lpdf);
@@ -468,8 +480,8 @@ namespace vnx {
                     poll = PollVolume(scn,rng,wi);
                     if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck after : "<<SampleTypeToString(SPECULAR)<<" - "<<MtlTypeToString(mtl.type)<<"\n";} return {};}
 
-                    if (transport_mode==RADIANCE) bsdfcos_conductor(mtl,normal,wi,wo,pdf,bsdf);//IMPORTANCE
-                    else bsdfcos_conductor(mtl,normal,wo,wi,pdf,bsdf);//RADIANCE
+                    if (transport_mode==RADIANCE) bsdfcos_conductor(mtl,normal,wi,wo,pdf,bsdf);
+                    else bsdfcos_conductor(mtl,normal,wo,wi,pdf,bsdf);
                     return VSample{SPECULAR,wi}; //ROUGH SPECULAR
                 }
             }else if(mtl.is_dielectric()){
@@ -498,7 +510,7 @@ namespace vnx {
                     }
 
                     if (transport_mode==RADIANCE) bsdfcos_dielectric(mtl,normal,wi,wo,pdf,bsdf);
-                    else bsdfcos_dielectric(mtl,normal,wo,wi,pdf,bsdf);//RADIANCE
+                    else bsdfcos_dielectric(mtl,normal,wo,wi,pdf,bsdf);
                     return sample;
             }else if(mtl.is_diffuse()){
                 VRay wi = offsetted_ray(hit.wor_pos,wo,sample_diffuse_cos(ygl::get_random_vec2f(rng),wo.d,normal),wo.tmin,wo.tmax,normal,hit.dist);
@@ -506,8 +518,8 @@ namespace vnx {
                 poll = PollVolume(scn,rng,wi);
                 if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck after : "<<SampleTypeToString(DIFFUSE)<<" - "<<MtlTypeToString(mtl.type)<<"\n";} return {};}
 
-                if (transport_mode==RADIANCE) bsdfcos_lambertian(mtl,normal,wi,wo,pdf,bsdf);//IMPORTANCE
-                else bsdfcos_lambertian(mtl,normal,wo,wi,pdf,bsdf);//RADIANCE
+                if (transport_mode==RADIANCE) bsdfcos_lambertian(mtl,normal,wi,wo,pdf,bsdf);
+                else bsdfcos_lambertian(mtl,normal,wo,wi,pdf,bsdf);
                 return VSample{DIFFUSE,wi};
             }
             return {};
@@ -561,6 +573,18 @@ namespace vnx {
             return 0.0;
         }
 
+
+        inline vec3d ConnectVertex(const VScene& scn,
+                                        ygl::rng_state& rng,
+                                        const VResult& hit,
+                                        const vec3d& normal,
+                                        const VMaterial& mtl,
+                                        VVertexType vtype,
+                                        const VRay& out,
+                                        const VVertex& lp_vertex){
+            return zero3d;
+
+        }
 
 
         inline vec3d ConnectToEmissive(const VScene& scn,
@@ -638,34 +662,10 @@ namespace vnx {
             return zero3d;
         }
 
-        inline vec3d* IsHitOccluded(const VScene& scn,image3d& img,const VCamera& camera,const VResult& hit,const vec3d& normal,const VRay& in){
-            auto dir = normalize(camera.mOrigin-hit.wor_pos);
-            if(dot(dir,transform_point(camera.mCameraToWorld,vec3d{0,0,1.0}))<=0.0) return nullptr;
-
-            auto to_cam = offsetted_ray(hit.wor_pos,in,dir,in.tmin,in.tmax,normal,hit.dist);
-            auto occ_hit = scn.intersect(to_cam,i_max_march_iterations);
-
-            if(!occ_hit.isFound()){
-                vec2i pid = zero2<int>;
-                if(camera.WorldToPixel(hit.wor_pos,pid)){
-                    return &at(img,pid);
-                }
-            }else{
-                auto max_dist = length(hit.wor_pos-camera.mOrigin);
-                auto occ_dist = length(hit.wor_pos-occ_hit.wor_pos);
-                if(occ_dist>max_dist-(f_ray_tmin*2)){
-                    vec2i pid = zero2<int>;
-                    if(camera.WorldToPixel(hit.wor_pos,pid)){
-                        return &at(img,pid);
-                    }
-                }
-            }
-            return nullptr;
-        }
-
         inline void ConnectToCamera(const VScene& scn,
+                                    ygl::rng_state& rng,
                                     image3d& img,
-                                    const VCamera& camera,
+                                    VCamera& camera,
                                     const VResult& hit,
                                     const vec3d& normal,
                                     const VMaterial& mtl,
@@ -678,41 +678,82 @@ namespace vnx {
             auto nn_dir = camera.mOrigin-hit.wor_pos;
             auto dir = normalize(nn_dir);
             if(dot(-camera.mForward,-nn_dir)<=0.0) return;
-            auto to_cam = offsetted_ray(hit.wor_pos,in,dir,in.tmin,in.tmax,normal,hit.dist);
 
-
-            auto occ_hit = scn.intersect(to_cam,i_max_march_iterations);
-
-
+            VRay to_cam;
             vec3d* px = nullptr;
-            if(!occ_hit.isFound()){
-                vec2i pid = zero2<int>;
-                if(camera.WorldToPixel(hit.wor_pos,pid)){
-                    px = &at(img,pid);
-                }
+            vec3d bsdf;
+            VResult occ_hit;
+            VMaterial occ_mtl;
+            vec3d tw = one3d;
+            vec2i pid = zero2<int>;
+
+            if(vtype==VOLUME){
+                    to_cam = offsetted_ray(hit.wor_pos,in,dir,in.tmin,in.tmax,dir,in.tmin);
+                    VRay ray = to_cam;
+
+                    while(max(tw)>0.0){
+                        VSdfPoll poll = PollVolume(scn,rng,ray);
+                        if(!poll.is_in_transmissive()) break;
+                        occ_hit = scn.intersect(ray,i_max_march_iterations);
+
+                        if(!occ_hit.isFound()){
+                            camera.WorldToPixel(hit.wor_pos,pid);
+                            break;
+                        }else{
+                            auto max_dist = length(hit.wor_pos-camera.mOrigin);
+                            auto occ_dist = length(hit.wor_pos-occ_hit.wor_pos);
+                            if(occ_dist>max_dist-(f_ray_tmin*2)){
+                                camera.WorldToPixel(hit.wor_pos,pid);
+                                break;
+                            }
+                        }
+
+                        if(poll.is_in_transmissive() && poll.has_absorption()){
+                            tw*=exp(-poll.emat.ka*ygl::distance(ray.o,occ_hit.wor_pos));
+                        }
+
+                        occ_hit.getMaterial(occ_mtl);
+                        auto occ_normal = scn.eval_normals(occ_hit, f_normal_eps);
+                        occ_mtl.eval_mutator(rng, occ_hit, occ_normal, occ_mtl);
+                        if(!occ_mtl.is_transmissive() || occ_mtl.is_refractive()) break;
+                        auto offby = dot(occ_normal,ray.d)<0.0 ? -occ_normal : occ_normal;
+                        ray = offsetted_ray(occ_hit.wor_pos,ray,ray.d,ray.tmin,ray.tmax,offby,occ_hit.dist);
+                    }
+                    if(!pid.x || !pid.y) return;
+                    bsdf = one3d;
+                    to_cam = ray;
             }else{
-                auto max_dist = length(hit.wor_pos-camera.mOrigin);
-                auto occ_dist = length(hit.wor_pos-occ_hit.wor_pos);
-                if(occ_dist>max_dist-(f_ray_tmin*2)){
-                    vec2i pid = zero2<int>;
-                    if(camera.WorldToPixel(hit.wor_pos,pid)){
-                      px = &at(img,pid);
+                to_cam = offsetted_ray(hit.wor_pos,in,dir,in.tmin,in.tmax,normal,hit.dist);
+                occ_hit = scn.intersect(to_cam,i_max_march_iterations);
+                if(!occ_hit.isFound()){
+                    camera.WorldToPixel(hit.wor_pos,pid);
+                }else{
+                    auto max_dist = length(hit.wor_pos-camera.mOrigin);
+                    auto occ_dist = length(hit.wor_pos-occ_hit.wor_pos);
+                    if(occ_dist>max_dist-(f_ray_tmin*2)){
+                        camera.WorldToPixel(hit.wor_pos,pid);
                     }
                 }
+                if(!pid.x || !pid.y) return;
+                if(vtype != EMITTER){
+                    bsdf = EvalBsdf_F(scn,hit,mtl,normal,in,to_cam);
+                    if(isTracingInvalid(bsdf)) return;
+                }
+                else{
+                    bsdf = toVec<double,3>(EvalLe(in,mtl.e_power,mtl.e_temp));
+                }
             }
 
-            if(!px) return;
-            vec3d bsdf;
-            if(vtype != EMITTER){
-                bsdf = EvalBsdf_F(scn,hit,mtl,normal,in,to_cam);
-                if(isTracingInvalid(bsdf)) return;
-            }
-            else{
-                bsdf = toVec<double,3>(EvalLe(in,mtl.e_power,mtl.e_temp));
-            }
+
+
+
+
+
+
 
             const double cosAtCam = dot(-camera.mForward,-dir);
-            const double cosToCam = dot(normal,dir);
+            double cosToCam = dot(normal,dir);
+            if(vtype==VOLUME) cosToCam = 1.0;
 
             const double iptcd = camera.mImagePlaneDist /  cosAtCam;
             const double itsaf = fsipow(iptcd,2)  / cosAtCam;
@@ -720,12 +761,12 @@ namespace vnx {
 
             const double stif = 1.0 / itsf;
 
-            auto rd = (w*bsdf) / (pl*double(i_ray_samples)*stif);
+            auto rd = (w*bsdf) / (double(i_ray_samples)*stif);
             if(isTracingInvalid(rd)) return;
-            *px += rd*spectral_to_rgb(to_cam.wl);
+            camera.mFrameBuffer.add(pid,tw*rd*spectral_to_rgb(to_cam.wl),pl);
         }
 
-        inline vec3d Radiance(const VScene& scn, ygl::rng_state& rng,image3d& img,const VCamera& camera, const VRay& ray) {
+        inline vec3d Radiance(const VScene& scn, ygl::rng_state& rng,image3d& img,VCamera& camera, const VRay& ray) {
             if(i_debug_primary!=DBG_NONE){
                 if(i_debug_primary==DBG_EYELIGHT){
                     VResult hit = scn.intersect(ray,i_max_march_iterations);
@@ -781,7 +822,7 @@ namespace vnx {
                     light_path.push_back(vertex);
 
                     //Connect Light First Vertex to Camera
-                    ConnectToCamera(scn,img,camera,vertex.hit,vertex.normal,lmtl,vertex.type,vertex.wo,vertex.weight,20);
+                    ConnectToCamera(scn,rng,img,camera,vertex.hit,vertex.normal,lmtl,vertex.type,vertex.wo,vertex.weight,0);
                     //
 
                     vec3d bsdf;
@@ -790,24 +831,59 @@ namespace vnx {
                     VMaterial mtl;
                     VResult hit;
                     vec3d normal;
+                    bool lastDelta = true;
 
                     VSdfPoll poll = PollVolume(scn,rng,vertex.wo);
                     //if(poll.is_stuck()) return zero3d; ///TODO
 
-                    ///TEST A WAY TO UNBIAS THE MAX LENGHT in ConnectToCamera
-                    for(int b=0;b<20;b++){ //Trace from light and store path vertices
+                    for(int b=0;;b++){ //Trace from light and store path vertices
+                        camera.mFrameBuffer.HintScale(b); //TAKES THE MAX between mScale and b parameter, needed to divide framebuffer contribution
                         hit = scn.intersect(vertex.wo,i_max_march_iterations);
                         mStatus.mRaysEvaled++;
-                        if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
+                        if(poll.is_in_transmissive()){
+                            if(poll.is_in_participating()){
+                                double tFar = (!hit.isFound()) ?  vertex.wo.tmax : ygl::distance(vertex.wo.o,hit.wor_pos);
+                                double omega = (poll.emat.k_sca);
+                                double dist = -std::log(1.0-ygl::get_random_float(rng)) / (omega);
+
+                                pdf = std::exp(-omega*tFar);
+                                bsdf = one3d;
+
+                                if(dist<tFar){
+                                    auto orig = vertex.wo;
+                                    lastDelta = false;
+                                    vertex.wo.o = vertex.wo.o+(vertex.wo.d*dist);
+                                    poll = PollVolume<true>(scn, rng, vertex.wo);
+                                    ConnectToCamera(scn,rng,img,camera,poll.eres,zero3d,poll.emat,VOLUME,-vertex.wo,vertex.weight,b);
+                                    vertex.wo.d =  sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
+                                    vertex.wi = -vertex.wo;
+                                    //hit = poll.eres; //REDUNDANT ?
+                                    vertex.weight *= (exp(-poll.emat.ka*dist))/(pdf+(4.0*pid));
+                                    light_path.push_back(vertex);
+                                    //if(poll.emat.is_emissive()) weight *= EvalLe(wi,mtl.e_power,mtl.e_temp); //emitting media : TODO
+                                    if(b>3){if(!russian_roulette(rng,vertex.weight)) break;}
+                                    //b--;
+                                    continue;
+                                }else{
+                                    if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
+                                    if(poll.has_absorption()) vertex.weight = vertex.weight*exp(-poll.emat.ka*tFar)/(pdf);
+                                }
+                            }else if(poll.is_in_not_participating()){
+                                if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
+                                if(poll.has_absorption()) vertex.weight*= exp(-poll.emat.ka*ygl::distance(poll.eres.wor_pos,hit.wor_pos));
+                            }
+                        }else{
+                            if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
+                        }
 
 
                         hit.getMaterial(mtl);
                         normal = scn.eval_normals(hit, f_normal_eps);
                         mtl.eval_mutator(rng, hit, normal, mtl);
 
-                        if(mtl.is_emissive()){ConnectToCamera(scn,img,camera,hit,normal,mtl,EMITTER,-vertex.wo,one3d,b);break;} //TODO : might be able to gather additional path info... needs test
+                        if(mtl.is_emissive()){ConnectToCamera(scn,rng,img,camera,hit,normal,mtl,EMITTER,-vertex.wo,vertex.weight,0);break;} //TODO : might be able to gather additional path info... needs test
                         if(!mtl.is_delta()){
-                            ConnectToCamera(scn,img,camera,hit,normal,mtl,SURFACE,-vertex.wo,vertex.weight,20);
+                            ConnectToCamera(scn,rng,img,camera,hit,normal,mtl,SURFACE,-vertex.wo,vertex.weight,0);
                         }
                         if(b_debug_direct_only)break;
 
@@ -819,7 +895,8 @@ namespace vnx {
 
                         if(!isDeltaSample(sampled)){
                             light_path.push_back(vertex);
-                        }
+                            lastDelta = true;
+                        }else{lastDelta = false;}
                         vertex.weight = (vertex.weight*bsdf)/pdf;
                         if(b>3){if(!russian_roulette(rng,vertex.weight)) break;}
 
@@ -838,59 +915,35 @@ namespace vnx {
 
 
             ///EYE PATH
-            VVertex vertex = {{},{},ray,{},one3d,EYE}; //wi is going towards surface , is convenient but gotta swap in bsdf calcs
+
             bool lastDelta = true;
             vec3d bsdf = one3d;
             double pdf = 1.0;
+            vec3d weight = one3d;
+
             VSample sampled;
             VMaterial mtl;
             VResult hit;
             vec3d normal;
+            VRay wi = ray;
+            VRay wo = -ray;
+
 
             //std::stack<VMaterial> volStack; //TODO
 
 
-            VSdfPoll poll = PollVolume(scn,rng,vertex.wi);
+            VSdfPoll poll = PollVolume(scn,rng,wi);
             if(poll.is_stuck()) return zero3d;
-            auto o_wl = vertex.wi.wl;
-
+            auto o_wl = wi.wl;
 
             for(int b=0;;b++){ //Trace from eye
-                hit = scn.intersect(vertex.wi,i_max_march_iterations);
+                //const auto prev_hit = hit; //could use Poll.eres in indirect calc instead
+                hit = scn.intersect(wi,i_max_march_iterations);
                 mStatus.mRaysEvaled++;
-
-                if(poll.is_in_participating()){
-                    double tFar = (!hit.isFound()) ?  vertex.wi.tmax : ygl::distance(vertex.wi.o,hit.wor_pos);
-                    double omega = (poll.emat.k_sca);
-                    double dist = -std::log(1.0-ygl::get_random_float(rng)) / (omega);
-
-                    pdf = std::exp(-omega*tFar);
-                    bsdf = one3d;
-
-                    if(dist<tFar){
-                        auto orig = vertex.wi;
-                        lastDelta = false;
-                        vertex.wi.o = vertex.wi.o+(vertex.wi.d*dist);
-                        poll = PollVolume<true>(scn, rng, vertex.wi);
-                        output += vertex.weight*ConnectToEmissive(scn,rng,poll.eres,zero3d,poll.emat,VOLUME,-vertex.wi);
-                        vertex.wi.d =  sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
-                        vertex.wo = -vertex.wi;
-                        vertex.hit = poll.eres;
-                        vertex.weight *= (exp(-poll.emat.ka*dist))/(pdf+(4.0*pid));
-                        if(b>3){if(!russian_roulette(rng,vertex.weight)) break;}
-                        b--;
-                        continue;
-                    }else{
-                        if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
-                        if(poll.has_absorption()) vertex.weight = vertex.weight*exp(-poll.emat.ka*tFar)/(pdf);
-                    }
-                }else{
-                    if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
-                }
 
                 if(poll.is_in_transmissive()){
                     if(poll.is_in_participating()){
-                        double tFar = (!hit.isFound()) ?  vertex.wi.tmax : ygl::distance(vertex.wi.o,hit.wor_pos);
+                        double tFar = (!hit.isFound()) ?  wi.tmax : ygl::distance(wi.o,hit.wor_pos);
                         double omega = (poll.emat.k_sca);
                         double dist = -std::log(1.0-ygl::get_random_float(rng)) / (omega);
 
@@ -898,25 +951,26 @@ namespace vnx {
                         bsdf = one3d;
 
                         if(dist<tFar){
-                            auto orig = vertex.wi;
+                            auto orig = wi;
                             lastDelta = false;
-                            vertex.wi.o = vertex.wi.o+(vertex.wi.d*dist);
-                            poll = PollVolume<true>(scn, rng, vertex.wi);
-                            output += vertex.weight*ConnectToEmissive(scn,rng,poll.eres,zero3d,poll.emat,VOLUME,-vertex.wi);
-                            vertex.wi.d =  sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
-                            vertex.wo = -vertex.wi;
-                            vertex.hit = poll.eres;
-                            vertex.weight *= (exp(-poll.emat.ka*dist))/(pdf+(4.0*pid));
-                            if(b>3){if(!russian_roulette(rng,vertex.weight)) break;}
+                            wi.o = wi.o+(wi.d*dist);
+                            poll = PollVolume<true>(scn, rng, wi);
+                            output += weight*ConnectToEmissive(scn,rng,poll.eres,zero3d,poll.emat,VOLUME,wo);
+                            wi.d =  sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
+                            wo = -wi;
+                            //hit = poll.eres; //REDUNDANT ?
+                            weight *= (exp(-poll.emat.ka*dist))/(pdf+(4.0*pid));
+                            //if(poll.emat.is_emissive()) weight *= EvalLe(wi,mtl.e_power,mtl.e_temp); //emitting media : TODO
+                            if(b>3){if(!russian_roulette(rng,weight)) break;}
                             b--;
                             continue;
                         }else{
                             if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
-                            if(poll.has_absorption()) vertex.weight = vertex.weight*exp(-poll.emat.ka*tFar)/(pdf);
+                            if(poll.has_absorption()) weight = weight*exp(-poll.emat.ka*tFar)/(pdf);
                         }
                     }else if(poll.is_in_not_participating()){
                         if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
-                        if(poll.has_absorption()) vertex.weight*= exp(-poll.emat.ka*ygl::distance(poll.eres.wor_pos,hit.wor_pos));
+                        if(poll.has_absorption()) weight*= exp(-poll.emat.ka*ygl::distance(poll.eres.wor_pos,hit.wor_pos));
                     }
                 }else{
                     if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
@@ -925,24 +979,26 @@ namespace vnx {
                 hit.getMaterial(mtl);
                 normal = scn.eval_normals(hit, f_normal_eps);
                 mtl.eval_mutator(rng, hit, normal, mtl);
-                auto wo = -vertex.wi;
+                wo = -wi;
+
+
 
                 if(mtl.is_emissive()){
                     if(lastDelta){
-                        output +=  vertex.weight*EvalLe(vertex.wi,mtl.e_power,mtl.e_temp);
+                        output +=  weight*EvalLe(wi,mtl.e_power,mtl.e_temp);
                         break;
                     }
 
                     if(!b_gather_indirect_light) break;
 
-                    auto lc = EvalLe(vertex.wi,mtl.e_power,mtl.e_temp); //TODO
+                    auto lc = EvalLe(wi,mtl.e_power,mtl.e_temp); //TODO
                     auto cosNDir = dot(normal,wo.d);
                     //if(cosNDir<epsd) break;
-                    auto light_pdf = PdfAtoW(1.0,distance(hit.wor_pos,vertex.hit.wor_pos),cosNDir);
+                    auto light_pdf = PdfAtoW(1.0,distance(hit.wor_pos,poll.eres.wor_pos),cosNDir); //poll.eres is == prev_hit
                     if(light_pdf>0.0){
                         auto mw = power_heuristic(pdf,light_pdf);
 
-                        auto rd = (vertex.weight*mw*lc);
+                        auto rd = (weight*mw*lc);
                         output+=rd;
                     }
 
@@ -950,11 +1006,22 @@ namespace vnx {
                 }
 
 
-
+                //DIRECT
                 if(!mtl.is_delta() && b_gather_direct_light){
                     auto li = ConnectToEmissive(scn,rng,hit,normal,mtl,SURFACE,wo);
-                    if(!isTracingInvalid(li)) output += vertex.weight*li;
+                    if(!isTracingInvalid(li)) output += weight*li;
                 }
+
+                //VC ____TODO
+                /*
+                if(!mtl.is_delta() && i_rendering_mode==BIDIRECTIONAL){
+                    for(auto vi=0;vi<light_path;vi++){
+                        auto li = ConnectVertex(scn,rng,hit,mtl,normal,wo,light_path[vi]);
+                        if(!isTracingInvalid(li)) output += weight*li;
+                    }
+                }
+                */
+
                 if(b_debug_direct_only) break;
 
 
@@ -965,14 +1032,10 @@ namespace vnx {
 
 
                 lastDelta = isDeltaSample(sampled);
-                vertex.weight = vertex.weight*(bsdf / pdf);
+                weight = weight*(bsdf / pdf);
+                if(b>3){if(!russian_roulette(rng,weight)) break;}
 
-                if(b>3){if(!russian_roulette(rng,vertex.weight)) break;}
-                vertex.hit = hit;
-                vertex.normal = normal;
-                vertex.wi = sampled.ray;
-                vertex.wo = wo;
-                vertex.type = SURFACE;
+                wi = sampled.ray;
             }
 
             return output*spectral_to_rgb(o_wl);
@@ -980,13 +1043,30 @@ namespace vnx {
 
 		void EvalImageRow(const VScene& scn, ygl::rng_state& rng, image3d& img, int width, int height, int j) {
 		    const double f_ray_samples = (double)i_ray_samples;
+		    const double f_ray_samples_2 = f_ray_samples*f_ray_samples;
+		    const auto f_img_size = vec2f{img.size.x,img.size.y};
+
 			for (int i = 0; i < width && !mStatus.bStopped; i++) {
 				vec3d color = zero3d;
+
+                //JITTERED
                 for (int s = 0; s < i_ray_samples; s++) {
-                    VRay ray;
-                    InitEyeRay(scn,rng,ray,i,j);
-                    color += (Radiance(scn, rng, img, scn.camera, ray)/ f_ray_samples); //TODO
+                    auto px_uv = get_random_vec2f(rng);
+                    VRay ray = scn.camera.RayCast(i,j,rng,!i_debug_primary ? (px_uv) : zero2f);
+                    InitRay(rng,ray);
+                    color += (Radiance(scn, rng, img, const_cast<VCamera&>(scn.camera), ray)/ f_ray_samples);
                 }
+
+                //STRATIFIED
+                /*
+                for(int s=0;s<i_ray_samples;s++){
+                    for(int t=0;t<i_ray_samples;t++){
+                        VRay ray = scn.camera.RayCast(i,j,rng,!i_debug_primary ? (vec2f{s,t}+get_random_vec2f(rng))/f_ray_samples : zero2f);
+                        InitRay(rng,ray);
+                        color += (Radiance(scn, rng, img, scn.camera, ray)/ f_ray_samples_2);
+                    }
+                }*/
+
 				auto& px = at(img,{i, j});
 				px += color;
 			}

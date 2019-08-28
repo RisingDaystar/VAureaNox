@@ -23,6 +23,36 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace vnx{
 	struct VCamera{
+
+	    struct VFrameBuffer{
+	        vec2f mResolution;
+            int mScale = 1;
+
+            std::vector<vec3d> mPixels;
+
+            void HintScale(int sc){if(sc>mScale) mScale = sc;}
+
+            void add(const vec2i& pid,const vec3d& c,int sc){
+                if(!(pid.x>=0&&pid.x<int(mResolution.x) && pid.y>=0 && pid.y<int(mResolution.y))) return;
+                auto px = &mPixels[(pid.y*int(mResolution.x))+pid.x];
+                *px += c;
+                HintScale(sc);
+            }
+
+            void Create(const vec2f& res){
+                mPixels.resize(res.x*res.y);
+                mResolution = res;
+            }
+
+            void MergeToImg(image3d& img) const{
+                if(img.size.x!=int(mResolution.x) || img.size.y!=int(mResolution.y)) return;
+                for(auto i=0;i<mResolution.x*mResolution.y;i++){
+                    img.pixels[i] += mPixels[i] / float(mScale);
+                }
+            }
+
+	    }mFrameBuffer;
+
         double mFocus = 1.0;
         double mAperture = 0.0;
         double mYfov = 45.0;

@@ -56,6 +56,8 @@ namespace vnx{
         mForward = transform_point(mCameraToWorld,vec3d{0,0,1.0});
         double tha = std::tan(mYfov)/mAspect;
         mImagePlaneDist = mResolution.x / (2.0*tha);
+
+        mFrameBuffer.Create(mResolution);
     }
 
     void VCamera::EvalAutoFocus(const VScene& scn,double tmin,double tmax,int nm){

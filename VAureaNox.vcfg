@@ -26,9 +26,9 @@ b_start_monitor : true
 
 <VRE_Experimental_PT>
 i_ray_samples : 1                 ; >0
-i_rendering_mode : eyetracing
+i_rendering_mode : eyetracing      ;eyetracing | lighttracing | bidirectional
 b_debug_direct_only : false
-i_debug_primary : 0                ;eyelight / iterations / oversteps / normals
+i_debug_primary : 0                ;eyelight | iterations | oversteps | normals
 b_gather_direct_light : true
 b_gather_indirect_light : true
 

@@ -130,7 +130,44 @@ struct vvo_sdf2d_cross : public VSdf {
 
 };
 
+struct vvo_blended : public VSdf {
+    VNode* mSdf_1 = nullptr;
+    VNode* mSdf_2 = nullptr;
+    double mAFactor;
 
+    vvo_blended(std::string ids, VMaterial* mtl,VSdf* s1,VSdf* s2,double A): VSdf(ids,mtl),mSdf_1(s1),mSdf_2(s2),mAFactor(A){
+    }
+
+	inline void DoRelate(const VEntry* entry){
+        set_translation(try_strToVec_d(entry->try_at(2),mTranslation));
+        set_rotation_degs(try_strToVec_d(entry->try_at(3),vec3d{mRotation.x,mRotation.y,mRotation.z}));
+        set_scale(try_strToVec_d(entry->try_at(4),mScale));
+        set_rotation_order(try_strToRotationOrder(entry->try_at(5),mRotationOrder));
+        //TODO
+	}
+
+    inline const char* Type(){return "vvo_blended";}
+
+	inline void eval(const vec3d& p,VResult& res) {
+		vec3d ep = eval_ep(p);
+		if(!mSdf_1 || !mSdf_2){
+            res = VResult{ this,this,mMaterial,mMaterial,maxd,maxd,p,ep };
+		}
+
+        VResult vre_d1;
+        mSdf_1->eval(ep,vre_d1);
+        VResult vre_d2;
+        mSdf_2->eval(ep,vre_d2);
+
+		double dist = mAFactor * vre_d1.dist + (1.0 - mAFactor) * vre_d2.dist;
+		double vdist = mAFactor * vre_d1.vdist + (1.0 - mAFactor) * vre_d2.vdist;
+		auto dspr = eval_displacement(ep)-mRounding;
+		dist+=dspr;
+		vdist+=dspr;
+
+		res = VResult{ this,this,mMaterial,mMaterial,dist,vdist,p,ep };
+	}
+};
 
 struct vvo_shadered : public VSdf {
 	std::function<float(const vec3d& p, vec3d& ep, const VNode* tref) > mShader = nullptr;

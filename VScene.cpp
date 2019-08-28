@@ -132,7 +132,7 @@ namespace vnx{
             //WARNING, might need a check towards casted ptr, better than having to rely on isOperator();
             {
               const auto sdf_ptr = static_cast<VSdf*>(ptr);
-              if(!sdf_ptr->mMaterial ||
+              if(!sdf_ptr || !sdf_ptr->mMaterial ||
                (!sdf_ptr->mMaterial->is_emissive()  && !sdf_ptr->mMaterial->mutator)){
                 std::cout<<" ->Ignored\n";
                 goto ignore;
