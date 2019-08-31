@@ -60,6 +60,7 @@ namespace vnx{
             if(line[i] == ' ' || line[i]=='\n' || line[i]=='\r' || line[i]=='\t'){continue;}
 
             if(line[i]=='<' && cur_section.empty() && state == 0){
+                if(line[i] == ' ' || line[i]=='\n' || line[i]=='\r' || line[i]=='\t'){continue;}
                 if((i+1<line.size() && line[i+1]=='/'))ExceptionAtLine("Parse Error-> Illegal Section character \"\\",lid);
                 bool valid = false;
                 for(i++;i<line.size();i++){
@@ -73,6 +74,7 @@ namespace vnx{
             }
 
             if(line[i]=='<' && !cur_section.empty() && state == 0){
+                if(line[i] == ' ' || line[i]=='\n' || line[i]=='\r' || line[i]=='\t'){continue;}
                 if(!(i+1<line.size() && line[i+1]=='/'))ExceptionAtLine("Parse Error-> Expected closing tag",lid);
                 std::string end_section = "";
                 bool valid = false;

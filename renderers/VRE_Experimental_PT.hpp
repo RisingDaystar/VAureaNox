@@ -54,6 +54,7 @@ namespace vnx {
             vec3d weight = one3d;
             VVertexType type = SURFACE;
 
+            int pl = 0;
             double vc = 0.0;
             double vcm = 0.0;
         };
@@ -282,6 +283,7 @@ namespace vnx {
             if(!emr.isFound()) return false;
 
             if(emr.vdist<0.0){
+                lvert.pl=1.0;
                 InitRay(rng,lvert.wo);
                 emr.getVMaterial(mtl);
                 auto normal = scn.eval_normals(emr,f_normal_eps);
@@ -320,6 +322,7 @@ namespace vnx {
                     return false;
                 }
             }else if(emr.dist<=f_ray_tmin){
+                lvert.pl=1.0;
                 InitRay(rng,lvert.wo);
                 emr.getMaterial(mtl);
                 lvert.normal = scn.eval_normals(emr,f_normal_eps);
@@ -573,7 +576,7 @@ namespace vnx {
             return 0.0;
         }
 
-
+        ///TODO
         inline vec3d ConnectVertex(const VScene& scn,
                                         ygl::rng_state& rng,
                                         const VResult& hit,
@@ -582,8 +585,14 @@ namespace vnx {
                                         VVertexType vtype,
                                         const VRay& out,
                                         const VVertex& lp_vertex){
-            return zero3d;
 
+            auto to_lp_vertex_dir = normalize(lp_vertex.hit.wor_pos-hit.wor_pos);
+            auto to_lp_vertex = offsetted_ray(hit.wor_pos,out,to_lp_vertex_dir,out.tmin,out.tmax,normal,(vtype==SURFACE) ? hit.dist : out.tmin);
+
+            auto to_eye_vertex_dir = -to_lp_vertex_dir;
+            auto to_eye_vertex = offsetted_ray(lp_vertex.hit.wor_pos,out,to_eye_vertex_dir,out.tmin,out.tmax,lp_vertex.normal,(vtype==SURFACE) ? lp_vertex.hit.dist : out.tmin);
+
+            return zero3d;
         }
 
 
@@ -655,8 +664,9 @@ namespace vnx {
             //if(cosNDir<epsd) return zero3d;
             auto light_pdf = PdfAtoW(1.0,distance(hit.wor_pos,occ_hit.wor_pos),cosNDir);
             if(light_pdf>0.0){
+                auto sc = i_rendering_mode==BIDIRECTIONAL ? 2.0 : 1.0;
                 auto mw = power_heuristic(light_pdf,pdf);
-                auto rd = (mw*bsdf*lc) / light_pdf;
+                auto rd = (mw*bsdf*lc) / (light_pdf*sc);
                 return w*rd;
             }
             return zero3d;
@@ -761,7 +771,9 @@ namespace vnx {
 
             const double stif = 1.0 / itsf;
 
-            auto rd = (w*bsdf) / (double(i_ray_samples)*stif);
+            auto sc = i_rendering_mode==BIDIRECTIONAL ? 2.0 : 1.0;
+
+            auto rd = (w*bsdf) / (double(i_ray_samples)*stif*sc);
             if(isTracingInvalid(rd)) return;
             camera.mFrameBuffer.add(pid,tw*rd*spectral_to_rgb(to_cam.wl),pl);
         }
@@ -810,16 +822,16 @@ namespace vnx {
                 }
             }
 
-            std::vector<VVertex> light_path;
+            std::vector<VVertex> light_path(0);
             vec3d output = zero3d;
 
             ///LIGHT PATH
             if(i_rendering_mode!=EYETRACING){
-                light_path.reserve(20);
+                if(i_rendering_mode!=LIGHTTRACING) light_path.reserve(20);
                 VVertex vertex;
                 VMaterial lmtl;
                 if(InitLightPath(scn,rng,vertex,lmtl)){
-                    light_path.push_back(vertex);
+                    if(i_rendering_mode!=LIGHTTRACING) {light_path.push_back(vertex);}
 
                     //Connect Light First Vertex to Camera
                     ConnectToCamera(scn,rng,img,camera,vertex.hit,vertex.normal,lmtl,vertex.type,vertex.wo,vertex.weight,0);
@@ -835,9 +847,10 @@ namespace vnx {
 
                     VSdfPoll poll = PollVolume(scn,rng,vertex.wo);
                     //if(poll.is_stuck()) return zero3d; ///TODO
-
+                    int nd_b = 0;
                     for(int b=0;;b++){ //Trace from light and store path vertices
-                        camera.mFrameBuffer.HintScale(b); //TAKES THE MAX between mScale and b parameter, needed to divide framebuffer contribution
+                        //camera.mFrameBuffer.HintScale(nd_b); //TAKES THE MAX between mScale and b parameter, needed to divide framebuffer contribution //NOPE
+                        camera.mFrameBuffer.HintScale(nd_b);
                         hit = scn.intersect(vertex.wo,i_max_march_iterations);
                         mStatus.mRaysEvaled++;
                         if(poll.is_in_transmissive()){
@@ -850,6 +863,7 @@ namespace vnx {
                                 bsdf = one3d;
 
                                 if(dist<tFar){
+                                    vertex.pl++;
                                     auto orig = vertex.wo;
                                     lastDelta = false;
                                     vertex.wo.o = vertex.wo.o+(vertex.wo.d*dist);
@@ -859,9 +873,9 @@ namespace vnx {
                                     vertex.wi = -vertex.wo;
                                     //hit = poll.eres; //REDUNDANT ?
                                     vertex.weight *= (exp(-poll.emat.ka*dist))/(pdf+(4.0*pid));
-                                    light_path.push_back(vertex);
+                                    if(i_rendering_mode!=LIGHTTRACING) light_path.push_back(vertex);
                                     //if(poll.emat.is_emissive()) weight *= EvalLe(wi,mtl.e_power,mtl.e_temp); //emitting media : TODO
-                                    if(b>3){if(!russian_roulette(rng,vertex.weight)) break;}
+                                    //if(b>3){if(!russian_roulette(rng,vertex.weight)) break;}
                                     //b--;
                                     continue;
                                 }else{
@@ -875,7 +889,7 @@ namespace vnx {
                         }else{
                             if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
                         }
-
+                        vertex.pl++;
 
                         hit.getMaterial(mtl);
                         normal = scn.eval_normals(hit, f_normal_eps);
@@ -883,6 +897,7 @@ namespace vnx {
 
                         if(mtl.is_emissive()){ConnectToCamera(scn,rng,img,camera,hit,normal,mtl,EMITTER,-vertex.wo,vertex.weight,0);break;} //TODO : might be able to gather additional path info... needs test
                         if(!mtl.is_delta()){
+                                nd_b++;
                             ConnectToCamera(scn,rng,img,camera,hit,normal,mtl,SURFACE,-vertex.wo,vertex.weight,0);
                         }
                         if(b_debug_direct_only)break;
@@ -894,7 +909,7 @@ namespace vnx {
 
 
                         if(!isDeltaSample(sampled)){
-                            light_path.push_back(vertex);
+                            if(i_rendering_mode!=LIGHTTRACING) light_path.push_back(vertex);
                             lastDelta = true;
                         }else{lastDelta = false;}
                         vertex.weight = (vertex.weight*bsdf)/pdf;
@@ -961,8 +976,8 @@ namespace vnx {
                             //hit = poll.eres; //REDUNDANT ?
                             weight *= (exp(-poll.emat.ka*dist))/(pdf+(4.0*pid));
                             //if(poll.emat.is_emissive()) weight *= EvalLe(wi,mtl.e_power,mtl.e_temp); //emitting media : TODO
-                            if(b>3){if(!russian_roulette(rng,weight)) break;}
-                            b--;
+                            //if(b>3){if(!russian_roulette(rng,weight)) break;}
+                            //b--;
                             continue;
                         }else{
                             if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
@@ -996,9 +1011,11 @@ namespace vnx {
                     //if(cosNDir<epsd) break;
                     auto light_pdf = PdfAtoW(1.0,distance(hit.wor_pos,poll.eres.wor_pos),cosNDir); //poll.eres is == prev_hit
                     if(light_pdf>0.0){
+
+                        auto sc = i_rendering_mode==BIDIRECTIONAL ? 2.0 : 1.0;
                         auto mw = power_heuristic(pdf,light_pdf);
 
-                        auto rd = (weight*mw*lc);
+                        auto rd = (weight*mw*lc) / sc;
                         output+=rd;
                     }
 
@@ -1013,6 +1030,7 @@ namespace vnx {
                 }
 
                 //VC ____TODO
+
                 /*
                 if(!mtl.is_delta() && i_rendering_mode==BIDIRECTIONAL){
                     for(auto vi=0;vi<light_path;vi++){
@@ -1021,6 +1039,7 @@ namespace vnx {
                     }
                 }
                 */
+
 
                 if(b_debug_direct_only) break;
 

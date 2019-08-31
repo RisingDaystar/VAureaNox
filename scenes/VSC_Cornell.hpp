@@ -109,13 +109,14 @@ namespace vscndef {
                 //new vvo_sd_box("panel",panel_material,{4.0,4.0,0.5}),
                 new vvo_sd_box("light",material_emissive,{ 0.1,0.1,0.1 }),
 
-                new vvo_sd_box("fog",participating_mat,{200.0,200.0,200.0}),
+                //new vvo_sd_box("fog",participating_mat,{200.0,200.0,200.0}),
 
-                new vvo_sd_sphere("ball_1",diff_white,1.5f),
-                new vvo_sd_sphere("ball_2",non_dispersive_glass,1.5),
-                new vvo_sd_sphere("ball_3",dispersive_material,1.5),
+                //new vvo_sd_sphere("ball_1",diff_white,1.5f),
+                //new vvo_sd_sphere("ball_2",non_dispersive_glass,1.5),
+                //new vvo_sd_sphere("ball_3",dispersive_material,1.5),
                 //new vvo_sd_sphere("ball_4",dispersive_material,1.5),
-                //new vvo_blended("btest",diff_white,new vvo_sd_box("bb1",diff_white),new vvo_sd_sphere("sb1",diff_white),0.5),
+                new vvo_blended("btest",dispersive_material,new vvo_sd_sphere("bb1",dispersive_material,1.5),new vvo_sd_diamond("sb1",dispersive_material),0.5),
+                //new vvo_sd_diamond("sb1",dispersive_material),
 
                 //new vop_twist("distorted_obj",X,0.8,new vvo_sd_ellipsoid("glass_ball3_t",dispersive_material,{0.3,3.0,5.2})),
 
@@ -152,7 +153,8 @@ namespace vscndef {
         scn.set_translation("ball_3",{2.1,2.2,1.5});
         scn.set_translation("ball_4",{0.0,1.0,0.0});
 
-        scn.set_rotation_degs("ball_4",{45,45,45});
+        scn.set_rotation_degs("btest",{45,45,45});
+        scn.set_scale("btest",1.5);
 
         scn.set_translation("mirror",{2.8,0,-2.8});
         scn.set_rotation_degs("mirror",{0,-45,0});

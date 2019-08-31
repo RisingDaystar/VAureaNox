@@ -1,24 +1,9 @@
-#ParsingTest
+<vscene:ParsingTest>
+<vcamera origin={0,2.0,-12.0} target={0,0.5,0} up={0,1.0,0} yfov=45.0>
+<vroot:plane>
 
-;;VNode Commons:
-;;Translation,Rotation,Scale,RotationOrder
-;;
+<vmaterial:diffuse_mat2 kr={0.5,0.5,0.5}>
 
-;vvo_sd_plane("plane","diffuse_mat",{0.0,-1.0,0.0},0.0,1.0,XYZ)
-vvo_sd_sphere("plane","diffuse_mat",{0,-1002.0,0},0.0,1.0,XYZ,1000.0)
-vvo_sd_box("box","diffuse_mat2",{0.0,-1.0,0.0},{45,45,45},1.0,XYZ)
-vvo_sd_box("box2","diffuse_mat2",{-0.8,0.0,0.0},{-25,0,0},{0.2,1.0,18.0},XYZ)
-;vvo_sd_box("pbox","partecipating",0.0,0.0,40.0,XYZ)
-vvo_sd_sphere("light","light_mat",{-500.0,120.0,1200.0},0.0,1.0,XYZ,100)
+<vvo_sd_plane:plane pos={0,1,0} material=diffuse_mat2>
 
-vop_union("u_blend",0.0,0.0,1.0,XYZ,{box,box2,plane})
-vop_union("root_union",{0.0,0.0,0.0},0.0,1.0,XYZ,0.0,{u_blend,light})
 
-vmaterial("partecipating",diel,nwl,0.0,0.02,0.0002)
-vmaterial("diffuse_mat2",diff,nwl,{0.5,0.5,0.5})
-vmaterial("diffuse_mat",diff,nwl,{0.8,0.3,0.3})
-vmaterial("light_mat",diel,nwl,0.0,0.0,-1.0,6000,9000000)
-
-vcamera(45.0,{0.0,0.0,-18.0},0.0,{0.0,1.0,0.0})
-
-@root_union

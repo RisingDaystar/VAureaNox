@@ -201,6 +201,24 @@ namespace vnx {
         void* ptr = nullptr;
     };
 
+    struct VMappedEntry{
+        VMappedEntry(){}
+        VMappedEntry(std::map<std::string,std::string> tks){for(auto tk : tks)mMappings[tk.first] = tk.second;}
+        void add_token(std::string k,std::string v){mMappings[k] = v;}
+        std::string try_get(const std::string& k) const{
+            auto e = mMappings.find(k);
+            if(e==mMappings.end()) return std::string();
+            return e->second;
+        }
+        std::string& at(const std::string& k){return mMappings[k];}
+        bool empty(){return mMappings.empty();}
+        bool allocated(){return ptr!=nullptr;}
+
+
+        std::map<std::string,std::string> mMappings;
+        void* ptr = nullptr;
+    };
+
 
     template<typename T>
     inline float strto_f(const std::basic_string<T>& str,T** eptr=nullptr){
@@ -1216,25 +1234,26 @@ namespace vnx {
 
 		std::vector<sellmeier_coeff> smc;
 
-		inline void Relate(VEntry* entry){
+		inline void Relate(VMappedEntry* entry){
             entry->ptr = this;
-            type = try_strToMaterialType(entry->try_at(1),type);
-            ior_type = try_strToIorType(entry->try_at(2),ior_type);
-            kr = try_strToVec_d(entry->try_at(3),kr);
-            ka = try_strToVec_d(entry->try_at(4),ka);
+            type = try_strToMaterialType(entry->try_get("mat_type"),type);
+            ior_type = try_strToIorType(entry->try_get("ior_type"),ior_type);
+            kr = try_strToVec_d(entry->try_get("kr"),kr);
+            ka = try_strToVec_d(entry->try_get("ka"),ka);
 
-            k_sca = try_strtof(entry->try_at(5),k_sca);
+            k_sca = try_strtof(entry->try_get("k_sca"),k_sca);
 
-            e_temp = try_strtof(entry->try_at(6),e_temp);
-            e_power = try_strtof(entry->try_at(7),e_power);
+            e_temp = try_strtof(entry->try_get("e_temp"),e_temp);
+            e_power = try_strtof(entry->try_get("e_power"),e_power);
 
-            ior = try_strtof(entry->try_at(8),ior);
-            rs = try_strtof(entry->try_at(9),rs);
+            ior = try_strtof(entry->try_get("ior"),ior);
+            rs = try_strtof(entry->try_get("rs"),rs);
 
-            for(auto i=0;;i+=2){
-                auto sm_B = try_strtof(entry->try_at(10+i),-1.0);
+
+            for(auto i=1;;i++){
+                auto sm_B = try_strtof(entry->try_get("s_b"+std::to_string(i)),-1.0);
                 if(sm_B<0.0) break;
-                auto sm_C = try_strtof(entry->try_at(10+i+1),-1.0);
+                auto sm_C = try_strtof(entry->try_get("s_c"+std::to_string(i)),-1.0);
                 if(sm_C<0.0) sm_C = 0.0;
                 smc.push_back({sm_B,sm_C});
             }
@@ -1403,8 +1422,8 @@ namespace vnx {
 
 		virtual ~VNode() {};
 
-		void Relate(VEntry* entry){entry->ptr = this;DoRelate(entry);}
-		virtual void DoRelate(const VEntry* entry) = 0;
+		void Relate(VMappedEntry* entry){entry->ptr = this;DoRelate(entry);}
+		virtual void DoRelate(const VMappedEntry* entry) = 0;
 
 		virtual std::vector<VNode*> get_childs() = 0;
 		virtual VNode* add_child(VNode* child) = 0;

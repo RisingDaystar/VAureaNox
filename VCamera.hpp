@@ -47,7 +47,7 @@ namespace vnx{
             void MergeToImg(image3d& img) const{
                 if(img.size.x!=int(mResolution.x) || img.size.y!=int(mResolution.y)) return;
                 for(auto i=0;i<mResolution.x*mResolution.y;i++){
-                    img.pixels[i] += mPixels[i] / float(mScale);
+                    img.pixels[i] += mPixels[i] / (mScale ? double(mScale) : 1.0);
                 }
             }
 
@@ -82,7 +82,7 @@ namespace vnx{
         mat4d mRasterToWorld = identity_mat4d;
         mat4d mRasterToCamera = identity_mat4d;
 
-        void Relate(const VEntry* entry);
+        void Relate(const VMappedEntry* entry);
 
         void Setup(const vec2f& resolution);
         void EvalAutoFocus(const VScene& scn,double tmin,double tmax,int nm);

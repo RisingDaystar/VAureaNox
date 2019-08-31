@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "VSceneParser.hpp"
+#include "VVnxsParser.hpp"
 #include "VFileConfigs.hpp"
 
 #include "scenes\VSC_Spider.hpp"
@@ -101,7 +101,7 @@ namespace vnx {
 
 		if(scn_to_render.substr(scn_to_render.find_last_of(".") + 1) == "vnxs"){
             printf("**Loading external Scene : \"%s\"...\n",scn_to_render.c_str());
-            VSceneParser sparser;
+            VVnxsParser sparser;
             scn_to_render = "scene_files/"+scn_to_render;
             sparser.parse(scn,scn_to_render);
 		}else{

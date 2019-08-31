@@ -21,14 +21,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace vnx{
 
-    void VCamera::Relate(const VEntry* entry){
-        mYfov = radians(try_strtof(entry->try_at(1),mYfov));
-        mOrigin = try_strToVec_d(entry->try_at(2),mOrigin);
-        mTarget = try_strToVec_d(entry->try_at(3),mTarget);
-        mUp = try_strToVec_d(entry->try_at(4),mUp);
-        mFocus = try_strtod(entry->try_at(5),mFocus);
-        mAperture = try_strtod(entry->try_at(6),mAperture);
-        mAutoFocus = try_strtob(entry->try_at(7),mAutoFocus);
+    void VCamera::Relate(const VMappedEntry* entry){
+        mYfov = radians(try_strtof(entry->try_get("yfov"),mYfov));
+        mOrigin = try_strToVec_d(entry->try_get("origin"),mOrigin);
+        mTarget = try_strToVec_d(entry->try_get("target"),mTarget);
+        mUp = try_strToVec_d(entry->try_get("up"),mUp);
+        mFocus = try_strtod(entry->try_get("focus"),mFocus);
+        mAperture = try_strtod(entry->try_get("aperture"),mAperture);
+        mAutoFocus = try_strtob(entry->try_get("autofocus"),mAutoFocus);
     }
 
     void VCamera::Setup(const vec2f& resolution){
