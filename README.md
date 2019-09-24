@@ -123,6 +123,12 @@ Work is in progress on finding a way to apply the improved behaviour also in thi
 </p>
 
 <p align="center">
+  512 spp , Cornell box with distorted material (with mutator and twist)
+  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/bdpt_512spp_complex.png">
+</p>
+
+
+<p align="center">
   When it still was a raytracer (Final image for the course)
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VRising_spider_1920x1080.png">
 </p>
