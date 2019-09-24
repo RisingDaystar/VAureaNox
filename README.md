@@ -39,6 +39,7 @@ Switching to doubles reduced this kind of errors to an acceptable level while no
 </h4>
 
 Features a selection of SDF volumes (prefer calling this way...see below) and operators to combine/deform/displace them.
+(Many primitives distance functions are taken from Inigo Quilez "https://www.iquilezles.org/" website, an awesome resource for SDF based work)
 
 To assemble scene, utility functions are provided to univocally select items in the scene graph and manipolate them.
 
