@@ -14,7 +14,7 @@ A "Switch" part, responsable for initialization,Pre-render tasks, thread initial
 A "Renderer" part : the selected renderer processes the scene
 
 
-Feauteres an Unidirectional-Pathtracer with MIS , NEE , support for rough and delta surfaces, both transmissives and not.
+Feauteres a (Still WIP) Bidirectional Pathtracer with MIS since v 0.0.9
 
 Surfaces categorizeable between Conductors and Dielectrics with dedicated Fresnel function (not using Schlick's)
 Microfacet brdf for specular surfaces using GGX
@@ -118,20 +118,19 @@ Work is in progress on finding a way to apply the improved behaviour also in thi
 </h4>
 
 <p align="center">
-  2048 spp , participating sorrounding volume
-  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_ExperimentalPT_eyetracing_spp2048.png">
+  4096 spp , Spheres filled Cornell box , with rough specularly patterned rear wall
+  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/bdpt_4096spp_spheres2.png">
 </p>
 
 <p align="center">
-  4096 spp , participating sorrounding volume
-  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_PathTracer_spec_spp4096_2.jpg">
+  512 spp , Cornell box with distorted sdf (with mutator and twist)
+  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/Bdpt_512spp_complex.png">
 </p>
 
 <p align="center">
-  2048, experimental lighttracer, showing volumetric caustic
-  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_cornell_648x480_ExperimentalPT_lighttracing_spp2048.png">
+  512 spp , Cornell box with diamond
+  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/Bdpt_512spp_diamond.png">
 </p>
-
 
 
 <p align="center">
