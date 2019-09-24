@@ -127,6 +127,11 @@ Work is in progress on finding a way to apply the improved behaviour also in thi
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/Bdpt_512spp_complex.png">
 </p>
 
+<p align="center">
+  512 spp , Cornell box with diamond
+  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/Bdpt_512spp_diamond.png">
+</p>
+
 
 <p align="center">
   When it still was a raytracer (Final image for the course)
