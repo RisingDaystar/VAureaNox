@@ -49,7 +49,7 @@ namespace vscndef {
 		diffuse_mat->ior_type = non_wl_dependant;
 		diffuse_mat->ior = 1.5f;
 		diffuse_mat->rs = 0.01f;
-		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const vec3d& n, VMaterial& mat) {
+		auto mtor = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
 			if (std::abs(sin(hit.loc_pos.x*5)) < 0.07f || std::abs(sin(hit.loc_pos.z*5)) < 0.07f) {
                 mat.type = diffuse;
                 mat.kr = {0.03f,0.03f,0.03f};

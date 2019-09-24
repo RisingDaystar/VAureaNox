@@ -32,11 +32,10 @@ namespace vnx{
 
             void HintScale(int sc){if(sc>mScale) mScale = sc;}
 
-            void add(const vec2i& pid,const vec3d& c,int sc){
+            void add(const vec2i& pid,const vec3d& c){
                 if(!(pid.x>=0&&pid.x<int(mResolution.x) && pid.y>=0 && pid.y<int(mResolution.y))) return;
                 auto px = &mPixels[(pid.y*int(mResolution.x))+pid.x];
                 *px += c;
-                HintScale(sc);
             }
 
             void Create(const vec2f& res){
@@ -101,7 +100,7 @@ namespace vnx{
             return RasterInBounds(rp,pid);
         }
 
-        inline VRay RayCast(double x,double y,ygl::rng_state& rng,const vec2f& uv) const{
+        inline VRay RayCast(double x,double y,VRng& rng,const vec2d& uv) const{
             vec3d raster_point = {x+uv.x,y+uv.y,0.0};
             vec3d camera_point = transform_point(mRasterToCamera,raster_point);
 
@@ -113,7 +112,7 @@ namespace vnx{
             if(mAperture>thrd){
                 double ft = mFocus / normalize(mOrigin).z;
                 auto focal_point = rr.o+rr.d*ft;
-                auto lens_point = ygl::sample_disk_point(get_random_vec2f(rng))*mAperture;
+                auto lens_point = ygl::sample_disk_point(rng.next_vecf<2>())*mAperture;
                 rr.o = vec3d{lens_point.x,lens_point.y,0.0};
                 rr.d = normalize(focal_point-rr.o);
             }

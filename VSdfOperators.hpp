@@ -27,10 +27,7 @@ struct vop_union : public VSdfOperator {
 	vop_union(std::string idv, std::vector<VNode*> chs) : VSdfOperator(idv, chs), mBlendFactor(0.0) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mBlendFactor = try_strtod(entry->try_get("blend"),mBlendFactor);
 	}
 
@@ -96,10 +93,7 @@ struct vop_intersection : public VSdfOperator {
 	vop_intersection(std::string idv, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(false) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mBlendFactor = try_strtod(entry->try_get("blend"),mBlendFactor);
         mPreserveMtl = try_strtob(entry->try_get("preserve"),mPreserveMtl);
 	}
@@ -168,10 +162,7 @@ struct vop_subtraction : public VSdfOperator {
 	vop_subtraction(std::string idv, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(false) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mBlendFactor = try_strtod(entry->try_get("blend"),mBlendFactor);
         mPreserveMtl = try_strtob(entry->try_get("preserve"),mPreserveMtl);
 	}
@@ -240,10 +231,7 @@ struct vop_twist : public VSdfOperator {
 	vop_twist(std::string idv, VAxis ax, double am, VNode* chs) : VSdfOperator(idv, { chs }), mAxis(ax), mAmount(am) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mAxis = try_strToAxis(entry->try_get("axis"),mAxis);
         mAmount = try_strtod(entry->try_get("amount"),mAmount);
 	}
@@ -268,8 +256,7 @@ struct vop_twist : public VSdfOperator {
 			vec3d  q = vec3d{mres.x, mres.y, ep.x};
 			q = ygl::transform_point(mFrame, q);
 			mChilds[0]->eval(q,res);
-		}
-		else if (mAxis == Y) {
+		}else if (mAxis == Y) {
 			double c = std::cos(mAmount*ep.y);
 			double s = std::sin(mAmount*ep.y);
 			mat2d  m = mat2d{{ c, -s }, { s, c }};
@@ -277,8 +264,7 @@ struct vop_twist : public VSdfOperator {
 			vec3d  q = vec3d{mres.x, mres.y, ep.y};
 			q = ygl::transform_point(mFrame, q);
 			mChilds[0]->eval(q,res);
-		}
-		else if (mAxis == Z) {
+		}else if (mAxis == Z) {
 			double c = std::cos(mAmount*ep.z);
 			double s = std::sin(mAmount*ep.z);
 			mat2d  m = mat2d{{ c, -s }, { s, c }};
@@ -310,10 +296,7 @@ struct vop_repeat : public VSdfOperator {
 	vop_repeat(std::string idv,const vec3d& cells,const vec<bool,3>& axis, VNode* chs) : VSdfOperator(idv, { chs }), mCells(cells),mAxis(axis) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mCells = try_strToVec_d(entry->try_get("cells"),mCells);
         mAxis = try_strToVec_b(entry->try_get("axis"),mAxis);
 	}
@@ -351,10 +334,7 @@ struct vop_invert : public VSdfOperator {
 	vop_invert(std::string idv, VNode* chs) : VSdfOperator(idv, { chs }){}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
 	}
 
 	inline const char* Type(){return "vop_invert";}
@@ -390,10 +370,7 @@ struct vop_onion : public VSdfOperator {
 	vop_onion(std::string idv, double thickness,bool preserve, VNode* chs) : VSdfOperator(idv, { chs }), mThickness(thickness),mPreserveVolume(preserve){}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mThickness = try_strtod(entry->try_get("thickness"),mThickness);
         mPreserveVolume = try_strtob(entry->try_get("preserve"),mPreserveVolume);
 	}
@@ -437,10 +414,7 @@ struct vop_cut : public VSdfOperator {
 	vop_cut(std::string idv,const vec3i& axis,const vec3d& offset,double bfactor, VNode* chs) : VSdfOperator(idv, { chs }),mAxis(axis),mOffset(offset),mBlendFactor(bfactor) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mAxis = try_strToVec_i(entry->try_get("axis"),mAxis);
         mOffset = try_strToVec_d(entry->try_get("offset"),mOffset);
         mBlendFactor = try_strtod(entry->try_get("blend"),mBlendFactor);
@@ -514,10 +488,7 @@ struct vop_extrude : public VSdfOperator{
     vop_extrude(std::string idv, VNode* chs,double h) : VSdfOperator(idv, { chs }),mH(h) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mH = try_strtod(entry->try_get("h"),mH);
 	}
 

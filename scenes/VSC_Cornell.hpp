@@ -44,7 +44,7 @@ namespace vscndef {
 
         auto water_material = scn.add_material("water_material",get_material_archetype("water"));
         auto water_material_tinted = scn.add_material("water_material_tinted",get_material_archetype("water"));
-        water_material_tinted->ka = {0.01,0.3,1.0};
+        water_material_tinted->sigma_a = {0.01,0.3,1.0};
         auto dispersive_material = scn.add_material("dispersive_material",get_material_archetype("baf10"));
         auto panel_material = scn.add_material("panel_material",get_material_archetype("carbon_diamond"));
 
@@ -53,24 +53,41 @@ namespace vscndef {
         dielectric_complex_material->kr = {0.7,0.7,0.7};
         dielectric_complex_material->ior = 1.55;
         dielectric_complex_material->rs = 0.05;
-        dielectric_complex_material->mutator = [](ygl::rng_state& rng, const VResult& hit,const vec3d& n, VMaterial& mat) {
+        dielectric_complex_material->mutator = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
             if(!on_pattern_gradient_oblique(hit.loc_pos,-45,4)){
-                mat.kr = {0.0,0.0,0.3};
+                mat.kr = {0.0,0.0,0.8};
             }
-		};;
+		};
 
 		auto participating_mat = scn.add_material("participating_mat");
 		participating_mat->type = dielectric;
-		participating_mat->ka = {0.2,0.2,0.2};
-		participating_mat->k_sca = 0.01;
+		participating_mat->sigma_a = {0.02,0.02,0.02};
+		participating_mat->sigma_s = 0.01;
+		participating_mat->sigma_u = 0.0;
 
+		auto participating_dense_mat = scn.add_material("participating_dense_mat");
+		participating_dense_mat->type = dielectric;
+		participating_dense_mat->sigma_a = {0.52,0.52,0.52};
+		participating_dense_mat->sigma_s = 0.4;
+		participating_dense_mat->sigma_u = 0.0;
+        /*
+		participating_mat->mutator = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
+            if(!on_pattern_gradient_oblique(hit.loc_pos,45,4) || !on_pattern_gradient_oblique(hit.loc_pos,-45,4)){
+                mat.sigma_a = normalize(hit.loc_pos)*vec3d{0.3,0.3,0.00};
+            }
+		};*/
+
+		auto participating_mat_low = scn.add_material("participating_mat_low");
+		participating_mat_low->type = dielectric;
+		participating_mat_low->sigma_a = {0.1,0.1,0.1};
+		participating_mat_low->sigma_s = 0.005;
 
         auto non_dispersive_glass = scn.add_material("non_dispersive_glass");
         non_dispersive_glass->type = dielectric;
         non_dispersive_glass->ior = 1.570;
         non_dispersive_glass->ior_type = non_wl_dependant;
-        non_dispersive_glass->ka = zero3d;//{0.1,0.1,0.01};
-        non_dispersive_glass->k_sca = 0.0;
+        non_dispersive_glass->sigma_a = zero3d;//{0.1,0.1,0.01};
+        non_dispersive_glass->sigma_s = 0.0;
 
 
         auto diff_white = scn.add_material("diff_white");
@@ -82,15 +99,20 @@ namespace vscndef {
         sp_mat->kr = {1.0,1.0,1.0};
         sp_mat->rs = 0.15;
         sp_mat->ior = 2.3;
+
+        auto sp_delta_mat = scn.add_material("sp_delta_mat");
+        sp_delta_mat->type = conductor;
+        sp_delta_mat->kr = {1.0,1.0,1.0};
+        sp_delta_mat->ior = 2.3;
         //sp_mat->rs = 0.1f;
 
         auto cornell_composite_mat = scn.add_material("cornell_composite_mat");
         cornell_composite_mat->kr = {0.8,0.8,0.8};
-		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const vec3d& n, VMaterial& mat) {
+		auto mtor_e = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
            if(hit.loc_pos.x<=-3.995){mat.kr = {0.0,0.4,0.0};}
            else if(hit.loc_pos.x>=3.995){mat.kr = {0.4,0.0,0.0};}
            else if(hit.loc_pos.z<-3.995){
-                if(!on_pattern_gradient_oblique(hit.loc_pos,45,1)){
+                if(!on_pattern_gradient_oblique(hit.loc_pos,45,1.0)){
                     mat.kr = one3d;
                     mat.rs = 0.03;
                     mat.ior = 2.2;
@@ -104,21 +126,37 @@ namespace vscndef {
             new vop_union("cornell_union",0.0,{
                 new vop_subtraction("cornell",0.00,{
                     new vop_cut("cornell_cu",{0,0,1},{0,0,-3.95},0.0,new vop_onion("box",0.1,true,new vvo_sd_box("box_e",cornell_composite_mat,4.2))),
-                    new vvo_sd_box("box_subtr_ceil",cornell_composite_mat,{1.0,0.5,1.0}),
+                    new vvo_sd_box("box_subtr_ceil",cornell_composite_mat,{0.1,0.15,0.1}),
                 }),
                 //new vvo_sd_box("panel",panel_material,{4.0,4.0,0.5}),
-                new vvo_sd_box("light",material_emissive,{ 0.1,0.1,0.1 }),
+                new vvo_sd_box("light",material_emissive,{ 0.1,0.05,0.1 }),
+                //new vvo_sd_box("occluder",diff_white,{2.0,0.1,2.0}),
+                //new vvo_sd_box("water",water_material_tinted,{2.0,2.0,2.0}),
 
-                //new vvo_sd_box("fog",participating_mat,{200.0,200.0,200.0}),
+                //new vvo_blended("btest",water_material,new vvo_sd_box("water",water_material,{2.0,2.0,2.0}),new vvo_sd_diamond("sb1",dispersive_material),0.5),
 
-                //new vvo_sd_sphere("ball_1",diff_white,1.5f),
-                //new vvo_sd_sphere("ball_2",non_dispersive_glass,1.5),
-                //new vvo_sd_sphere("ball_3",dispersive_material,1.5),
+                //new vvo_sd_box("fog",participating_mat,{100.0,100.0,100.0}),
+                //new vvo_sd_sphere("fog",participating_mat,10.0),
+
+
+                new vvo_sd_sphere("ball_1",diff_white,1.5f),
+                new vvo_sd_sphere("ball_2",non_dispersive_glass,1.5),
+                new vvo_sd_sphere("ball_3",dispersive_material,1.5),
+                new vvo_sd_sphere("ball_4",dispersive_material,1.5),
+
+
+
+
+
                 //new vvo_sd_sphere("ball_4",dispersive_material,1.5),
-                new vvo_blended("btest",dispersive_material,new vvo_sd_sphere("bb1",dispersive_material,1.5),new vvo_sd_diamond("sb1",dispersive_material),0.5),
+
+
+
+
+                //new vvo_blended("btest",dispersive_material,new vvo_sd_sphere("bb1",dispersive_material,1.5),new vvo_sd_diamond("sb1",dispersive_material),0.5),
                 //new vvo_sd_diamond("sb1",dispersive_material),
 
-                //new vop_twist("distorted_obj",X,0.8,new vvo_sd_ellipsoid("glass_ball3_t",dispersive_material,{0.3,3.0,5.2})),
+                //new vop_twist("distorted_obj",X,0.8,new vvo_sd_box("glass_ball3_t",dispersive_material,{0.3,3.0,5.2})),
 
                 /*
                 new vop_union("glass",{
@@ -138,8 +176,8 @@ namespace vscndef {
                     new vvo_sd_box("box2",diff_white,0.5),
                     new vvo_sd_box("box3",diff_white,0.45),
                     new vvo_sd_box("box4",diff_white,0.4),
-                }),*/
-
+                }),
+                */
 
             }),
 
@@ -148,6 +186,9 @@ namespace vscndef {
 		scn.set_root(root);
 
         //VARIOUS INSIDE
+
+        scn.set_translation("occluder",{0,3.0,0});
+
         scn.set_translation("ball_1",{1.8,-1.5,-1.5});
         scn.set_translation("ball_2",{-1.8,-1.5,1.5});
         scn.set_translation("ball_3",{2.1,2.2,1.5});
@@ -177,8 +218,9 @@ namespace vscndef {
 
 		//CORNELL
 		scn.set_translation("box_subtr",{0,0,0.1});
-        scn.set_translation("box_subtr_ceil",{0,3.9,0});
+        scn.set_translation("box_subtr_ceil",{0,4.0,0});
         scn.set_translation("light", { 0.0,4.1,0 });
+        scn.set_translation("light2", { 0.0,-2.1,0 });
 
 
         //GLASS
@@ -192,7 +234,14 @@ namespace vscndef {
         scn.set_rotation_degs("obs",{0,45,20});
 
 
+        //WATER
+        scn.set_translation("water",{0,0.0,0});
 
+        scn.set_displacement("water",[](const vec3d& p){
+            const double f = 0.5*std::sin(p.x);
+            const double fd = f*1;
+            return (std::sin(f*p.x)*std::sin(f*p.y)*std::sin(f*p.z))/fd;
+        });
 
 	}
 

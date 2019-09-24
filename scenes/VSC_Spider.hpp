@@ -362,20 +362,16 @@ namespace vscndef {
 
 		auto blue_partecipating = scn.add_material("blue_partecipating");
 		blue_partecipating->type = dielectric;
-		blue_partecipating->k_sca = 0.0f;
-		blue_partecipating->ka = { 0.9f,0.9f,0.01f };
+		blue_partecipating->sigma_s = 0.0f;
+		blue_partecipating->sigma_a = { 0.9f,0.9f,0.01f };
 
-		auto sea_material = scn.add_material("sea_material");
-		sea_material->type = dielectric;
-		sea_material->k_sca = 0.0f;
-		sea_material->ka = { 0.02f,0.02f,0.002f };
-		sea_material->ior = 1.5f;
-		sea_material->ior_type = non_wl_dependant;
+
+		auto sea_material = scn.add_material("sea_material",get_material_archetype("water"));
 
 
 		auto emissive = scn.add_material("emissive");
-		emissive->e_temp = 4500;
-		emissive->e_power = 12500;
+		emissive->e_temp = 6500;
+		emissive->e_power = 28500;
 
 		auto emissive_dim = scn.add_material("emissive_dim");
 		emissive_dim->e_temp = 18500;
@@ -389,7 +385,7 @@ namespace vscndef {
 		grey_diffuse_no_refl_adv->ior = 1.35;
 		grey_diffuse_no_refl_adv->kr = { 0.5,0.5,0.5 };
 		grey_diffuse_no_refl_adv->rs = 0.2;
-		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const vec3d& n, VMaterial& mat) {
+		auto mtor = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
             if (std::abs(sin(hit.loc_pos.x*5)) < 0.07f || std::abs(sin(hit.loc_pos.z*5)) < 0.07f) {
                 mat.type = diffuse;
                 mat.kr = zero3d;
@@ -610,7 +606,7 @@ namespace vscndef {
 
 		auto energy_ball = new vop_twist("energy",Y, 5.0f,
 			new vop_union("energy_e", {
-				new vvo_sd_box("ball",blue_partecipating,0.5f),
+				new vvo_sd_box("ball",sea_material,0.5f),
 				//new vvo_sd_box("ball_em",emissive_dim,0.3f),
 			})
 			);

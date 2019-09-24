@@ -30,11 +30,11 @@ namespace vnx{
 
 		virtual ~VRenderer() {Shut();}
 		virtual void Shut() {}
-		virtual void Init() {};
+		virtual void Init(VScene& scn) {};
 		virtual void PostInit(VScene& scn) = 0;
 		virtual std::string Type() const = 0;
 		virtual std::string ImgAffix(const VScene& scn) const {return std::string("");};
-		virtual void EvalImageRow(const VScene& scn, ygl::rng_state& rng, image3d& img, int width,int height, int j) = 0;
+		virtual void EvalImageRow(const VScene& scn, VRng& rng, image3d& img, int width,int height, int j) = 0;
 	};
 };
 

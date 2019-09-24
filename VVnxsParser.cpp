@@ -15,6 +15,8 @@
 ///////////TT///////OOOO//////DDDD///////OOOO///////////
 ////////////////////////////////////////////////////////
 
+//<!>BETTER SYNTAX ERROR DETECTION AND HANDLING
+
 namespace vnx{
     void VVnxsParser::parse(VScene& scn,const std::string& scn_id){
         if (scn_id == "") { throw VException("Vnxs Loader -> Exception -> Invalid .Vnxs filename."); }
@@ -72,7 +74,11 @@ namespace vnx{
         bool parsing_name = true;
 
         for(std::string::size_type i=0;i<line.size();i++){
-            if(line[i]=='#') ExceptionAtLine("Illegal character "+std::string(line[i],1)+"",lid,true);
+            if(line[i]=='/'){
+                if(i+1>=line.size() || line[i+1]!='/') ExceptionAtLine("Illegal character "+std::string(1,line[i])+"",lid,true);
+                break;
+            }
+            if(line[i]=='#') ExceptionAtLine("Illegal character "+std::string(1,line[i])+"",lid,true);
             if((isspace(line[i]) || line[i]== '>')){
                 if(!group){
                     if(!arg_value.empty()){
@@ -90,13 +96,13 @@ namespace vnx{
                 if(line[i]=='<'){
                     for(i++;i<line.size();i++){
                         auto ch = line[i];
-                        if(ch=='#') ExceptionAtLine("Illegal character "+std::string(ch,1)+"",lid,true);
+                        if(ch=='#') ExceptionAtLine("Illegal character "+std::string(1,ch)+"",lid,true);
                         if(isspace(ch)){
                             if(tag_type.empty()) continue;
                             break;
                         }
                         if(ch==':') break;
-                        if(ch=='<') ExceptionAtLine("Illegal character "+std::string(ch,1)+"",lid,true);
+                        if(ch=='<') ExceptionAtLine("Illegal character "+std::string(1,ch)+"",lid,true);
                         if(ch=='>') break;
                         tag_type += ch;
                     }
@@ -127,12 +133,12 @@ namespace vnx{
                         for(i++;i<line.size();i++){
 
                             auto ch = line[i];
-                            if(ch=='#') ExceptionAtLine("Illegal character "+std::string(ch,1)+"",lid,true);
+                            if(ch=='#') ExceptionAtLine("Illegal character "+std::string(1,ch)+"",lid,true);
                             if(isspace(ch)){
                                 if(id.empty()) continue;
                                 break;
                             }
-                            if(ch=='<') ExceptionAtLine("Illegal character "+std::string(ch,1)+"",lid,true);
+                            if(ch=='<') ExceptionAtLine("Illegal character "+std::string(1,ch)+"",lid,true);
                             if(ch=='>') {break;}
                             id+=ch;
                         }
@@ -239,7 +245,7 @@ namespace vnx{
             else if(stricmp(type,std::string("vop_repeat"))) e = new vop_repeat(id,nodes.empty() ? nullptr : nodes[0]);
             else if(stricmp(type,std::string("vop_onion"))) e = new vop_onion(id,nodes.empty() ? nullptr : nodes[0]);
 
-            if(!e) throw VException("Unerecognized Operator \""+type+"\""); //NON NECESSARIO
+            if(!e) throw VException("Invalid Operator initialization\""+type+"\""); //NON NECESSARIO
 
             e->Relate(entry);
             scn.nodes.push_back(e);
@@ -264,8 +270,27 @@ namespace vnx{
             else if(stricmp(type,std::string("vvo_sd_capped_cone"))) e = new vvo_sd_capped_cone(id,mtl);
             else if(stricmp(type,std::string("vvo_sd_pyramid4"))) e = new vvo_sd_pyramid4(id,mtl);
             else if(stricmp(type,std::string("vvo_sd_diamond"))) e = new vvo_sd_diamond(id,mtl);
+            else if(stricmp(type,std::string("vvo_sd_torus"))) e = new vvo_sd_torus(id,mtl);
+            else if(stricmp(type,std::string("vvo_blended"))){
+                auto v1 = entry->try_get("v1");
+                if(v1=="") return;
+                auto v2 = entry->try_get("v2");
+                if(v2=="") return;
 
-            if(!e) throw VException("Unerecognized Entity \""+type+"\"");
+                link(scn,v1,"!vmaterial");
+                auto v1_ptr = static_cast<VNode*>(mMappings[v1].ptr);
+                if(v1_ptr){
+                    link(scn,v2,"!vmaterial");
+                    auto v2_ptr = static_cast<VNode*>(mMappings[v2].ptr);
+                    if(v2_ptr){
+                        e = new vvo_blended(id,mtl,v1_ptr,v2_ptr);
+                    }
+                }
+            }else{
+                throw VException("Unrecognized Entity \""+type+"\"");
+            }
+
+            if(!e) throw VException("Invalid Entity initialization\""+type+"\"");
 
             e->Relate(entry);
             scn.nodes.push_back(e);

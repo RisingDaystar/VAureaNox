@@ -47,7 +47,7 @@ namespace vscndef {
         diffuse_exp->ior = 1.4;
         diffuse_exp->kr = {0.6,0.0f,0.0};
         diffuse_exp->rs = 0.15;
-		auto mtor_e = [](ygl::rng_state& rng, const VResult& hit,const vec3d& n, VMaterial& mat) {
+		auto mtor_e = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
            if(dot(hit.wor_pos,hit.loc_pos)>0){mat.kr = {0.1,0.1,0.1};/*mat.e_temp = 6000.0;mat.e_power = 1000;*/}
 		};
         diffuse_exp->mutator = mtor_e;
@@ -55,7 +55,7 @@ namespace vscndef {
         auto diffuse_mat = scn.add_material("diffuse");
         diffuse_mat->type = diffuse;
         diffuse_mat->kr = {0.8,0.8,0.8};
-		auto mtor = [](ygl::rng_state& rng, const VResult& hit,const vec3d& n, VMaterial& mat) {
+		auto mtor = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
 			if (std::abs(sin(hit.wor_pos.x)) < 0.03 || std::abs(sin(hit.wor_pos.z)) < 0.03) {
                     mat.type = conductor;
                     mat.kr = {0.4,0.4,0.5};

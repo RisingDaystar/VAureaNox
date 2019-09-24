@@ -123,7 +123,7 @@ namespace vnx {
 
 
 	typedef double (*displ_ftor)(const vec3d&);
-	typedef void (*mtlm_ftor)(ygl::rng_state& rng,const VResult&,const vec3d&, VMaterial&);
+	typedef void (*mtlm_ftor)(const VResult&,const vec3d&, VMaterial&);
 
 	enum VAxis { X, Y, Z };
 
@@ -167,20 +167,445 @@ namespace vnx {
         }
 	};
 
+    //RNG UTILS
 
-	inline float rand1f_r(rng_state& rng, float a, float b) {
-        return a + (b - a) * get_random_float(rng);
-    }
-    inline vec2f rand2f_r(rng_state& rng, float a, float b) {
-        return {rand1f_r(rng,a,b),rand1f_r(rng,a,b)};
-    }
-    inline vec3f rand3f_r(rng_state& rng, float a, float b) {
-        return {rand1f_r(rng,a,b),rand1f_r(rng,a,b),rand1f_r(rng,a,b)};
-    }
-    inline vec4f rand4f_r(rng_state& rng, float a, float b) {
-        return {rand1f_r(rng,a,b),rand1f_r(rng,a,b),rand1f_r(rng,a,b),rand1f_r(rng,a,b)};
-    }
+    ///TODO : change "int next_int(int ub)" to "uint32_t next_uint(uint32_t ub)"
+    ///USE (Unbiased) LEMIRE's Optimized (t-opt,m-opt) method from http://www.pcg-random.org/posts/bounded-rands.html
+    ///current modulo method is BIASED and SLOW (a lot)
 
+    struct VRng_pcg32{
+        uint64_t state = 0U;
+        uint64_t inc = 0U;
+
+        VRng_pcg32(){}
+        VRng_pcg32(uint64_t sd,uint64_t seq=1){
+            seed(sd,seq);
+        }
+
+        inline void seed(uint64_t sd,uint64_t seq=1){
+            state = 0U;
+            inc   = (seq << 1u) | 1u;
+            next();
+            state += sd;
+            next();
+        }
+
+        inline uint32_t next(){
+            uint64_t oldstate = state;
+            state = oldstate * 6364136223846793005ULL + (inc|1);
+
+            uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+            uint32_t rot = oldstate >> 59u;
+            return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+        }
+
+        inline uint32_t next_uint(uint32_t ub){
+            uint32_t x = next();
+            uint64_t m = uint64_t(x) * uint64_t(ub);
+            uint32_t l = uint32_t(m);
+            if (l < ub) {
+                uint32_t t = -ub;
+                if (t >= ub) {
+                    t -= ub;
+                    if (t >= ub)
+                        t %= ub;
+                }
+                while (l < t) {
+                    x = next();
+                    m = uint64_t(x) * uint64_t(ub);
+                    l = uint32_t(m);
+                }
+            }
+            return m >> 32;
+        }
+        inline double next_double(){
+            double y = (double) next();
+            return y/((uint32_t(std::numeric_limits<int32_t>::max())+1)*2.0);
+        }
+        inline float next_float(){
+            float y = (float) next();
+            return y/((uint32_t(std::numeric_limits<int32_t>::max())+1)*2.0);
+        }
+
+        inline double next_double(double ub){
+            double y = (double) next();
+            return y/(((uint32_t(std::numeric_limits<int32_t>::max())+1)*2.0)/ub);
+        }
+        inline float next_float(float ub){
+            float y = (float) next();
+            return y/(((uint32_t(std::numeric_limits<int32_t>::max())+1)*2.0)/ub);
+        }
+
+        inline double next_double(double lb,double ub){
+            if(lb>ub) std::swap(lb,ub);
+            double y = (double) next();
+            return lb+(y/(((uint32_t(std::numeric_limits<int32_t>::max())+1)*2.0)/(ub-lb)));
+        }
+        inline float next_float(float lb,float ub){
+            if(lb>ub) std::swap(lb,ub);
+            float y = (float) next();
+            return lb+(y/(((uint32_t(std::numeric_limits<int32_t>::max())+1)*2.0)/(ub-lb)));
+        }
+
+        template<int N>
+        inline vec<float,N> next_vecf(){
+            static_assert(N>0 && N<5,"N must be in 1 | 4 range");
+            if constexpr(N==1) return {next_float()};
+            if constexpr(N==2) return {next_float(),next_float()};
+            if constexpr(N==3) return {next_float(),next_float(),next_float()};
+            if constexpr(N==4) return {next_float(),next_float(),next_float(),next_float()};
+        }
+
+        template<int N>
+        inline vec<double,N> next_vecd(){
+            static_assert(N>0 && N<5,"N must be in 1 | 4 range");
+            if constexpr(N==1) return {next_double()};
+            if constexpr(N==2) return {next_double(),next_double()};
+            if constexpr(N==3) return {next_double(),next_double(),next_double()};
+            if constexpr(N==4) return {next_double(),next_double(),next_double(),next_double()};
+        }
+
+    };
+
+
+    struct VRng_pcg32x2{
+        VRng_pcg32 gen[2];
+
+        VRng_pcg32x2(){}
+        VRng_pcg32x2(uint64_t sd,uint64_t seq=1){
+            seed(sd,sd,seq,seq+1);
+        }
+        VRng_pcg32x2(uint64_t sd1,uint64_t sd2,uint64_t seq1=1,uint64_t seq2=2){
+            seed(sd1,sd2,seq1,seq2);
+        }
+
+        inline void seed(uint64_t sd1,uint64_t sd2,uint64_t seq1=1,uint64_t seq2=2){
+            uint64_t mask = ~0ull >> 1;
+            if ((seq1 & mask) == (seq2 & mask))
+                seq2 = ~seq2;
+            gen[0].seed(sd1,seq1);
+            gen[1].seed(sd2,seq2);
+        }
+
+        inline uint64_t next(){
+            return ((uint64_t)(gen[0].next()) << 32) | gen[1].next();
+        }
+
+        inline uint32_t next_uint(uint32_t ub){//TRUNCATES TO 32bit
+            uint32_t x = next();
+            uint64_t m = uint64_t(x) * uint64_t(ub);
+            uint32_t l = uint32_t(m);
+            if (l < ub) {
+                uint32_t t = -ub;
+                if (t >= ub) {
+                    t -= ub;
+                    if (t >= ub)
+                        t %= ub;
+                }
+                while (l < t) {
+                    x = next();
+                    m = uint64_t(x) * uint64_t(ub);
+                    l = uint32_t(m);
+                }
+            }
+            return m >> 32;
+        }
+        inline double next_double(){
+            double y = (double) next();
+            return y/((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0);
+        }
+        inline float next_float(){
+            float y = (float) next();
+            return y/((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0);
+        }
+
+        inline double next_double(double ub){
+            double y = (double) next();
+            return y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/ub);
+        }
+        inline float next_float(float ub){
+            float y = (float) next();
+            return y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/ub);
+        }
+
+        inline double next_double(double lb,double ub){
+            if(lb>ub) std::swap(lb,ub);
+            double y = (double) next();
+            return lb+(y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/(ub-lb)));
+        }
+        inline float next_float(float lb,float ub){
+            if(lb>ub) std::swap(lb,ub);
+            float y = (float) next();
+            return lb+(y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/(ub-lb)));
+        }
+
+        template<int N>
+        inline vec<float,N> next_vecf(){
+            static_assert(N>0 && N<5,"N must be in 1 | 4 range");
+            if constexpr(N==1) return {next_float()};
+            if constexpr(N==2) return {next_float(),next_float()};
+            if constexpr(N==3) return {next_float(),next_float(),next_float()};
+            if constexpr(N==4) return {next_float(),next_float(),next_float(),next_float()};
+        }
+
+        template<int N>
+        inline vec<double,N> next_vecd(){
+            static_assert(N>0 && N<5,"N must be in 1 | 4 range");
+            if constexpr(N==1) return {next_double()};
+            if constexpr(N==2) return {next_double(),next_double()};
+            if constexpr(N==3) return {next_double(),next_double(),next_double()};
+            if constexpr(N==4) return {next_double(),next_double(),next_double(),next_double()};
+        }
+
+    };
+
+
+    struct VRng_splmix64{
+        //implements splitmix64 algorithm
+        //http://prng.di.unimi.it/
+        uint64_t state;
+
+        VRng_splmix64(){}
+        VRng_splmix64(uint64_t sd){
+            seed(sd);
+        }
+
+        void seed(uint64_t sd){
+            state = sd;
+        }
+
+        uint64_t next() {
+            uint64_t z = (state += 0x9e3779b97f4a7c15);
+            z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
+            z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+            return z ^ (z >> 31);
+        }
+
+        inline uint32_t next_uint(uint32_t ub){//TRUNCATES TO 32bit
+            uint32_t x = next();
+            uint64_t m = uint64_t(x) * uint64_t(ub);
+            uint32_t l = uint32_t(m);
+            if (l < ub) {
+                uint32_t t = -ub;
+                if (t >= ub) {
+                    t -= ub;
+                    if (t >= ub)
+                        t %= ub;
+                }
+                while (l < t) {
+                    x = next();
+                    m = uint64_t(x) * uint64_t(ub);
+                    l = uint32_t(m);
+                }
+            }
+            return m >> 32;
+        }
+        inline double next_double(){
+            double y = (double) next();
+            return y/((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0);
+        }
+        inline float next_float(){
+            float y = (float) next();
+            return y/((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0);
+        }
+
+        inline double next_double(double ub){
+            double y = (double) next();
+            return y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/ub);
+        }
+        inline float next_float(float ub){
+            float y = (float) next();
+            return y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/ub);
+        }
+
+        inline double next_double(double lb,double ub){
+            if(lb>ub) std::swap(lb,ub);
+            double y = (double) next();
+            return lb+(y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/(ub-lb)));
+        }
+        inline float next_float(float lb,float ub){
+            if(lb>ub) std::swap(lb,ub);
+            float y = (float) next();
+            return lb+(y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/(ub-lb)));
+        }
+
+        template<int N>
+        inline vec<float,N> next_vecf(){
+            static_assert(N>0 && N<5,"N must be in 1 | 4 range");
+            if constexpr(N==1) return {next_float()};
+            if constexpr(N==2) return {next_float(),next_float()};
+            if constexpr(N==3) return {next_float(),next_float(),next_float()};
+            if constexpr(N==4) return {next_float(),next_float(),next_float(),next_float()};
+        }
+
+        template<int N>
+        inline vec<double,N> next_vecd(){
+            static_assert(N>0 && N<5,"N must be in 1 | 4 range");
+            if constexpr(N==1) return {next_double()};
+            if constexpr(N==2) return {next_double(),next_double()};
+            if constexpr(N==3) return {next_double(),next_double(),next_double()};
+            if constexpr(N==4) return {next_double(),next_double(),next_double(),next_double()};
+        }
+
+    };
+
+    struct VRng_xrs256ss{ //TODO
+        //implements xoroshiro256** algorithm
+        //http://prng.di.unimi.it/xoshiro256starstar.c
+        //http://prng.di.unimi.it/
+        protected:
+            static inline uint64_t rotl(const uint64_t x, int k) {
+                return (x << k) | (x >> (64 - k));
+            }
+        public:
+            uint64_t state[4];
+
+            VRng_xrs256ss(){}
+            VRng_xrs256ss(uint64_t sd){
+                seed(sd);
+            }
+
+            inline void seed(uint64_t sd){
+                VRng_splmix64 smx;
+                smx.seed(sd);
+                state[0] = smx.next();
+                state[1] = smx.next();
+                state[2] = smx.next();
+                state[3] = smx.next();
+            }
+
+            inline uint64_t next() {
+                const uint64_t result = rotl(state[1] * 5, 7) * 9;
+                const uint64_t t = state[1] << 17;
+
+                state[2] ^= state[0];
+                state[3] ^= state[1];
+                state[1] ^= state[2];
+                state[0] ^= state[3];
+
+                state[2] ^= t;
+
+                state[3] = rotl(state[3], 45);
+
+                return result;
+            }
+
+            inline uint32_t next_uint(uint32_t ub){//TRUNCATES TO 32bit
+                uint32_t x = next();
+                uint64_t m = uint64_t(x) * uint64_t(ub);
+                uint32_t l = uint32_t(m);
+                if (l < ub) {
+                    uint32_t t = -ub;
+                    if (t >= ub) {
+                        t -= ub;
+                        if (t >= ub)
+                            t %= ub;
+                    }
+                    while (l < t) {
+                        x = next();
+                        m = uint64_t(x) * uint64_t(ub);
+                        l = uint32_t(m);
+                    }
+                }
+                return m >> 32;
+            }
+            inline double next_double(){
+                double y = (double) next();
+                return y/((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0);
+            }
+            inline float next_float(){
+                float y = (float) next();
+                return y/((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0);
+            }
+
+            inline double next_double(double ub){
+                double y = (double) next();
+                return y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/ub);
+            }
+            inline float next_float(float ub){
+                float y = (float) next();
+                return y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/ub);
+            }
+
+            inline double next_double(double lb,double ub){
+                if(lb>ub) std::swap(lb,ub);
+                double y = (double) next();
+                return lb+(y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/(ub-lb)));
+            }
+            inline float next_float(float lb,float ub){
+                if(lb>ub) std::swap(lb,ub);
+                float y = (float) next();
+                return lb+(y/(((uint64_t(std::numeric_limits<int64_t>::max())+1)*2.0)/(ub-lb)));
+            }
+
+            template<int N>
+            inline vec<float,N> next_vecf(){
+                static_assert(N>0 && N<5,"N must be in 1 | 4 range");
+                if constexpr(N==1) return {next_float()};
+                if constexpr(N==2) return {next_float(),next_float()};
+                if constexpr(N==3) return {next_float(),next_float(),next_float()};
+                if constexpr(N==4) return {next_float(),next_float(),next_float(),next_float()};
+            }
+
+            template<int N>
+            inline vec<double,N> next_vecd(){
+                static_assert(N>0 && N<5,"N must be in 1 | 4 range");
+                if constexpr(N==1) return {next_double()};
+                if constexpr(N==2) return {next_double(),next_double()};
+                if constexpr(N==3) return {next_double(),next_double(),next_double()};
+                if constexpr(N==4) return {next_double(),next_double(),next_double(),next_double()};
+            }
+
+            inline void jump(void) {
+                constexpr uint64_t JUMP[] = { 0x180ec6d33cfd0aba, 0xd5a61266f0c9392c, 0xa9582618e03fc9aa, 0x39abdc4529b1661c };
+
+                uint64_t s0 = 0;
+                uint64_t s1 = 0;
+                uint64_t s2 = 0;
+                uint64_t s3 = 0;
+                for(int i = 0; i < sizeof JUMP / sizeof *JUMP; i++)
+                    for(int b = 0; b < 64; b++) {
+                        if (JUMP[i] & UINT64_C(1) << b) {
+                            s0 ^= state[0];
+                            s1 ^= state[1];
+                            s2 ^= state[2];
+                            s3 ^= state[3];
+                        }
+                        next();
+                    }
+
+                state[0] = s0;
+                state[1] = s1;
+                state[2] = s2;
+                state[3] = s3;
+            }
+
+            inline void long_jump(void) {
+                constexpr uint64_t LONG_JUMP[] = { 0x76e15d3efefdcbbf, 0xc5004e441c522fb3, 0x77710069854ee241, 0x39109bb02acbe635 };
+
+                uint64_t s0 = 0;
+                uint64_t s1 = 0;
+                uint64_t s2 = 0;
+                uint64_t s3 = 0;
+                for(int i = 0; i < sizeof LONG_JUMP / sizeof *LONG_JUMP; i++)
+                    for(int b = 0; b < 64; b++) {
+                        if (LONG_JUMP[i] & UINT64_C(1) << b) {
+                            s0 ^= state[0];
+                            s1 ^= state[1];
+                            s2 ^= state[2];
+                            s3 ^= state[3];
+                        }
+                        next();
+                    }
+
+                state[0] = s0;
+                state[1] = s1;
+                state[2] = s2;
+                state[3] = s3;
+            }
+    };
+
+    using VRng = VRng_pcg32x2; //DEFAULT VRng_pcg32
 
 	//////////////////////////
 	//String and Parsing Utils/
@@ -352,9 +777,9 @@ namespace vnx {
     template<typename T>
     inline VMaterialType try_strToMaterialType(const std::basic_string<T>& ss,VMaterialType def){
         if(ss.empty()) return def;
-        if(stricmp(ss,std::basic_string<T>("diff"))) return VMaterialType::diffuse;
-        if(stricmp(ss,std::basic_string<T>("diel"))) return VMaterialType::dielectric;
-        if(stricmp(ss,std::basic_string<T>("cond"))) return VMaterialType::conductor;
+        if(stricmp(ss,std::basic_string<T>("diff")) || stricmp(ss,std::basic_string<T>("diffuse"))) return VMaterialType::diffuse;
+        if(stricmp(ss,std::basic_string<T>("diel")) || stricmp(ss,std::basic_string<T>("dielectric"))) return VMaterialType::dielectric;
+        if(stricmp(ss,std::basic_string<T>("cond")) || stricmp(ss,std::basic_string<T>("conductor"))) return VMaterialType::conductor;
         return def;
     }
 
@@ -500,6 +925,11 @@ namespace vnx {
 	//////////////////////////
 	//////////////////////////
 
+	template<typename T>
+	inline T avg(const vec<T,3>& v){
+	    return (v.x+v.y+v.z) / T(3);
+	}
+
     template <typename T>
 	inline vec<T,3> rgbto(T r,T g,T b) {
 		return { r / 255.0,g / 255.0,b / 255.0 };
@@ -566,6 +996,14 @@ namespace vnx {
 		return gl_fract(std::sin(seed)*43758.5453);
 	}
 
+	template <typename T>
+	constexpr T min_bv(const T& v1,const T& v2) {
+	    return v1 < v2 ? v1 : v2;
+    }
+	template <typename T>
+	constexpr T max_bv(const T& v1,const T& v2) {
+	    return v1 > v2 ? v1 : v2;
+    }
 
 	template <typename T,int N>
 	constexpr T max_element(const ygl::vec<T, N>& v) {
@@ -605,6 +1043,14 @@ namespace vnx {
 
 	template <typename T,int N>
 	constexpr vec<T,N> pow(const ygl::vec<T, N>& v,T p) {
+	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
+	    if constexpr(N==1) return {std::pow(v.x,p)};
+	    else if constexpr(N==2) return {std::pow(v.x,p),std::pow(v.y,p)};
+	    else if constexpr(N==3) return {std::pow(v.x,p),std::pow(v.y,p),std::pow(v.z,p)};
+	    else if constexpr(N==4) return {std::pow(v.x,p),std::pow(v.y,p),std::pow(v.z,p),std::pow(v.w,p)};
+    }
+	template <typename T,int N>
+	constexpr vec<T,N> pow(const ygl::vec<T, N>& v,unsigned int p) {
 	    static_assert(N>0 && N<5,"N must be in range 1 | 4");
 	    if constexpr(N==1) return {std::pow(v.x,p)};
 	    else if constexpr(N==2) return {std::pow(v.x,p),std::pow(v.y,p)};
@@ -994,37 +1440,37 @@ namespace vnx {
     template<typename T>
     constexpr T eval_fresnel_dielectric(const vec<T,3>& I, const vec<T,3>& N,T etai,T etat){
         T cosi = ygl::clamp(dot(I,N),-1.0, 1.0);
-        if(!(cosi > 0.0)) { std::swap(etai, etat);cosi = std::abs(cosi); }
+        if(cosi > 0.0) { std::swap(etai, etat);}
 
         T sint = (etai / etat) * std::sqrt(std::max(0.0, 1.0 - cosi * cosi));
         if (sint >= 1.0) {
             return 1.0;
         }
         else {
-        T cost = std::sqrt(std::max(0.0, 1.0 - sint * sint));
-
-        T Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
-        T Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
+            T cost = std::sqrt(std::max(0.0, 1.0 - sint * sint));
+            cosi = std::abs(cosi);
+            T Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
+            T Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
             return (Rs * Rs + Rp * Rp) / 2.0;
         }
     }
 
     template<typename T>
-    constexpr vec<T,3> sample_sphere_direction(const vec2f& ruv) {
+    constexpr vec<T,3> sample_sphere_direction(const vec<T,2>& ruv) {
         auto z   = 2 * ruv.y - 1;
         auto r   = std::sqrt(1 - z * z);
         auto phi = 2 * pi<T> * ruv.x;
         return {r * std::cos(phi), r * std::sin(phi), z};
     }
     template<typename T>
-    constexpr vec<T,3> sample_hemisphere_direction(const vec2f& ruv) {
+    constexpr vec<T,3> sample_hemisphere_direction(const vec<T,2>& ruv) {
         auto z   = ruv.y;
         auto r   = std::sqrt(1 - z * z);
         auto phi = 2 * pi<T> * ruv.x;
         return {r * std::cos(phi), r * std::sin(phi), z};
     }
     template<typename T>
-    constexpr vec<T,3> sample_hemisphere_direction_cos(const vec2f& ruv) {
+    constexpr vec<T,3> sample_hemisphere_direction_cos(const vec<T,2>& ruv) {
         auto z   = std::sqrt(ruv.y);
         auto r   = std::sqrt(1 - z * z);
         auto phi = 2 * pi<T> * ruv.x;
@@ -1032,23 +1478,26 @@ namespace vnx {
     }
 
     template<typename T>
-    constexpr vec<T,3> sample_diffuse_cos(const vec2f& rn,const vec<T,3>& o,const vec<T,3>& n,double* pdf = nullptr){
+    constexpr vec<T,3> sample_diffuse_cos(const vec<T,2>& rn,const vec<T,3>& o,const vec<T,3>& n,double* pdf = nullptr){
         auto fp = dot(n, o) >= 0 ? make_frame_fromz(zero3<T>, n) : make_frame_fromz(zero3<T>, -n);
+        //auto fp = make_frame_fromz(zero3<T>, n);
         auto wh_local = sample_hemisphere_direction_cos<T>(rn);
         if(pdf) *pdf = (wh_local.z <= 0) ? 0 : wh_local.z / pid;
         return ygl::transform_direction(fp, wh_local);
     }
 
     template<typename T>
-    constexpr vec<T,3> sample_diffuse(const vec2f& rn,const vec<T,3>& o,const vec<T,3>& n,double* pdf = nullptr){
+    constexpr vec<T,3> sample_diffuse(const vec<T,2>& rn,const vec<T,3>& o,const vec<T,3>& n,double* pdf = nullptr){
         auto fp = dot(n, o) >= 0 ? make_frame_fromz(zero3<T>, n) : make_frame_fromz(zero3<T>, -n);
+        //auto fp = make_frame_fromz(zero3<T>, n);
         auto wh_local = sample_hemisphere_direction<T>(rn);
         if(pdf) *pdf = (wh_local.z <= 0) ? 0 : 1.0 / (2.0 * pid);
         return ygl::transform_direction(fp, wh_local);
     }
     template<typename T>
-    constexpr vec<T,3> sample_ggx(const vec2f& rn,const vec<T,3>& o,const vec<T,3>& n,T rs){
+    constexpr vec<T,3> sample_ggx(const vec<T,2>& rn,const vec<T,3>& o,const vec<T,3>& n,T rs){
         auto fp = dot(n, o) >= 0 ? make_frame_fromz(zero3<T>, n) : make_frame_fromz(zero3<T>, -n);
+        //auto fp = make_frame_fromz(zero3<T>, n);
         auto tan2 = rs * rs * rn.y / (1 - rn.y);
         auto rz = std::sqrt(1 / (tan2 + 1)), rr = std::sqrt(1 - rz * rz), rphi = 2 * pi<T> * rn.x;
         auto wh_local = vec<T,3>{ rr * std::cos(rphi), rr * std::sin(rphi), rz };
@@ -1077,7 +1526,7 @@ namespace vnx {
         vec<T,3> n = N;
         if (cosi < 0) { cosi = -cosi; } else { if constexpr(sw_eta){std::swap(etai, etat);} n= -N; }
         T eta = etai / etat;
-        T k = 1 - eta * eta * (1 - cosi * cosi);
+        T k = 1.0 - eta * eta * (1.0 - cosi * cosi);
         return k < 0 ? zero3<T> : eta * I + (eta * cosi - std::sqrt(k)) * n;
 
     }
@@ -1103,16 +1552,16 @@ namespace vnx {
         return spdf / (spdf+o1pdf+o2pdf);
     }
 
-    inline bool russian_roulette(ygl::rng_state& rng,double& w){
+    inline bool russian_roulette(VRng& rng,double& w){
         double rrp = std::max(0.05,1.0-w);
-        if ( get_random_float(rng) < rrp) return false;
+        if ( rng.next_float() < rrp) return false;
         w /= 1.0-rrp;
         return true;
     }
 
-    inline bool russian_roulette(ygl::rng_state& rng,vec3d& w){
+    inline bool russian_roulette(VRng& rng,vec3d& w){
         double rrp = std::max(0.05,1.0-max_element(w));
-        if ( get_random_float(rng) < rrp) return false;
+        if ( rng.next_float() < rrp) return false;
         w /= 1.0-rrp;
         return true;
     }
@@ -1136,6 +1585,27 @@ namespace vnx {
         inline VRay operator-() const {
           return VRay{o,-d,tmin,tmax,ior,wl,owl};
         }
+
+        inline VRay newTo(const vec3d& dest) const{
+            return VRay{o,normalize(dest-o),tmin,tmax,ior,wl,owl};
+        }
+
+        inline VRay newOffsetted(const vec3d& _o,const vec3d& _d,const vec3d& _offalong,double _dist) const{
+            return VRay{
+                _o + (_offalong*(2.0 * std::max(tmin, std::abs(_dist)))),
+                _d,
+                tmin,
+                tmax,
+                ior,
+                wl,
+                owl
+            };
+        }
+
+        inline VRay newOffsettedTo(const vec3d& _o,const vec3d& _dest,const vec3d& _offalong,double _dist) const{
+            return newOffsetted(_o,normalize(-_dest-_o),_offalong,_dist);
+        }
+
 	};
 
     constexpr bool same_hemisphere(const vec3d& n,const VRay& r1,const VRay& r2){
@@ -1165,8 +1635,8 @@ namespace vnx {
     }
 
     template<typename T>
-    constexpr void init_ray_physics(rng_state& rng,VRay& ray,T minwl, T maxwl){
-        ray.wl = rand1f_r(rng,minwl,maxwl);
+    constexpr void init_ray_physics(VRng& rng,VRay& ray,T minwl, T maxwl){
+        ray.wl = rng.next_double(minwl,maxwl);//rand1f_r(rng,minwl,maxwl);
         ray.owl = ray.wl;
         ray.ior = 1.0;
     }
@@ -1184,20 +1654,25 @@ namespace vnx {
     }
 
     inline double PdfAtoW(const double& pdfA,const double& dist,const double& cosTheta){
-        return (pdfA * fsipow(dist,2)) / std::abs(cosTheta);
+        return (pdfA * (dist*dist)) / std::abs(cosTheta);
     }
     inline double PdfWtoA(const double& pdfW,const double& dist,const double& cosTheta){
-        return pdfW *  std::abs(cosTheta) / fsipow(dist,2);
+        return (pdfW *  std::abs(cosTheta)) / (dist*dist);
     }
+
+    inline double BdptMisWi(double vc,double vcm,double pdf){
+        return pdf*(vc+vcm);
+    }
+
     ///////////////////////////
-    /////BRDF SAMPLING HELPEERS
+    /////BRDF SAMPLING HELPERS
     ///////////////////////////
 
     struct VMaterial {
 	    VMaterial(){}
 	    VMaterial(VMaterialType _type,
                VIorType _ior_type,
-               vec3d _kr,vec3d _ka,double _k_sca,
+               vec3d _kr,vec3d _sigma_a,double _sigma_s,double _sigma_u,
                double _e_temp,double _e_power,
                double _ior,
                double _rs,
@@ -1206,8 +1681,9 @@ namespace vnx {
                 type = _type;
                 ior_type=_ior_type;
                 kr = _kr;
-                ka = _ka;
-                k_sca = _k_sca;
+                sigma_a = _sigma_a;
+                sigma_s = _sigma_s;
+                sigma_u = _sigma_u;
                 e_temp = _e_temp;
                 e_power = _e_power;
                 ior = _ior;
@@ -1222,9 +1698,11 @@ namespace vnx {
         VIorType ior_type = wl_dependant;
 
 		vec3d kr = zero3d;
-		vec3d ka = zero3d;
 
-		double k_sca = -1.0;
+
+		vec3d sigma_a = zero3d;
+		double sigma_s = -1.0;
+		double sigma_u = 0.0;
 
 		double e_temp = 0.0;
 		double e_power = 0.0;
@@ -1239,9 +1717,10 @@ namespace vnx {
             type = try_strToMaterialType(entry->try_get("mat_type"),type);
             ior_type = try_strToIorType(entry->try_get("ior_type"),ior_type);
             kr = try_strToVec_d(entry->try_get("kr"),kr);
-            ka = try_strToVec_d(entry->try_get("ka"),ka);
 
-            k_sca = try_strtof(entry->try_get("k_sca"),k_sca);
+            sigma_a = try_strToVec_d(entry->try_get("sigma_a"),sigma_a);
+            sigma_s = try_strtof(entry->try_get("sigma_s"),sigma_s);
+            sigma_u = try_strtof(entry->try_get("sigma_u"),sigma_u);
 
             e_temp = try_strtof(entry->try_get("e_temp"),e_temp);
             e_power = try_strtof(entry->try_get("e_power"),e_power);
@@ -1259,12 +1738,16 @@ namespace vnx {
             }
 		}
 
+        inline double sigma_t() const{return max(sigma_a)+sigma_s;}
+        inline vec3d sigma_t_vec() const{return sigma_a+sigma_s+sigma_u;}
+		inline double sigma_t_maj() const{return max(sigma_a)+sigma_s+sigma_u;}
+
         inline bool is_diffuse() const {return type==diffuse;}
 		inline bool is_dielectric() const {return type==dielectric;}
 		inline bool is_conductor()const {return type==conductor;}
 
 		inline bool is_emissive()  const { return e_temp > thrd && e_power > thrd; }
-		inline bool is_transmissive() const { return is_dielectric() && k_sca>=-thrd;}
+		inline bool is_transmissive() const { return is_dielectric() && sigma_s>=-thrd;}
 		inline bool is_refractive() const { return is_transmissive() && (is_dispersive() || ior>1.0);}
 		inline bool is_dispersive() const{
             for(std::vector<sellmeier_coeff>::size_type i=0;i<smc.size();i++){
@@ -1275,7 +1758,7 @@ namespace vnx {
 
 		inline bool is_delta() const{return rs<=thrd && !is_diffuse();}
 
-		inline bool has_kr(){return kr!=zero3d;}
+		inline bool has_kr() const{return !cmpf(kr,zero3d);}
 
 		inline double eval_ior(double wl,double min_wl,double max_wl,bool do_wl_depend = true) const{
 		    if(ior_type==non_wl_dependant) return ior;
@@ -1291,9 +1774,9 @@ namespace vnx {
             return ior;
 		}
 
-		inline void eval_mutator(ygl::rng_state& rng,const VResult& hit,const vec3d& n, VMaterial& mat) {
+		inline void eval_mutator(const VResult& hit,const vec3d& n, VMaterial& mat) {
 			if (mutator != nullptr){
-                mutator(rng, hit, n, mat);
+                mutator(hit, n, mat);
 			}
 		}
 	};
@@ -1327,9 +1810,9 @@ namespace vnx {
         auto a2 = rs * rs;
         a2 = std::max(a2,thrt<T>());
         auto goDN = std::abs(ndo) + std::sqrt(a2 + (1 - a2) * ndo * ndo);
-        if(!goDN) return 0.0;
+        if(goDN<=0.0) return 0.0;
         auto giDN = std::abs(ndi) + std::sqrt(a2 + (1 - a2) * ndi * ndi);
-        if(!giDN) return 0.0;
+        if(giDN<=0.0) return 0.0;
 
         auto Go = (2 * std::abs(ndo)) / goDN;
         auto Gi = (2 * std::abs(ndi)) / giDN;
@@ -1341,7 +1824,7 @@ namespace vnx {
         auto a2 = rs*rs;
         a2 = std::max(a2,thrt<T>());
         auto dn = pid*fsipow((a2-1)*ndh2+1,2);
-        if(!dn) return 0.0;
+        if(dn<=0.0) return 0.0;
         return a2/dn;
     }
     template<typename T>
@@ -1369,13 +1852,13 @@ namespace vnx {
 
 		bool _found = false;
 
-		inline bool isValid() {return (sur && mtl);}
-		inline bool isFound() { return _found; }
-		inline bool isInside(){return vdist<0.0;}
-		inline bool isOutside(){return !isInside();}
+		inline bool isValid() const{return (sur && mtl);}
+		inline bool isFound() const{ return _found; }
+		inline bool isInside() const{return vdist<0.0;}
+		inline bool isOutside() const{return !isInside();}
 
-		inline bool hasMaterial(){return mtl!=nullptr;}
-		inline bool hasVMaterial(){return vmtl!=nullptr;}
+		inline bool hasMaterial() const{return mtl!=nullptr;}
+		inline bool hasVMaterial() const{return vmtl!=nullptr;}
 
 		inline void getMaterial(VMaterial& _mtl){_mtl = hasMaterial() ? (*mtl) : VMaterial{};}
 		inline void getVMaterial(VMaterial& _vmtl){_vmtl = hasVMaterial() ? (*vmtl) : VMaterial{};}
@@ -1423,7 +1906,13 @@ namespace vnx {
 		virtual ~VNode() {};
 
 		void Relate(VMappedEntry* entry){entry->ptr = this;DoRelate(entry);}
-		virtual void DoRelate(const VMappedEntry* entry) = 0;
+		virtual void DoRelate(const VMappedEntry* entry){
+            set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
+            set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
+            set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
+            set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+            set_rounding(try_strtod(entry->try_get("rounding"),mRounding));
+		};
 
 		virtual std::vector<VNode*> get_childs() = 0;
 		virtual VNode* add_child(VNode* child) = 0;
@@ -1617,15 +2106,16 @@ namespace vnx {
     }
 
     inline VMaterial get_material_archetype(const std::string& k){
-            if(stricmp(k,std::string("bk7"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,1.5168,0.0,{{1.03961212,0.00600069867},{0.231792344,0.0200179144},{1.01046945,103.560653}});
-            else if(stricmp(k,std::string("baf10"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,1.6700,0.0,{{1.5851495,0.00926681282},{0.143559385,0.0424489805},{1.08521269,105.613573}});
-            else if(stricmp(k,std::string("bak1"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,1.5725,0.0,{{1.12365662,0.00644742752},{0.309276848,0.0222284402},{0.881511957,107.297751}});
-            else if(stricmp(k,std::string("lasf9"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,1.8502,0.0,{{2.00029547,0.0121426017},{0.298926886,0.0538736236},{1.80691843,156.530829}});
-            else if(stricmp(k,std::string("fused_silica"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,1.4585,0.0,{{0.6961663,fsipow(0.0684043,2)},{0.4079426,fsipow(0.1162414,2)},{0.8974794,fsipow(9.896161,2)}});
-            else if(stricmp(k,std::string("carbon_diamond"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,2.4175,0.0,{{0.3306,fsipow(0.1750,2)},{4.3356,fsipow(0.1060,2)}});
-            else if(stricmp(k,std::string("water"))) return VMaterial(dielectric,wl_dependant,zero3d,{0.1,0.1,0.01},0.0,0.0,0.0,1.3218,0.0,{{0.75831,0.01007},{0.08495,8.91377}});
+            if(stricmp(k,std::string("bk7"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,0.0,1.5168,0.0,{{1.03961212,0.00600069867},{0.231792344,0.0200179144},{1.01046945,103.560653}});
+            else if(stricmp(k,std::string("baf10"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,0.0,1.6700,0.0,{{1.5851495,0.00926681282},{0.143559385,0.0424489805},{1.08521269,105.613573}});
+            else if(stricmp(k,std::string("bak1"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,0.0,1.5725,0.0,{{1.12365662,0.00644742752},{0.309276848,0.0222284402},{0.881511957,107.297751}});
+            else if(stricmp(k,std::string("lasf9"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,0.0,1.8502,0.0,{{2.00029547,0.0121426017},{0.298926886,0.0538736236},{1.80691843,156.530829}});
+            else if(stricmp(k,std::string("fused_silica"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,0.0,1.4585,0.0,{{0.6961663,fsipow(0.0684043,2)},{0.4079426,fsipow(0.1162414,2)},{0.8974794,fsipow(9.896161,2)}});
+            else if(stricmp(k,std::string("carbon_diamond"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,0.0,2.4175,0.0,{{0.3306,fsipow(0.1750,2)},{4.3356,fsipow(0.1060,2)}});
+            else if(stricmp(k,std::string("water"))) return VMaterial(dielectric,wl_dependant,zero3d,{0.1,0.1,0.01},0.0,0.0,0.0,0.0,1.3218,0.0,{{0.75831,0.01007},{0.08495,8.91377}});
             return VMaterial();
     }
+
 };
 
 

@@ -1,9 +1,31 @@
 <vscene:ParsingTest>
-<vcamera origin={0,2.0,-12.0} target={0,0.5,0} up={0,1.0,0} yfov=45.0>
-<vroot:plane>
+<vcamera origin={2.0,8.0,-9.0} target={0,0.5,0} up={0,1.0,0} yfov=45.0>
+<vroot:union_root>
 
-<vmaterial:diffuse_mat2 kr={0.5,0.5,0.5}>
+
+
+<vmaterial:diffuse_mat2 mat_type=diffuse kr={0.5,0.5,0.5}>
+<vmaterial:mirror_mtl mat_type=conductor rs=0.015 kr={1.0,1.0,1.0}>
+<vmaterial:emissive_mtl e_temp=6000 e_power=100>
+<vmaterial:tr_mtl mat_type=dielectric sigma_s=0.0 ior=1.56
+s_b1=1.03961212 s_c1=0.00600069867
+s_b2=0.231792344 s_c2=0.0200179144
+s_b3=1.01046945 s_c3=103.560653>
+<vmaterial:fog_amb_mat mat_type=dielectric sigma_a={0.52,0.52,0.02} sigma_s=0.1>
+
+<vop_union:union_root childs={light,light2,box_inv,tr_object}>
+<vop_invert:box_inv  pos={0,19.0,0} childs={box}>
+
+<vvo_sd_box:box  material=diffuse_mat2 dims={20,20,20}>
+<vvo_sd_box:fog_amb pos={3.0,1.0,4.0} material=fog_amb_mat dims={1,1,1}>
+//<vvo_sd_box:tr_object pos={-1.0,1.0,0.0} material=tr_mtl>
 
 <vvo_sd_plane:plane pos={0,1,0} material=diffuse_mat2>
+//<vvo_sd_box:mirror pos={0,0,3.0} material=mirror_mtl dims={2.0,8.0,0.1}>
+<vvo_sd_sphere:light pos={-3.0,1,0.0} material=emissive_mtl radius=0.01>
+<vvo_sd_sphere:light2 pos={0.0,10.0,0.0} material=emissive_mtl radius=1.0>
 
-
+//<vvo_sd_sphere:tr_object_c1>
+//<vvo_sd_box:tr_object_c2>
+//<vvo_blended:tr_object pos={-1.0,1.0,0.0} material=tr_mtl v1=tr_object_c1 v2=tr_object_c2 factor=0.2>
+<vvo_sd_torus:tr_object pos={-1.0,1.0,0.0} material=tr_mtl dims={1.0,0.8}>

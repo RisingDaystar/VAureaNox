@@ -117,7 +117,7 @@ namespace vnx{
         return true;
     }
 
-    vec3i VScene::precalc_emissive_hints_full(ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame) {
+    vec3i VScene::precalc_emissive_hints_full(VRng& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame) {
         if (!ptr) { return {0,0,0}; }
         vec3i stats = {0,0,0};
 
@@ -150,12 +150,12 @@ namespace vnx{
                 VMaterial vre_material;
                 vre.getMaterial(vre_material);
                 if(vre_material.mutator!=nullptr){
-                    vre_material.eval_mutator(rng, vre, norm, vre_material);
+                    vre_material.eval_mutator(vre, norm, vre_material);
                 };
                 VMaterial vre_vmaterial;
                 vre.getVMaterial(vre_vmaterial);
                 if(vre_vmaterial.mutator!=nullptr){
-                    vre_vmaterial.eval_mutator(rng, vre, norm, vre_vmaterial);
+                    vre_vmaterial.eval_mutator(vre, norm, vre_vmaterial);
                 };
 
                     if(vre_vmaterial.is_emissive() && vre.vsur){
@@ -170,7 +170,7 @@ namespace vnx{
                         //if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
                     }
 
-                    auto dir = sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
+                    auto dir = sample_sphere_direction<double>(rng.next_vecd<2>());
                     auto ray = VRay{vre.wor_pos,dir,tmin,tmax};
                     VResult fvre = vre;
                     for (int i=0; i < n_em_e; i++) {
@@ -179,15 +179,15 @@ namespace vnx{
                         //if(vre.vdist>0.0) std::cout<<"OLO: "<<i<<"\n";
 
                         if(!vre.isFound() || !vre.isValid()){
-                            dir = sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
+                            dir = sample_sphere_direction<double>(rng.next_vecd<2>());
                             //auto rn_nor = ygl::get_random_vec3f(rng);
                             //vec3d rn_nor_off = {rn_nor.x,rn_nor.y,rn_nor.z};
                             ray = offsetted_ray(fvre.wor_pos,{},dir,tmin,tmax,dir,tmin);
                             vre = intersect(ray,n_max_iters);
                             stats.y++;
                             if(!vre.isValid())continue;
-                        }else if(ygl::get_random_float(rng)>0.95){
-                            dir = sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
+                        }else if(rng.next_double()>0.95){
+                            dir = sample_sphere_direction<double>(rng.next_vecd<2>());
                             //auto rn_nor = ygl::get_random_vec3f(rng);
                             //vec3d rn_nor_off = {rn_nor.x,rn_nor.y,rn_nor.z};
                             ray = offsetted_ray(fvre.wor_pos,{},dir,tmin,tmax,dir,tmin);
@@ -200,12 +200,12 @@ namespace vnx{
                         VMaterial er_material;
                         vre.getMaterial(er_material);
                         if(er_material.mutator!=nullptr){
-                            er_material.eval_mutator(rng, vre, norm, er_material);
+                            er_material.eval_mutator(vre, norm, er_material);
                         }
                         VMaterial er_vmaterial;
                         vre.getVMaterial(er_vmaterial);
                         if(er_vmaterial.mutator!=nullptr){
-                            er_vmaterial.eval_mutator(rng, vre, norm, er_vmaterial);
+                            er_vmaterial.eval_mutator(vre, norm, er_vmaterial);
                         }
 
                         frame3d fp;
@@ -220,7 +220,7 @@ namespace vnx{
                                     fp = ygl::make_frame_fromz(zero3d, -norm);
                                     offalong = -norm;
                                 }else if(vre.dist<0.0){
-                                    if(er_material.mutator && ygl::get_random_float(rng)<0.95){
+                                    if(er_material.mutator && rng.next_double()<0.95){
                                         fp = ygl::make_frame_fromz(zero3d, -norm);
                                         offalong = -norm;
                                     }else{
@@ -238,7 +238,7 @@ namespace vnx{
                             }
                         }
                         //auto fp = dot(ray.d,norm) > 0.0 ? ygl::make_frame_fromz(zero3d, -norm) : ygl::make_frame_fromz(zero3d, norm); // TEST -norm && norm
-                        if(!straight)dir = ygl::transform_direction(fp,sample_hemisphere_direction<double>(ygl::get_random_vec2f(rng)));
+                        if(!straight)dir = ygl::transform_direction(fp,sample_hemisphere_direction<double>(rng.next_vecd<2>()));
                         else dir = ray.d;
                         //if(ygl::get_random_float(rng)>0.5)dir = ygl::reflect(-ray.d,dir);
                         ray = offsetted_ray(vre.wor_pos,{},dir,tmin,tmax,offalong,vre.dist); //TEST -norm && norm
@@ -285,7 +285,7 @@ namespace vnx{
 
 
 
-    vec3i VScene::precalc_emissive_hints_strict(ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame) {
+    vec3i VScene::precalc_emissive_hints_strict(VRng& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame) {
        if (!ptr) { return {0,0,0}; }
         vec3i stats = {0,0,0};
 
@@ -304,12 +304,12 @@ namespace vnx{
                 vre.getMaterial(vre_material);
                 vec3d norm = eval_normals(vre, neps);
                 if(vre_material.mutator!=nullptr){
-                    vre_material.eval_mutator(rng, vre, norm, vre_material);
+                    vre_material.eval_mutator(vre, norm, vre_material);
                 };
                 VMaterial vre_vmaterial;
                 vre.getVMaterial(vre_vmaterial);
                 if(vre_vmaterial.mutator!=nullptr){
-                    vre_vmaterial.eval_mutator(rng, vre, norm, vre_vmaterial);
+                    vre_vmaterial.eval_mutator(vre, norm, vre_vmaterial);
                 };
 
                 if(vre_vmaterial.is_emissive() || vre_material.is_emissive()){
@@ -319,7 +319,7 @@ namespace vnx{
                         //if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
 
 
-                    auto dir = sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
+                    auto dir = sample_sphere_direction<double>(rng.next_vecd<2>());
                     auto ray = VRay{vre.wor_pos,dir,tmin,tmax};
                     VResult fvre = vre;
                     for (int i=0; i < n_em_e; i++) {
@@ -328,12 +328,12 @@ namespace vnx{
                         //if(vre.vdist>0.0) std::cout<<"OLO: "<<i<<"\n";
 
                         if(!vre.isFound()){
-                            dir = sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
+                            dir = sample_sphere_direction<double>(rng.next_vecd<2>());
                             ray = offsetted_ray(fvre.wor_pos,{},dir,tmin,tmax,zero3d,0.0);
                             vre = intersect(ray,n_max_iters);
                             stats.y++;
-                        }else if(ygl::get_random_float(rng)>0.95){
-                            dir = sample_sphere_direction<double>(ygl::get_random_vec2f(rng));
+                        }else if(rng.next_double()>0.95){
+                            dir = sample_sphere_direction<double>(rng.next_vecd<2>());
                             ray = offsetted_ray(fvre.wor_pos,{},dir,tmin,tmax,zero3d,0.0);
                             vre = intersect(ray,n_max_iters);
                             n_em_e++; //reduce math bias
@@ -344,12 +344,12 @@ namespace vnx{
                         VMaterial er_material;
                         vre.getMaterial(er_material);
                         if(er_material.mutator!=nullptr){
-                            er_material.eval_mutator(rng, vre, norm, er_material);
+                            er_material.eval_mutator(vre, norm, er_material);
                         }
                         VMaterial er_vmaterial;
                         vre.getVMaterial(er_vmaterial);
                         if(er_vmaterial.mutator!=nullptr){
-                            er_vmaterial.eval_mutator(rng, vre, norm, er_vmaterial);
+                            er_vmaterial.eval_mutator(vre, norm, er_vmaterial);
                         }
 
                         frame3d fp;
@@ -372,7 +372,7 @@ namespace vnx{
                             }
                         }
                         //auto fp = dot(ray.d,norm) > 0.0 ? ygl::make_frame_fromz(zero3d, -norm) : ygl::make_frame_fromz(zero3d, norm); // TEST -norm && norm
-                        dir = ygl::transform_direction(fp,sample_hemisphere_direction<double>(ygl::get_random_vec2f(rng)));
+                        dir = ygl::transform_direction(fp,sample_hemisphere_direction<double>(rng.next_vecd<2>()));
 
                         //if(ygl::get_random_float(rng)>0.5)dir = ygl::reflect(-ray.d,dir);
                         ray = offsetted_ray(vre.wor_pos,{},dir,tmin,tmax,offalong,vre.dist); //TEST -norm && norm
@@ -411,7 +411,7 @@ namespace vnx{
     }
 
     vec3i VScene::populate_emissive_hints(int i_em_evals,int i_max_march_iterations,double f_ray_tmin,double f_ray_tmax,double f_normal_eps,bool verbose) {
-        auto rng = ygl::make_rng(ygl::get_time());
+        auto rng = VRng(get_time());//ygl::make_rng(ygl::get_time());
         std::map<std::string, std::vector<VResult>> tmpMap;
         vec3i stats = precalc_emissive_hints(rng, tmpMap, root, i_em_evals, i_max_march_iterations, f_ray_tmin, f_ray_tmax, f_normal_eps, verbose, identity_frame3d);
         for (auto ceh : tmpMap) {

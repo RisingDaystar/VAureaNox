@@ -123,7 +123,7 @@ namespace vnx {
 		}
 
 		if (*renderer == nullptr) { throw VException("Invalid Renderer."); }
-        (*renderer)->Init();
+        (*renderer)->Init(scn);
         std::cout<<"**Loaded Renderer : \""<<(*renderer)->Type()<<"\"\n";
 
 		int w = config.TryGet("VAureaNox","i_image_width", 648);
@@ -134,7 +134,7 @@ namespace vnx {
 		//scn.camera.Setup(scn,vec2f{float(w),float(h)});
 	}
 
-	void task(int id, const VScene& scn, VRenderer* renderer, image3d& img, std::mutex& mtx, rng_state& rng, volatile std::atomic<int>& lrow, volatile std::atomic<int>& rowCounter) {
+	void task(int id, const VScene& scn, VRenderer* renderer, image3d& img, std::mutex& mtx, VRng& rng, volatile std::atomic<int>& lrow, volatile std::atomic<int>& rowCounter) {
 		const int width = img.size.x;
 		const int height = img.size.y;
 
@@ -165,7 +165,7 @@ namespace vnx {
 
 
     //Utilizza "conio.h" , non standard, disattivabile in compilazione.
-	void monitor_task(std::mutex& mtx, const VScene& scn,VRenderer* renderer,const image3d& img, int i_output_depth){
+	void monitor_task(std::mutex& mtx, const VScene& scn,VRenderer* renderer,const image3d& img, int i_image_bpp){
         #ifdef MONITOR_THREAD_SUPPORT
         while(!renderer->mStatus.bStopped && !renderer->mStatus.bFinished){
             if(!kbhit()){std::this_thread::sleep_for(std::chrono::milliseconds(1000));continue;} //1s sleep, per evitare massiccio overhead
@@ -179,10 +179,10 @@ namespace vnx {
             }else if(k == '1'){ //PREVIEW
                 if(!renderer->mStatus.bPauseMode)mtx.lock();
                     auto fname = "VAureaNox_"+scn.id+"_"+std::to_string(img.size.x) + "x" + std::to_string(img.size.y) + ("_"+renderer->Type())+renderer->ImgAffix(scn)+"_PREVIEW";
-                    printf("\n*Saving Preview image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_output_depth);
+                    printf("\n*Saving Preview image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_image_bpp);
                     image3d img_tmp = img;
                     scn.camera.mFrameBuffer.MergeToImg(img_tmp);
-                    if(vnx::save_ppm(fname, img_tmp, i_output_depth)) printf("OK\n\n");
+                    if(vnx::save_ppm(fname, img_tmp, i_image_bpp)) printf("OK\n\n");
                     else printf("FAIL\n\n");
                 if(!renderer->mStatus.bPauseMode)mtx.unlock();
             }else if(k=='2'){ //DEBUG
@@ -219,14 +219,13 @@ int main() {
 	image3d img;
 	bool b_start_monitor = false;
 
-	int i_output_depth = 255;
+	int i_image_bpp = 255;
 
 	const std::string section = "VAureaNox";
 
 	try {
-		printf("<--- VAureaNox - Distance Fields Renderer - v: 0.0.8 --->\n\n");
+		printf("<--- VAureaNox - Distance Fields Renderer - v: 0.0.9 --->\n\n");
 		config.parse();
-
 
 
         int i_em_evals = config.TryGet(section,"i_em_evals",10000);
@@ -248,8 +247,8 @@ int main() {
         std::string i_normals_algo = config.TryGet(section,"i_normals_algo","tht");
         std::string i_eh_precalc_algo = config.TryGet(section,"i_eh_precalc_algo","progressive");
 
-        i_output_depth = config.TryGet(section,"i_output_depth",255);
-        if(i_output_depth<2 || i_output_depth>65535){ throw VException("i_output_depth must be in range 2 - 65535 inclusive.");}
+        i_image_bpp = config.TryGet(section,"i_image_bpp",255);
+        if(i_image_bpp<2 || i_image_bpp>65535){ throw VException("i_image_bpp must be in range 2 - 65535 inclusive.");}
 
 		init(scn, &renderer, img, config);
 
@@ -300,24 +299,31 @@ int main() {
 	int nThreads = std::thread::hardware_concurrency();
 	if (i_max_threads>0) nThreads = std::min(nThreads, i_max_threads);
 
-	auto t_start = std::chrono::steady_clock::now();
+
 
 	std::thread* monitor = nullptr;
 
 	printf("**Rendering \"%s\" using \"%d\" threads\n", scn.id.c_str(),  std::max(1,nThreads));
 	if(b_start_monitor){
-        monitor = new std::thread(monitor_task, std::ref(mtx), std::ref(scn), renderer, std::ref(img), i_output_depth);
+        monitor = new std::thread(monitor_task, std::ref(mtx), std::ref(scn), renderer, std::ref(img), i_image_bpp);
         printf("**Monitor Thread started\n");
 	}
 	printf("\n<----    Rendering Log    ---->\n\n");
 
+    std::chrono::time_point<std::chrono::steady_clock> t_start;
 	if (nThreads > 1) {
-        rng_state rng[nThreads];
+        VRng rng[nThreads];
+        const auto tt = get_time();
         for(int n=0;n<nThreads;n++){
-            rng[n] = make_rng(get_time()+n);
+            rng[n].seed(tt,tt,n+n,n+n+1); //pcg32x2
+            //rng[n].seed(tt,n+1); //pcg32 | splitmix
+            //rng[n].seed(tt); //xoroshiro
+            //rng[n].long_jump(); //xoroshiro
         }
 
 		std::vector<std::thread*> worker(nThreads);
+		t_start = std::chrono::steady_clock::now();
+
 		for (int i = 0; i < nThreads; i++) {
             worker[i] = new std::thread(task, i, std::ref(scn), renderer, std::ref(img), std::ref(mtx), std::ref(rng[i]), std::ref(lastRow), std::ref(rowCounter));
         }
@@ -326,7 +332,8 @@ int main() {
         worker.clear();
 	}
 	else {
-        rng_state rng = make_rng(get_time());
+        VRng rng(get_time());
+        t_start = std::chrono::steady_clock::now();
 		task(0,scn, renderer, img, mtx, rng, lastRow, rowCounter);
 	}
 	renderer->mStatus.bFinished = true;
@@ -350,17 +357,17 @@ int main() {
 	auto fname = "VAureaNox_"+scn.id+"_"+std::to_string(img.size.x) + "x" + std::to_string(img.size.y) + ("_"+renderer->Type())+renderer->ImgAffix(scn);
 	if(renderer->mStatus.bStopped) fname+="_UNCOMPLETED";
 
-	printf("\n*Saving image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_output_depth);
+	printf("\n*Saving image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_image_bpp);
 	scn.camera.mFrameBuffer.MergeToImg(img);
-    if(vnx::save_ppm(fname, img, i_output_depth)) printf("OK\n");
+    if(vnx::save_ppm(fname, img, i_image_bpp)) printf("OK\n");
     else {
         printf("FAIL\n");
         while(true){
             printf("<!>Press 1 to retry, other key to skip.\n");
             auto ch = getch();
             if(ch=='1'){
-                printf("\n*Saving image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_output_depth);
-                if(vnx::save_ppm(fname, img, i_output_depth)) {printf("OK\n");break;}
+                printf("\n*Saving image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_image_bpp);
+                if(vnx::save_ppm(fname, img, i_image_bpp)) {printf("OK\n");break;}
                 else printf("FAIL\n");
             }else break;
         }

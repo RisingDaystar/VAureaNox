@@ -42,7 +42,8 @@ using namespace vnx;
 		return std::max(q.z - dims.y, std::max((q.x*0.866025 + q.y*0.5), q.y) - dims.x);
     };
     inline double sdf3d_torus(const vec3d& ep,const vec2d& radii){
-        return 0.0; //TODO
+        const vec2d q = vec2d{length(vec2d{ep.x,ep.z})-radii.x,ep.y};
+        return length(q)-radii.y;
     };
     inline double sdf3d_capsule(const vec3d& ep,const double BR,const vec3d& A,const vec3d& B){
 		const vec3d pa = ep - A, ba = B - A;
@@ -113,10 +114,7 @@ struct vvo_sdf2d_cross : public VSdf {
 	vvo_sdf2d_cross(std::string ids, VMaterial* mtl,const vec2d& b,double r): VSdf(ids,mtl),mB(b),mR(r){}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         //TODO
 	}
 
@@ -136,17 +134,14 @@ struct vvo_blended : public VSdf {
     double mAFactor = 0.5;
 
     vvo_blended(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mAFactor(0.5){}
-    vvo_blended(std::string ids, VMaterial* mtl,VSdf* s1,VSdf* s2): VSdf(ids,mtl),mSdf_1(s1),mSdf_2(s2),mAFactor(0.5){
+    vvo_blended(std::string ids, VMaterial* mtl,VNode* s1,VNode* s2): VSdf(ids,mtl),mSdf_1(s1),mSdf_2(s2),mAFactor(0.5){
     }
-    vvo_blended(std::string ids, VMaterial* mtl,VSdf* s1,VSdf* s2,double A): VSdf(ids,mtl),mSdf_1(s1),mSdf_2(s2),mAFactor(A){
+    vvo_blended(std::string ids, VMaterial* mtl,VNode* s1,VNode* s2,double A): VSdf(ids,mtl),mSdf_1(s1),mSdf_2(s2),mAFactor(A){
     }
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
-        //TODO
+        VNode::DoRelate(entry);
+        mAFactor = try_strtod(entry->try_get("factor"),mAFactor);
 	}
 
     inline const char* Type(){return "vvo_blended";}
@@ -177,10 +172,7 @@ struct vvo_shadered : public VSdf {
 	vvo_shadered(std::string ids, VMaterial* mtl, std::function<float(const vec3d& p, vec3d& ep, const VNode* tref) > ftor): VSdf(ids,mtl),mShader(ftor) { }
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
 	}
 
 	inline const char* Type(){return "vvo_shadered";}
@@ -199,16 +191,32 @@ struct vvo_shadered : public VSdf {
 
 ///
 
+struct vvo_sd_torus : public VSdf {
+    vec2d mRadii = one2d;
+	vvo_sd_torus(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mRadii(one2d){}
+	vvo_sd_torus(std::string ids, VMaterial* mtl,const vec2d& radii): VSdf(ids,mtl),mRadii(radii){}
+
+	inline void DoRelate(const VMappedEntry* entry){
+        VNode::DoRelate(entry);
+        mRadii = try_strToVec_d(entry->try_get("radii"),one2d);
+	}
+
+	inline const char* Type(){return "vvo_sd_torus";}
+
+	inline void eval(const vec3d& p,VResult& res) {
+        vec3d ep = eval_ep(p);
+        double dv = sdf3d_torus(ep,mRadii)+eval_displacement(ep)-mRounding;
+		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+	}
+};
+
 struct vvo_sd_plane : public VSdf {
     double mOffset = 1.0;
 	vvo_sd_plane(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mOffset(1.0){}
 	vvo_sd_plane(std::string ids, VMaterial* mtl,double offset): VSdf(ids,mtl),mOffset(offset){}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
 	}
 
 	inline const char* Type(){return "vvo_sd_plane";}
@@ -225,10 +233,7 @@ struct vvo_sd_sphere : public VSdf {
 	vvo_sd_sphere(std::string ids, VMaterial* mtl, double radius): VSdf(ids,mtl),mRadius(radius) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mRadius = try_strtod(entry->try_get("radius"),mRadius);
 	}
 
@@ -247,10 +252,7 @@ struct vvo_sd_box : public VSdf {
 	vvo_sd_box(std::string ids, VMaterial* mtl, double dims): VSdf(ids,mtl),mDims(vec3d{dims,dims,dims}) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mDims = try_strToVec_d(entry->try_get("dims"),one3d);
 	}
 
@@ -268,10 +270,7 @@ struct vvo_sd_ellipsoid : public VSdf {
 	vvo_sd_ellipsoid(std::string ids, VMaterial* mtl, vec3d sizes): VSdf(ids,mtl),mSizes(sizes) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mSizes = try_strToVec_d(entry->try_get("sizes"),one3d);
 	}
 
@@ -289,10 +288,7 @@ struct vvo_sd_cylinder : public VSdf {
 	vvo_sd_cylinder(std::string ids, VMaterial* mtl, vec2d dims): VSdf(ids,mtl),mDims(dims) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mDims = try_strToVec_d(entry->try_get("dims"),one2d);
 	}
 
@@ -312,10 +308,7 @@ struct vvo_sd_capsule : public VSdf {
 	vvo_sd_capsule(std::string ids, VMaterial* mtl, double baseRadius, vec3d a, vec3d b): VSdf(ids,mtl),mBaseRadius(baseRadius),mA(a),mB(b) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
 	}
 
 	inline const char* Type(){return "vvo_sd_capsule";}
@@ -332,10 +325,7 @@ struct vvo_sd_hex_prism : public VSdf {
 	vvo_sd_hex_prism(std::string ids, VMaterial* mtl, vec2d dims): VSdf(ids,mtl),mDims(dims) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+	    VNode::DoRelate(entry);
         mDims = try_strToVec_d(entry->try_get("dims"),one2d);
 	}
 
@@ -353,10 +343,7 @@ struct vvo_sd_tri_prism : public VSdf {
 	vvo_sd_tri_prism(std::string ids, VMaterial* mtl, vec2d dims): VSdf(ids,mtl),mDims(dims) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mDims = try_strToVec_d(entry->try_get("dims"),one2d);
 	}
 
@@ -374,10 +361,7 @@ struct vvo_sd_capped_cone : public VSdf {
 	vvo_sd_capped_cone(std::string ids, VMaterial* mtl, vec3d dims): VSdf(ids,mtl),mDims(dims) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+	    VNode::DoRelate(entry);
         mDims = try_strToVec_d(entry->try_get("dims"),mDims);
 	}
 
@@ -397,10 +381,7 @@ struct vvo_sd_pyramid4 : public VSdf {
 	vvo_sd_pyramid4(std::string ids, VMaterial* mtl, vec3d dims): VSdf(ids,mtl),mDims(dims) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
         mDims = try_strToVec_d(entry->try_get("dims"),one3d);
 	}
 
@@ -419,10 +400,7 @@ struct vvo_sd_diamond : public VSdf {
 	vvo_sd_diamond(std::string ids, VMaterial* mtl): VSdf(ids,mtl) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
-        set_translation(try_strToVec_d(entry->try_get("pos"),mTranslation));
-        set_rotation_degs(try_strToVec_d(entry->try_get("rot"),vec3d{mRotation.x,mRotation.y,mRotation.z}));
-        set_scale(try_strToVec_d(entry->try_get("sca"),mScale));
-        set_rotation_order(try_strToRotationOrder(entry->try_get("rot_order"),mRotationOrder));
+        VNode::DoRelate(entry);
 	}
 
 	inline const char* Type(){return "vvo_sd_diamond";}

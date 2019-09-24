@@ -47,7 +47,7 @@ namespace vscndef {
 
         auto diffuse2 = scn.add_material("diffuse2");
 		diffuse2->kr = {0.8f,0.8f,0.8f};
-        auto mtor = [](ygl::rng_state& rng, const VResult& hit,const vec3d& n, VMaterial& mat) {
+        auto mtor = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
             if (std::abs(sin(hit.wor_pos.x*5)) < 0.17f || std::abs(sin(hit.wor_pos.z*5)) < 0.17f) {
                 mat.kr = {abs(sin(hit.wor_pos.x*5)),abs(sin(hit.wor_pos.x*hit.wor_pos.z)),abs(sin(hit.wor_pos.z*5))};
             }

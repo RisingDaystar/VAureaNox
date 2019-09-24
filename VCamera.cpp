@@ -66,7 +66,7 @@ namespace vnx{
             auto hit = scn.intersect(focus_ray,nm,nullptr,nullptr);
             if(hit.isFound()) mFocus = length(focus_ray.o-hit.wor_pos);
             else mFocus = focus_ray.tmax;
-            std::cout<<"**Autofocus --> Focal Length : "<<mFocus<<"\n";
+            std::cout<<"**Autofocus --> Focal Length : "<<mFocus<<" | hit at {"<<hit.wor_pos<<"}\n";
         }else std::cout<<"**Focal Length : "<<mFocus<<"\n";
     }
 

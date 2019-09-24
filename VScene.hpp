@@ -34,7 +34,7 @@ namespace vnx{
 		VScene(std::string idv):id(idv){}
         typedef VResult (VScene::*st_algo_ftor)(const VRay&,int,int*,int*) const;
         typedef vec3d (VScene::*normals_algo_ftor)(const VResult& er,double eps) const;
-        typedef vec3i (VScene::*eh_precalc_algo_ftor)(ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame);
+        typedef vec3i (VScene::*eh_precalc_algo_ftor)(VRng& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame);
 
 		st_algo_ftor intersect_algo = &intersect_naive;
 		normals_algo_ftor normals_algo = &eval_normals_tht;
@@ -97,7 +97,7 @@ namespace vnx{
         inline VResult intersect(const VRay& ray,int nm,int* iters = nullptr,int* overs = nullptr) const{
             return std::invoke(intersect_algo,this,ray,nm,iters,overs);
         }
-        inline vec3i precalc_emissive_hints(ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame){
+        inline vec3i precalc_emissive_hints(VRng& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame){
             return std::invoke(eh_precalc_algo,this,rng,emap,ptr,n_em_e,n_max_iters,tmin,tmax,neps,verbose,parent_frame);
         }
 
@@ -165,18 +165,18 @@ namespace vnx{
         ///http://erleuchtet.org/~cupe/permanent/enhanced_sphere_tracing.pdf
         ///
 
-        ///RisingDaystar lipschitz fixer algorithm:
-        ///Allows tracing towards C1 discontinuous volumes and lipschitz > 1 functs , reducing artifacts by A LOT (in awfully distorted scenes, allows the scene to be recognizeable at least...).
-        ///I'm using a self crafted technique (i'm still experimenting and testing....),
-        ///which can trace inside volumes using a double distance feedback ( "dist" & "vdist" ) , with dist being the absolute distance for primary marching/tracing
+        ///Experimental Algos (rel, enh):
+        ///Can trace inside volumes using a double distance feedback ( "dist" & "vdist" ) , with dist being the absolute distance for primary marching/tracing
         ///and vdist the propagated signed distance trough operators , to determine the "starting" sign of the tracing ray.
         ///dist cannot be used directly for that purpose , because , in the operator, it takes (and then discards) the sign (and value) from the "absolute nearest" isosurface (uses std::abs),
         ///this IS a problem for the purpose of both autofixing lipschitz and over relaxing the ray. Especially, when in need to trace inside arbitrary volumes in a scene,
         ///it simply cannot determine wether it is an "error" or a legit inside trace.
         ///TODO ,over rel & lipschitz fixer for "started inside" tracings
+
+
+
         inline VResult intersect_rel(const VRay& ray,int miters,int* iters = nullptr,int* overs = nullptr) const{
             //const double hmaxf = maxd/2.0; ///consider using this to avoid over/underflows (depending on sign of the leading expression, it might happen, needs testing) .
-            ///P.S: DON'T use "maxf" , it WILL UNDERFlOW (of course...)
             constexpr double maxf_m1 = maxd-1.0;
             double t=0.0;
             double pd=maxf_m1;
@@ -261,7 +261,7 @@ namespace vnx{
 
                         }
 
-                        //auto cc = std::abs((d-os)/pd)*std::max(std::abs(d/pd),std::abs(os/pd)) ///gives a strange miss in the cornell box scene, might be prone to undetected overstep
+                        //auto cc = std::abs((d-os)/pd)*std::max(std::abs(d/pd),std::abs(os/pd)) ///gives a strange miss in the cornell box scene (right in the middle, where ray is perpendicular to box), might be prone to undetected overstep
                         auto cc = std::max(std::abs(d/pd),std::abs(os/pd));
                         os = d*std::max(-cc,std::min(cc,0.5*(d/pd)));
 
@@ -286,24 +286,24 @@ namespace vnx{
             return vre;
         }
 
-        inline VResult sample_emissive(ygl::rng_state& rng,int& idl) const{
+        inline VResult sample_emissive(VRng& rng,uint32_t& idl) const{
             idl = 0;
             if(emissive_hints.empty()) return VResult();
-            idl = ygl::get_random_int(rng,emissive_hints.size());
+            idl = rng.next_uint(emissive_hints.size());
             const std::vector<VResult>* ep = &emissive_hints[idl];
             if(ep->empty()) return VResult();
-            return (*ep)[ygl::get_random_int(rng,ep->size())];
+            return (*ep)[rng.next_uint(ep->size())];
         }
 
-        inline VResult sample_emissive_in_light(ygl::rng_state& rng,int idl) const{
+        inline VResult sample_emissive_in_light(VRng& rng,uint32_t idl) const{
             if(emissive_hints.empty()) return VResult();
             const std::vector<VResult>* ep = &emissive_hints[idl];
             if(ep->empty()) return VResult();
-            return (*ep)[ygl::get_random_int(rng,ep->size())];
+            return (*ep)[rng.next_uint(ep->size())];
         }
 
-        vec3i precalc_emissive_hints_full(ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame);
-        vec3i precalc_emissive_hints_strict(ygl::rng_state& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame);
+        vec3i precalc_emissive_hints_full(VRng& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame);
+        vec3i precalc_emissive_hints_strict(VRng& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame);
 
         vec3i populate_emissive_hints(int i_em_evals,int i_max_march_iterations,double f_ray_tmin,double f_ray_tmax,double f_normal_eps,bool verbose = false);
 	};
