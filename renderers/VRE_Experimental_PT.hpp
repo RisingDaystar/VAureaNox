@@ -115,6 +115,8 @@ namespace vnx {
         bool b_gather_eye_vc = true;
         bool b_gather_to_camera = true;
 
+        double mSamplesQuot = 1;
+
 
         VRE_Experimental_PT(const VFileConfigs& cfgs,std::string section) : VRenderer(cfgs,section) {}
         std::string Type() const {return "ExperimentalPT";}
@@ -173,6 +175,8 @@ namespace vnx {
             else if(useLighttracing()) std::cout<<"**Using Lighttracing\n";
             else if(useBidirectional()) std::cout<<"**Using Bidirectional\n";
             std::cout<<"**Using "<<i_ray_samples<<" Spp\n\n";
+
+            mSamplesQuot = i_ray_samples;
         }
 
         std::string ImgAffix(const VScene& scn) const{
@@ -1133,7 +1137,7 @@ namespace vnx {
             const double stif = 1.0 / itsf;
 
             double mw = 1.0;
-            double sc_f = double(i_ray_samples)*stif;
+            double sc_f = mSamplesQuot*stif;
 
             if(useBidirectional()){
                 double w_light = (itsf) * ((vertex.vcm + vertex.vc) * bsdf_rev_pdfW);
@@ -1254,7 +1258,7 @@ namespace vnx {
                     auto cosOut = 1.0;
 
                     VSdfPoll poll = PollVolume(scn,vertex.wo);
-                    if(poll.is_stuck()) {return zero3d;} ///TODO
+                    if(poll.is_stuck()) {return zero3d;}
                     int nd_b = 0;
                     for(int b=0;;b++){ //Trace from light and store path vertices
                         camera.mFrameBuffer.HintScale(nd_b); //TAKES THE MAX between mScale and b parameter, needed to divide framebuffer contribution
