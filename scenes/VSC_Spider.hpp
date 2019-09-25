@@ -371,37 +371,33 @@ namespace vscndef {
 
 		auto emissive = scn.add_material("emissive");
 		emissive->e_temp = 6500;
-		emissive->e_power = 28500;
+		emissive->e_power = 24500;
 
 		auto emissive_dim = scn.add_material("emissive_dim");
 		emissive_dim->e_temp = 18500;
-		emissive_dim->e_power = 100;
+		emissive_dim->e_power = 50;
 
 		auto main_light = new vvo_sd_sphere("main_light", emissive, 8.3f);
 
 		auto grey_diffuse_no_refl_adv = scn.add_material("grey_diffuse_no_refl_adv");
-		grey_diffuse_no_refl_adv->type = dielectric;
-		grey_diffuse_no_refl_adv->ior_type = non_wl_dependant;
-		grey_diffuse_no_refl_adv->ior = 1.35;
+		grey_diffuse_no_refl_adv->type = diffuse;
 		grey_diffuse_no_refl_adv->kr = { 0.5,0.5,0.5 };
-		grey_diffuse_no_refl_adv->rs = 0.2;
 		auto mtor = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
-            if (std::abs(sin(hit.loc_pos.x*5)) < 0.07f || std::abs(sin(hit.loc_pos.z*5)) < 0.07f) {
-                mat.type = diffuse;
-                mat.kr = zero3d;
+		    const auto thr = (sin(hit.wor_pos.x)*sin(hit.wor_pos.y)*sin(hit.wor_pos.z));
+            if (thr >0.2) {
+                mat.kr = {0.2,0.5,0.2};
+            }else if(thr<-0.2){
+                mat.kr = vec3d{0.5,0.2,0.2};
             }
 		};
 		grey_diffuse_no_refl_adv->mutator = mtor;
 
-		auto ftor = [](const vec3d& wor_pos, vec3d& loc_pos, const VNode* tref) {
-			loc_pos = ygl::transform_point_inverse(tref->mFrame, wor_pos) / tref->mScale;
-			float dv = ygl::dot(loc_pos, ygl::normalize(vec3d{ 0,1,0 }));
-
-			dv += sin(wor_pos.x)*sin(wor_pos.y)*sin(wor_pos.z);
-			return dv*(1.0f / 2.0);
-		};
-		auto base_plane = new vvo_shadered("base_plane", grey_diffuse_no_refl_adv, ftor);
+		auto base_plane = new vvo_sd_plane("base_plane", grey_diffuse_no_refl_adv);
 		auto base_plane_v = new vvo_sd_plane("base_plane_v", grey_diffuse_no_refl_adv);
+		base_plane->set_displacement([](const vec3d& p){
+			auto dv = sin(p.x)*sin(p.y)*sin(p.z);
+			return dv;
+        });
 
         /*
 		auto ftor2 = [](const vec3d& wor_pos,const vec3d& loc_pos, const VNode* tref) {
@@ -607,7 +603,7 @@ namespace vscndef {
 		auto energy_ball = new vop_twist("energy",Y, 5.0f,
 			new vop_union("energy_e", {
 				new vvo_sd_box("ball",sea_material,0.5f),
-				//new vvo_sd_box("ball_em",emissive_dim,0.3f),
+				new vvo_sd_box("ball_em",emissive_dim,0.2f),
 			})
 			);
 		energy_ball->select("energy_e")->set_rotation_degs(45, 0, 0);

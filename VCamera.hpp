@@ -86,7 +86,7 @@ namespace vnx{
         void Setup(const vec2f& resolution);
         void EvalAutoFocus(const VScene& scn,double tmin,double tmax,int nm);
 
-        inline bool RasterInBounds(const vec3d& raster,vec2i& pid) const {
+        inline bool RasterToPixel(const vec3d& raster,vec2i& pid) const {
             pid = vec2i{int(std::round(raster.x)),int(std::round(raster.y))};
             return (pid.x>=0&&pid.x<int(mResolution.x) && pid.y>=0 && pid.y<int(mResolution.y));
         }
@@ -97,7 +97,7 @@ namespace vnx{
 
         inline bool WorldToPixel(const vec3d& world_point,vec2i& pid) const{
             auto rp = WorldToRaster(world_point);
-            return RasterInBounds(rp,pid);
+            return RasterToPixel(rp,pid);
         }
 
         inline VRay RayCast(double x,double y,VRng& rng,const vec2d& uv) const{

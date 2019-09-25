@@ -1926,6 +1926,10 @@ namespace vnx {
 		    return 0.0;
 		}
 
+		inline vec3d eval_ep(const vec3d& p){
+		    return transform_point_inverse(mFrame, p);// / scale;
+		}
+
 		inline void set_translation(const vec3d& a) { mTranslation = a; }
 		inline void set_translation(double x, double y, double z) { mTranslation = { x,y,z }; }
 
@@ -1943,6 +1947,8 @@ namespace vnx {
         inline void set_scale(double s){ if (s <= thrd) { mScale = one3d; return; }  mScale = {s,s,s}; }
 		inline void set_scale(const vec3d& a) { if (min_element(a) <= thrd) { mScale = one3d; return; }  mScale = a; }
 		inline void set_scale(double x, double y, double z) { if (min_element(vec3d{ x,y,z }) <= thrd) { mScale = one3d; return; } mScale = { x,y,z }; }
+
+		inline void set_displacement(displ_ftor ftor){mDisplacement = ftor;}
 
 		VNode* select(const std::string& n) {
 			auto chs = get_childs();
@@ -1979,10 +1985,6 @@ namespace vnx {
 		VMaterial* mMaterial = nullptr;
 
 		~VSdf() {};
-
-		inline vec3d eval_ep(const vec3d& p){
-		    return transform_point_inverse(mFrame, p);// / scale;
-		}
 
 		VSdf(std::string idv):VNode(idv),mMaterial(nullptr){}
 		VSdf(std::string idv,VMaterial* mtl) :VNode(idv),mMaterial(mtl){}

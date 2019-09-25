@@ -35,6 +35,7 @@ struct vop_union : public VSdfOperator {
 
 	inline void eval(const vec3d& p,VResult& res) {
 		if (mChilds.empty()) { return; }
+
 		//ygl::vec3f ep = p;
 		//eval_ep(ep);
 

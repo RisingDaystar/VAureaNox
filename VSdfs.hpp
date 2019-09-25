@@ -59,6 +59,19 @@ using namespace vnx;
 		const vec2d d = max(qv, zero2d)*qv / vv;
 		return sqrt(dot(w, w) - std::max(d.x, d.y)) * sign(std::max(q.y*v.x - q.x*v.y, w.y));
     };
+    inline double sdf3d_roundcone(const vec3d& ep,const vec3d& dims){
+        vec2d q = vec2d{ length(vec2d{ep.x,ep.z}), ep.y };
+
+        float b = (dims.x-dims.y)/dims.z;
+        float a = sqrt(1.0-b*b);
+        float k = dot(q,vec2d{-b,a});
+
+        if( k < 0.0 ) return length(q) - dims.x;
+        if( k > a*dims.z ) return length(q-vec2d{0.0,dims.z}) - dims.y;
+
+        return dot(q, vec2d{a,b} ) - dims.x;
+    };
+
     inline double sdf3d_pyramid4(const vec3d& ep,const vec3d& dims){
         const vec3d d = abs(ep - vec3d{0,-2.0*dims.z,0}) - vec3d{2.0*dims.z,2.0*dims.z,2.0*dims.z};
 		const double bdv = std::min(vnx::max_element<double>(d), 0.0) + ygl::length(max(d, zero3d));
@@ -370,6 +383,25 @@ struct vvo_sd_capped_cone : public VSdf {
 	inline void eval(const vec3d& p,VResult& res) {
         vec3d ep = eval_ep(p);
         const double dv = sdf3d_cappedcone(ep,mDims)+eval_displacement(ep)-mRounding;
+		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
+	}
+};
+
+struct vvo_sd_round_cone : public VSdf {
+	vec3d mDims = one3d;
+	vvo_sd_round_cone(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mDims(one3d) { }
+	vvo_sd_round_cone(std::string ids, VMaterial* mtl, vec3d dims): VSdf(ids,mtl),mDims(dims) {}
+
+	inline void DoRelate(const VMappedEntry* entry){
+	    VNode::DoRelate(entry);
+        mDims = try_strToVec_d(entry->try_get("dims"),mDims);
+	}
+
+	inline const char* Type(){return "vvo_sd_round_cone";}
+
+	inline void eval(const vec3d& p,VResult& res) {
+        vec3d ep = eval_ep(p);
+        const double dv = sdf3d_roundcone(ep,mDims)+eval_displacement(ep)-mRounding;
 		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
 	}
 };

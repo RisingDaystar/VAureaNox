@@ -113,7 +113,7 @@ namespace vnx{
     bool VScene::set_displacement(const std::string idv,displ_ftor ftor){
         auto node = select(idv);
         if (!node) { return false; }
-        node->mDisplacement = ftor;
+        node->set_displacement(ftor);
         return true;
     }
 
@@ -174,9 +174,9 @@ namespace vnx{
                     auto ray = VRay{vre.wor_pos,dir,tmin,tmax};
                     VResult fvre = vre;
                     for (int i=0; i < n_em_e; i++) {
-                        if(i%(n_em_e/10)==0 && verbose) std::cout<<".";
+                        const auto step = std::max(1,n_em_e/10);
+                        if(verbose && i%step==0) std::cout<<".";
                         vre = intersect(ray,n_max_iters);
-                        //if(vre.vdist>0.0) std::cout<<"OLO: "<<i<<"\n";
 
                         if(!vre.isFound() || !vre.isValid()){
                             dir = sample_sphere_direction<double>(rng.next_vecd<2>());
@@ -192,7 +192,7 @@ namespace vnx{
                             //vec3d rn_nor_off = {rn_nor.x,rn_nor.y,rn_nor.z};
                             ray = offsetted_ray(fvre.wor_pos,{},dir,tmin,tmax,dir,tmin);
                             vre = intersect(ray,n_max_iters);
-                            n_em_e++; //reduce math bias
+                            //n_em_e++; //reduce math bias
                             stats.z++;
                         }
 
@@ -323,7 +323,8 @@ namespace vnx{
                     auto ray = VRay{vre.wor_pos,dir,tmin,tmax};
                     VResult fvre = vre;
                     for (int i=0; i < n_em_e; i++) {
-                        if(i%(n_em_e/10)==0 && verbose) std::cout<<".";
+                        const auto step = std::max(1,n_em_e/10);
+                        if(verbose && i%step==0) std::cout<<".";
                         vre = intersect(ray,n_max_iters);
                         //if(vre.vdist>0.0) std::cout<<"OLO: "<<i<<"\n";
 

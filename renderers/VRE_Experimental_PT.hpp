@@ -713,11 +713,12 @@ namespace vnx {
             return 0.0;
         }
 
-        inline vec3d EvalOcclusion_ToCamera(const VScene& scn,const VResult& hit,const VCamera& camera,VRay& to_cam,vec2i& pixel_id){
+        inline vec3d EvalOcclusion_ToCamera(const VScene& scn,const VResult& hit,const VCamera& camera,VRay& to_cam,bool& intersected,vec2i& pixel_id){
             vec3d tr_w = one3d;
             VMaterial occ_mtl;
             VResult occ_hit;
             vec3d occ_normal;
+            intersected = false;
 
             auto max_dist = distance(hit.wor_pos,camera.mOrigin);
 
@@ -726,7 +727,7 @@ namespace vnx {
                 occ_hit = scn.intersect(to_cam,i_max_march_iterations);
 
                 if(!occ_hit.isFound()){
-                    camera.WorldToPixel(hit.wor_pos,pixel_id);
+                    intersected = camera.WorldToPixel(hit.wor_pos,pixel_id);
                     if(poll.is_in_transmissive() && poll.emat.sigma_t()>0.0){
                         tr_w*=exp(-poll.emat.sigma_t_vec()*distance(poll.eres.wor_pos,camera.mOrigin));
                     }
@@ -735,7 +736,7 @@ namespace vnx {
 
                     auto occ_dist = distance(hit.wor_pos,occ_hit.wor_pos);
                     if(occ_dist>max_dist-(f_ray_tmin*2.0)){
-                        camera.WorldToPixel(hit.wor_pos,pixel_id);
+                        intersected = camera.WorldToPixel(hit.wor_pos,pixel_id);
                         if(poll.is_in_transmissive() && poll.emat.sigma_t()>0.0){
                             tr_w*=exp(-poll.emat.sigma_t_vec()*distance(poll.eres.wor_pos,camera.mOrigin));
                         }
@@ -1095,12 +1096,13 @@ namespace vnx {
             VMaterial occ_mtl;
             vec3d tr_w = one3d;
             vec2i pixel_id = zero2<int>;
+            bool intersected = false;
 
             if(vtype==VOLUME){
                 to_cam = in.newOffsetted(hit.wor_pos,dir,dir,in.tmin);//offsetted_ray(hit.wor_pos,in,dir,in.tmin,in.tmax,dir,in.tmin);
                 VRay ray = to_cam;
-                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,ray,pixel_id);
-                if(!pixel_id.x || !pixel_id.y) return;
+                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,ray,intersected,pixel_id);
+                if(!intersected) return;
 
                 bsdf = one3d;
                 bsdf_rev_pdfW = 1.0/(4.0*pid);
@@ -1121,8 +1123,8 @@ namespace vnx {
                 }
 
                 VRay ray = to_cam;
-                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,ray,pixel_id);
-                if(!pixel_id.x || !pixel_id.y) return;
+                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,ray,intersected,pixel_id);
+                if(!intersected) return;
             }
 
 
