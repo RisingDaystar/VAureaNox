@@ -14,7 +14,7 @@ A "Switch" part, responsable for initialization,Pre-render tasks, thread initial
 A "Renderer" part : the selected renderer processes the scene
 
 
-Feauteres a (Still WIP) Bidirectional Pathtracer with MIS since v 0.0.9
+Feauteres a LvcBdpt (Light vertex cache Bidirectional Pathtracer) with MIS since v 0.0.9
 
 Surfaces categorizeable between Conductors and Dielectrics with dedicated Fresnel function (not using Schlick's)
 Microfacet brdf for specular surfaces using GGX
