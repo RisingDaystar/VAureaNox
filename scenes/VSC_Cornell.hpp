@@ -30,7 +30,7 @@ namespace vscndef {
 	void init_cornell_scene(vnx::VScene& scn) {
         scn.camera.mYfov = radians(45.0);
         scn.camera.mOrigin = {0,0.0,14.0};
-        scn.camera.mTarget = {0,0,0};
+        scn.camera.mTarget = {0,0,0.01};
         scn.camera.mUp = {0,1.0,0};
         scn.camera.mAperture = 0.0;
         scn.camera.mFocus = length(scn.camera.mTarget-scn.camera.mOrigin);
@@ -108,6 +108,10 @@ namespace vscndef {
 
         auto cornell_composite_mat = scn.add_material("cornell_composite_mat");
         cornell_composite_mat->kr = {0.8,0.8,0.8};
+        cornell_composite_mat->type = diffuse;
+        cornell_composite_mat->ior = 1.7;
+        cornell_composite_mat->ior_type = non_wl_dependant;
+        cornell_composite_mat->rs = 0.01;
 		auto mtor_e = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
            if(hit.loc_pos.x<=-3.995){mat.kr = {0.0,0.4,0.0};}
            else if(hit.loc_pos.x>=3.995){mat.kr = {0.4,0.0,0.0};}
@@ -115,8 +119,9 @@ namespace vscndef {
                 if(!on_pattern_gradient_oblique(hit.loc_pos,45,1.0)){
                     mat.kr = one3d;
                     mat.rs = 0.03;
-                    mat.ior = 2.2;
+                    mat.ior = 15.2;
                     mat.type = conductor;
+                    mat.ior_type = non_wl_dependant;
                 }
            }
 		};
@@ -145,9 +150,6 @@ namespace vscndef {
                 new vvo_sd_sphere("ball_4",dispersive_material,1.5),
 
 
-
-
-
                 //new vvo_sd_sphere("ball_4",dispersive_material,1.5),
 
 
@@ -170,14 +172,15 @@ namespace vscndef {
 
 
                 new vop_cut("mirror",{0,1,1},{0,0,0},0.1,new vop_onion("mirror_o",0.06,new vvo_sd_sphere("mirror_i",sp_mat))),
+                */
 
-
+                /*
                 new vop_union("box_blend",0.2,{
                     new vvo_sd_box("box2",diff_white,0.5),
                     new vvo_sd_box("box3",diff_white,0.45),
                     new vvo_sd_box("box4",diff_white,0.4),
-                }),
-                */
+                }),*/
+
 
             }),
 

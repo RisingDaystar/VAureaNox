@@ -261,7 +261,7 @@ namespace vnx{
                                 std::vector<VResult>* epoints = &emap[vre.sur->id];
                                 vre._found = true;
                                 epoints->push_back(vre); stats.x++;
-                                //if(verbose) std::cout<<"EM ( light: "<<vre.vsur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
+                                //if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
                             }
                         //}
                     }

@@ -22,35 +22,43 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VAureaNox.hpp"
 
 namespace vnx{
+
 	struct VCamera{
+	    std::vector<VFilm> mFilms;
 
-	    struct VFrameBuffer{
-	        vec2f mResolution;
-            int mScale = 1;
+	    inline void CreateFilms(unsigned int num){
+            for(auto i=0;i<num;i++) mFilms.push_back(VFilm(vec2i{mResolution.x,mResolution.y}));
+	    }
 
-            std::vector<vec3d> mPixels;
+	    inline void SetFilmScale(unsigned int id,double sc){
+            if(id>=mFilms.size()) return;
+            mFilms[id].SetScale(sc);
+	    }
 
-            void HintScale(int sc){if(sc>mScale) mScale = sc;}
+	    inline void SetFilmScaleOnSplat(unsigned int id,bool v){
+            if(id>=mFilms.size()) return;
+            mFilms[id].SetScaleOnSplat(v);
+	    }
 
-            void add(const vec2i& pid,const vec3d& c){
-                if(!(pid.x>=0&&pid.x<int(mResolution.x) && pid.y>=0 && pid.y<int(mResolution.y))) return;
-                auto px = &mPixels[(pid.y*int(mResolution.x))+pid.x];
-                *px += c;
-            }
+        inline void Splat(unsigned int id,const vec2i& pid,const vec3d& cc){
+            if(id>=mFilms.size())return;
+            mFilms[id].Splat(pid,cc);
+        }
 
-            void Create(const vec2f& res){
-                mPixels.resize(res.x*res.y);
-                mResolution = res;
-            }
-
-            void MergeToImg(image3d& img) const{
-                if(img.size.x!=int(mResolution.x) || img.size.y!=int(mResolution.y)) return;
-                for(auto i=0;i<mResolution.x*mResolution.y;i++){
-                    img.pixels[i] += mPixels[i] / (mScale ? double(mScale) : 1.0);
+        inline VImg<double> ToImg() const{
+            VImg<double> img(vec2i{mResolution.x,mResolution.y});
+            for(auto i=0;i<mFilms.size();i++){
+                for(auto pxx=0;pxx<mFilms[i].mResolution.x && pxx<mResolution.x;pxx++){
+                    for(auto pxy=0;pxy<mFilms[i].mResolution.y && pxy<mResolution.y;pxy++){
+                        auto& film = mFilms[i];
+                        if(film.mScaleOnSplat){ img.at(pxx,pxy) += film.at(pxx,pxy).wr;}
+                        else{img.at(pxx,pxy) += film.at(pxx,pxy).wr * film.mScale;}
+                    }
                 }
             }
+            return img;
+        }
 
-	    }mFrameBuffer;
 
         double mFocus = 1.0;
         double mAperture = 0.0;
@@ -77,9 +85,11 @@ namespace vnx{
         mat4d mClipToRaster = identity_mat4d;
 
 
+
         mat4d mCameraToWorld = identity_mat4d;
         mat4d mRasterToWorld = identity_mat4d;
         mat4d mRasterToCamera = identity_mat4d;
+        mat4d mRasterToClip = identity_mat4d;
 
         void Relate(const VMappedEntry* entry);
 
@@ -110,12 +120,13 @@ namespace vnx{
 
             //DOF
             if(mAperture>thrd){
-                double ft = mFocus / normalize(mOrigin).z;
-                auto focal_point = rr.o+rr.d*ft;
-                auto lens_point = ygl::sample_disk_point(rng.next_vecf<2>())*mAperture;
+                double ft = mFocus / rr.d.z;
+                auto focal_point = rr.o+(rr.d*ft);
+                auto lens_point = sample_disk_point(rng.next_vecd<2>())*mAperture;
                 rr.o = vec3d{lens_point.x,lens_point.y,0.0};
                 rr.d = normalize(focal_point-rr.o);
             }
+
 
             rr.o = transform_point(mCameraToWorld, rr.o);
             rr.d = transform_vector(mCameraToWorld, rr.d);

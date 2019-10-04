@@ -10,10 +10,11 @@ i_st_algo : enhanced                ;naive / relaxed / enhanced
 i_normals_algo : tht                ;tht / cnt
 i_eh_precalc_algo : full            ;full / strict
 
-i_image_bpp : 255                ; 2 - 65535
+e_save_format : hdr                ;hdr | ppm
+b_apply_tonemap : true
 
 i_em_evals : 10000
-i_max_march_iterations : 512        ; >0  512 is enough
+i_max_march_iterations : 4096        ; >0  512 is enough
 
 f_ray_tmin : 0.0001f                 ; >0
 f_ray_tmax : 10000.0f               ; >0
@@ -26,11 +27,11 @@ b_start_monitor : true
 </VAureaNox>
 
 <VRE_Experimental_PT>
-i_ray_samples : 32                 ; >0
+i_ray_samples : 512                ; >0
 i_rendering_mode : bidirectional      ;eyetracing | lighttracing | bidirectional
 i_debug_primary : 0               ;0(default) | eyelight | iterations | oversteps | normals
 
-b_no_scatter : false
+b_no_scatter : 0
 b_gather_eye_direct : 1
 b_gather_eye_indirect : 1
 b_gather_eye_vc : 1

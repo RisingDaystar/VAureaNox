@@ -29,9 +29,11 @@ namespace vscndef {
 	void init_pathtracing_scene(vnx::VScene& scn) {
 		scn.id = "pathtracing";
         scn.camera.mYfov = radians(45.0);
-        scn.camera.mOrigin = {0,0.2f,10.0f};
-        scn.camera.mTarget = {0,0,0};
+        scn.camera.mOrigin = {0,1.8,10.0};
+        scn.camera.mTarget = {0,0,0.01};
         scn.camera.mUp = {0,1.0,0};
+        scn.camera.mFocus = length(scn.camera.mTarget-scn.camera.mOrigin);
+        scn.camera.mAutoFocus = true;
         scn.camera.mAperture = 0.0;
 
 
@@ -41,19 +43,19 @@ namespace vscndef {
 
 		auto emissive_dim = scn.add_material("emissive_dim");
 		emissive_dim->e_temp = 6500;
-		emissive_dim->e_power = 200;
+		emissive_dim->e_power = 100;
 
 		auto diffuse_mat = scn.add_material("diffuse");
-		diffuse_mat->type = dielectric;
-		diffuse_mat->kr = vec3d{0.5f,0.5f,0.65f};
+		diffuse_mat->type = diffuse;
+		diffuse_mat->kr = vec3d{0.5,0.5,0.65};
 		diffuse_mat->ior_type = non_wl_dependant;
-		diffuse_mat->ior = 1.5f;
-		diffuse_mat->rs = 0.01f;
+		diffuse_mat->ior = 1.0;
+		diffuse_mat->rs = 1.0;
 		auto mtor = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
 			if (std::abs(sin(hit.loc_pos.x*5)) < 0.07f || std::abs(sin(hit.loc_pos.z*5)) < 0.07f) {
                 mat.type = diffuse;
-                mat.kr = {0.03f,0.03f,0.03f};
-                mat.ior = 1.0f;
+                mat.kr = {0.03,0.03,0.03};
+                mat.ior = 1.0;
             }
 		};
 		diffuse_mat->mutator = mtor;
@@ -83,13 +85,13 @@ namespace vscndef {
 
         auto room = new vop_invert("room",new vvo_sd_box("box",diffuse_mat,60.0f));
         //auto room  = new vvo_sd_box("room",glass,60.0f);
-        auto light = new vvo_sd_sphere("light",emissive,10.0f);
+        auto light = new vvo_sd_sphere("light",emissive,1.0f);
 
-        auto box = new vvo_sd_box("box",diffuse2,{0.5f,2.0f,0.5f});
+        auto box = new vvo_sd_box("occ_box",diffuse2,{0.5f,2.0f,0.5f});
         auto sphere = new vvo_sd_sphere("sphere",metal,1.0f);
         //auto sphere2 = new vvo_sd_sphere("sphere2",glass,1.0f);
         //auto diamond = new vvo_sd_diamond("diamond",carbon_diamond_material);
-        //auto light2 = new vvo_sd_sphere("light2",emissive_dim,0.5f);
+        auto light2 = new vvo_sd_sphere("light2",emissive_dim,0.5f);
         auto slab = new vvo_sd_box("slab",mirror,{1.5f,0.1f,1.5f});
         auto ring = new vop_subtraction("ring",{
             new vvo_sd_cylinder("outer",mirror,{1.3f,0.3f}),
@@ -110,7 +112,7 @@ namespace vscndef {
             slab,
             new vop_union("ring_group",0.0,{ring,ring_pedestal}),
             room,
-            new vvo_sd_box("water",dispersive_material,{10,0.2,100}),
+            //new vvo_sd_box("water",dispersive_material,{10,0.2,100}),
 		});
 		scn.set_root(root);
      /*
@@ -131,8 +133,8 @@ namespace vscndef {
 		scn.set_translation("root",{0,0.0f,0});
 		scn.set_translation("room",{0,60.0f,0});
 
-		scn.set_translation("box",{0,1.8,0});
-		scn.set_rotation_degs("box",{0,45,0});
+		scn.set_translation("occ_box",{0,1.8,0});
+		scn.set_rotation_degs("occ_box",{0,45,0});
 		scn.set_translation("sphere",{2.0,1.0f,0});
 		scn.set_translation("diamond",{-2.0,1.5,0});
 		scn.set_rotation_degs("diamond",{-45,45,0});
@@ -142,7 +144,7 @@ namespace vscndef {
         scn.set_translation("ring",{0.0,0.0,0.0});
         scn.set_translation("ring_group",{2.0,0.0,5.0});
 
-		scn.set_translation("light",{20.0f,30.0,65.0});
+		scn.set_translation("light",{5.0,10.0,-10.0});
 		scn.set_translation("light2",{2.0,1.5f,5.0});
 
 	}

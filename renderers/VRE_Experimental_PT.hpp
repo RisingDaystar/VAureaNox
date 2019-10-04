@@ -25,7 +25,8 @@ namespace vnx {
         /*
         *BDPT MIS documentation and suggested approach from:
         SmallVCM (https://github.com/SmallVCM/SmallVCM/) ,
-        Veach's Thesis,
+        SORT https://agraphicsguy.wordpress.com/2016/01/16/practical-implementation-of-mis-in-bidirectional-path-tracing/ ,
+        Veach's Thesis ,
         Vlnas Thesis (https://cescg.org/wp-content/uploads/2018/04/Vlnas-Bidirectional-Path-Tracing-1.pdf)
         */
 
@@ -115,8 +116,6 @@ namespace vnx {
         bool b_gather_eye_vc = true;
         bool b_gather_to_camera = true;
 
-        double mSamplesQuot = 1;
-
 
         VRE_Experimental_PT(const VFileConfigs& cfgs,std::string section) : VRenderer(cfgs,section) {}
         std::string Type() const {return "ExperimentalPT";}
@@ -176,7 +175,14 @@ namespace vnx {
             else if(useBidirectional()) std::cout<<"**Using Bidirectional\n";
             std::cout<<"**Using "<<i_ray_samples<<" Spp\n\n";
 
-            mSamplesQuot = i_ray_samples;
+            scn.camera.CreateFilms(useBidirectional() ? 2 : 1);
+
+            scn.camera.SetFilmScale(0,1.0/double(i_ray_samples));
+            scn.camera.SetFilmScaleOnSplat(0,true);
+            if(useBidirectional()) {
+                scn.camera.SetFilmScale(1,1.0/double(i_ray_samples));
+                scn.camera.SetFilmScaleOnSplat(1,true);
+            }
         }
 
         std::string ImgAffix(const VScene& scn) const{
@@ -198,7 +204,7 @@ namespace vnx {
             if(type==D_REFRACTED) return   "delta_refracted";
             if(type==D_SPECULAR) return "delta_specular";
             if(type==SPECULAR) return "specular";
-            if(type==REFRACTED) return "refracted";
+            if(type==REFRACTED) return "refracted";\
             if(type==DIFFUSE) return "diffuse";
             return "undefined";
         }
@@ -210,9 +216,17 @@ namespace vnx {
             return "undefined";
         }
 
+        constexpr static bool isDeltaSample(const VSampleType& st){
+            return st == D_SPECULAR || st == D_REFRACTED;
+        }
+
         constexpr static bool isDeltaSample(const VSample& sample){
             const auto st = sample.type;
             return st == D_SPECULAR || st == D_REFRACTED;
+        }
+
+        constexpr static bool isReflectedSample(const VSample& v){
+            return v.type != REFRACTED && v.type != UNSCATTERED && v.type != D_REFRACTED;
         }
 
         template<typename T,int N>
@@ -233,90 +247,160 @@ namespace vnx {
             return v.type==INVALID || isTracingInvalid(v.ray);
         }
 
+
         inline bool useBidirectional() const{return i_rendering_mode==BIDIRECTIONAL;}
         inline bool useEyetracing() const{return i_rendering_mode==EYETRACING;}
         inline bool useLighttracing() const{return i_rendering_mode==LIGHTTRACING;}
 
         inline double lightChoosePdf(const VScene& scn){return scn.emissive_hints.size()==0 ? 0.0 : 1.0 / scn.emissive_hints.size();}
 
-        ///BSDFS
-        void bsdf_lambertian(const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo,double* pdf = nullptr,vec3d* bsdf = nullptr){
-            if(pdf) *pdf=0.0;
-            if(bsdf) *bsdf=zero3d;
 
-            auto ndi = std::max(0.0,dot(normal,wi.d));
-            if(pdf){
-                *pdf = ndi/pid;
-            }
-            if(bsdf) *bsdf = (mtl.kr/pid);
+
+        inline double pdf_lambertian(const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo){
+            return std::max(0.0,dot(normal,wi.d))/pid;
         }
 
-        void bsdf_conductor(const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo,double* pdf = nullptr,vec3d* bsdf = nullptr){
-            if(pdf) *pdf=0.0;
-            if(bsdf) *bsdf=zero3d;
+        inline double pdf_dielectric(const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo){
+            if(mtl.is_delta()){return 0.0;}
 
-            if(mtl.is_delta()){
-                if(pdf) *pdf = 1.0;
-                if(bsdf) *bsdf = mtl.kr;//eval_fresnel_conductor(wo.d,normal,wo.ior,mtl.kr); //TODO: FIXME
-            }else{
-                auto h = normalize(wi.d+wo.d);
-                auto ndh = dot(h,normal);
-                if(pdf){
-                    if(cmpf(ndh,0.0))return;
-                    auto odh = dot(wo.d,h);
-                    if(cmpf(odh,0.0))return;
-                    *pdf = brdf_ggx_pdf(mtl.rs,ndh)/ (4*std::abs(odh));
-                }
+            auto h = normalize(wi.d+wo.d);
+            if(cmpf(h,zero3d)){return 0.0;}
+            auto ndh = dot(h,normal);
+            auto odh = dot(wo.d,h);
 
-                if(bsdf){
-                    auto ndi = dot(normal,wi.d);
-                    auto ndo = dot(normal,wo.d);
+            auto pdf_s = brdf_ggx_pdf(mtl.rs,ndh) / std::abs(ndh);
 
-                    if(ndo*ndi<epsd)return;
-                    auto h = normalize(wi.d+wo.d);
-                    if(cmpf(h,zero3d))return;
-                    auto ndh = dot(normal,h);
-                    auto F = mtl.kr;//eval_fresnel_conductor(wo.d,h,wo.ior,mtl.kr); //TODO: FIXME
-                    *bsdf = (F*(brdf_ggx_DG(mtl.rs,ndi,ndo,ndh)) / (4*std::abs(ndi)*std::abs(ndo)));
-                }
-            }
+            return (pdf_s/ (4.0*std::abs(odh)));
         }
 
-        void bsdf_dielectric(const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo,double* pdf = nullptr,vec3d* bsdf = nullptr){
-            if(pdf) *pdf=0.0;
-            if(bsdf) *bsdf=zero3d;
+        inline double pdf_conductor(const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo){
+            if(mtl.is_delta()){return 0.0;}
 
-            auto ndi = dot(normal,wi.d);
             auto h = normalize(wi.d+wo.d);
             auto ndh = dot(h,normal);
-            if(pdf){
-                *pdf =0.5*(std::abs(ndi)/pid);
-                if(cmpf(ndh,0.0)){*pdf=0.0;return;}
-                auto odh = dot(wo.d,h);
-                if(cmpf(odh,0.0)){*pdf=0.0;return;}
-
-                auto d = (brdf_ggx_pdf(mtl.rs,ndh));
-                *pdf += 0.5 * (d / (4*std::abs(odh)));
-            }
-
-            if(bsdf){
-                auto ior = mtl.eval_ior(wo.owl,f_min_wl,f_max_wl,true);
-                auto F = eval_fresnel_dielectric(-wo.d,normal,wo.ior,ior);
-                auto ndo = dot(normal,wo.d);
-                auto hdi = dot(h,wi.d);
-
-
-                auto fd90 = (0.5+(2*hdi*hdi))*mtl.rs;
-                auto m1_ndi5 = std::pow((1.0-std::abs(ndi)),5.0);
-                auto m1_ndo5 = std::pow((1.0-std::abs(ndo)),5.0);
-                *bsdf = (mtl.kr/pid)*(1.0+(fd90-1.0)*m1_ndi5)*(1.0+(fd90-1.0)*m1_ndo5)*(one3d-F);
-
-                if(cmpf(ndh,0.0)){*bsdf=zero3d;return;}
-                *bsdf+=brdf_ggx_D(mtl.rs,ndh) / (4.0 * std::abs(dot(wi.d, h)) * std::max(std::abs(ndi), std::abs(ndo))) * F;
-            }
+            if(cmpf(ndh,0.0))return 0.0;
+            auto odh = dot(wo.d,h);
+            if(cmpf(odh,0.0))return 0.0;
+            return brdf_ggx_pdf(mtl.rs,ndh)/ (4*std::abs(odh));
         }
 
-        ///
+
+        inline vec3d bsdf_lambertian(const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo){
+            return (mtl.kr/pid);
+        }
+
+        inline vec3d bsdf_conductor(const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo){
+            auto ndi = dot(normal,wi.d);
+            auto ndo = dot(normal,wo.d);
+
+            if(ndo*ndi<epsd)return zero3d;
+            auto h = normalize(wi.d+wo.d);
+            if(cmpf(h,zero3d))return zero3d;
+            auto ndh = dot(normal,h);
+            auto F = mtl.kr*eval_fresnel_conductor(wo.d,h,wo.ior,toVec<double,3>(mtl.eval_ior(wo.owl,f_min_wl,f_max_wl)));
+            return (F*(brdf_ggx_DG(mtl.rs,ndi,ndo,ndh)) / (4*std::abs(ndi)*std::abs(ndo)));
+        }
+
+        inline vec3d bsdf_diel_diffuse(const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo){
+
+            auto h = wi.d+wo.d;
+            if(cmpf(h,zero3d)){return zero3d;}
+            h = normalize(h);
+            auto hdi = adot(h,wi.d);
+
+            auto ndi = adot(normal,wi.d);
+            auto ndo = adot(normal,wo.d);
+
+            auto fd90 = (0.5+(2*hdi*hdi))*mtl.rs;
+            auto m1_ndi5 = fsipow((1.0-std::abs(ndi)),5);
+            auto m1_ndo5 = fsipow((1.0-std::abs(ndo)),5);
+            return (mtl.kr/pid)*(1.0+(fd90-1.0)*m1_ndi5)*(1.0+(fd90-1.0)*m1_ndo5);
+        }
+
+        inline vec3d bsdf_diel_specular(const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo){
+            auto ndi = adot(normal,wi.d);
+            auto ndo = adot(normal,wo.d);
+
+            auto h = wi.d+wo.d;
+            if(cmpf(h,zero3d)){return zero3d;}
+            h = normalize(h);
+            auto hdi = adot(h,wi.d);
+            auto ndh = dot(h,normal);
+            auto bsdf = one3d*(brdf_ggx_DG(mtl.rs,ndi,ndo,ndh)) / (4.0* std::max(std::abs(ndi), std::abs(ndo))*hdi);//brdf_ggx_D(mtl.rs,ndh) / (4.0 * std::abs(dot(wi.d, h)) * std::max(std::abs(ndi), std::abs(ndo))) * F;
+            return bsdf;
+        }
+
+
+
+        inline VSampleType EvalDirectSample(VRng& rng,const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo,vec3d& bsdf,double* pdf = nullptr,double* rev_pdf = nullptr){
+            if(mtl.is_delta()){
+                bsdf = zero3d;
+                if(pdf) *pdf = 0.0;
+                if(rev_pdf) *rev_pdf = 0.0;
+                return INVALID;
+            }
+
+            if(mtl.is_diffuse()){
+                bsdf = bsdf_lambertian(mtl,normal,wi,wo);
+                if(pdf) *pdf = pdf_lambertian(mtl,normal,wi,wo);
+                if(rev_pdf) *rev_pdf = pdf_lambertian(mtl,normal,wo,wi);
+                return DIFFUSE;
+            }
+
+            if(mtl.is_dielectric()){
+                auto mtl_ior = mtl.eval_ior(wo.owl,f_min_wl,f_max_wl);
+                auto F = eval_fresnel_dielectric(-wo.d,normal,wo.ior,mtl_ior);
+
+                if(rng.next_double()>F || mtl.rs<thrd){ //sample only non delta
+                    auto wo_r = wo;
+                    auto wi_r = wi;
+                    wo_r.d = -vnx::refract(-wo.d,normal,wo.ior,mtl_ior);//it incomes refracted after scattering trough "glossy layer" (need to flip later, since bsdf calc expects outgoing)
+                    wi_r.d = -vnx::refract(-wi.d,normal,wi.ior,mtl_ior);//calc incoming refracted from wi
+
+                    auto exit_fr = eval_fresnel_dielectric(wi_r.d,normal,wo_r.ior,mtl_ior); //eval exiting ior, based on reversed refracted wi ray (to calc adequate pdf)
+                    /*
+                    if(cmpf(exit_fr,1.0)){
+                        while(cmpf(exit_fr,1.0)){ //ACOUNT FOR TIR
+                            wo_r.d = vnx::reflect(wi.d,-normal);
+                            wi.d = sample_diffuse(rng.next_vecd<2>(),-wo_r.d,normal);
+                            exit_fr = eval_fresnel_dielectric(wi.d,normal,wo.ior,mtl_ior);
+                            if(rng.next_double()>0.95) break;
+                        }
+                    }
+                    */
+                    if(cmpf(exit_fr,1.0)){ //TIR
+                        bsdf = zero3d;
+                        if(pdf) *pdf = 0.0;
+                        if(rev_pdf) *rev_pdf = 0.0;
+                    }else{
+                        bsdf = (bsdf_diel_diffuse(mtl,normal,wi_r,wo_r)*(1.0-F))+(bsdf_diel_specular(mtl,normal,wi,-wi_r)*(1.0-exit_fr));
+                        if(pdf) *pdf = (pdf_lambertian(mtl,normal,wi_r,wo_r)+pdf_dielectric(mtl,normal,wi,-wi_r))*(1.0-F);
+                        if(rev_pdf) *rev_pdf = (pdf_lambertian(mtl,normal,wo_r,wi_r)+pdf_dielectric(mtl,normal,-wi_r,wi))*(1.0-F);
+                    }
+                    return DIFFUSE;
+                }else{
+                    if(mtl.rs>thrd){
+                        bsdf = bsdf_diel_specular(mtl,normal,wi,wo)*F;
+                        if(pdf) *pdf = pdf_dielectric(mtl,normal,wi,wo)*F;
+                        if(rev_pdf) *rev_pdf = pdf_dielectric(mtl,normal,wo,wi)*F;
+                        return SPECULAR;
+                    }else{
+                        if(pdf) *pdf = 0.0;
+                        if(rev_pdf) *rev_pdf = 0.0;
+                        return D_SPECULAR;
+                    }
+                }
+            }
+
+            if(mtl.is_conductor()){
+                bsdf = bsdf_conductor(mtl,normal,wi,wo);
+                if(pdf) *pdf = pdf_conductor(mtl,normal,wi,wo);
+                if(rev_pdf) *rev_pdf = pdf_conductor(mtl,normal,wo,wi);
+                return DIFFUSE;
+            }
+
+            return INVALID;
+        }
 
         /////////RAY INITS
         inline void InitRay(VRng& rng,VRay& ray){
@@ -330,21 +414,24 @@ namespace vnx {
             InitRay(rng,ray);
         }
 
-        inline void InitEyePath(const VScene& scn,const VCamera& camera,const VRay& ray,VVertex& evert){
+        inline bool InitEyePath(const VScene& scn,const VCamera& camera,const VRay& ray,int lps,VVertex& evert){
 
 
             evert.wi = ray;
             evert.wo = -ray;
 
             if(useBidirectional()){
-                const double cosAtCam = dot(camera.mForward,-ray.d);
+                const double cosAtCam = dot(camera.mForward,ray.d);
+                if(cosAtCam<=0.0) return false;
+
                 const double iptcd = camera.mImagePlaneDist /  cosAtCam;
                 const double itsaf = fsipow(iptcd,2)  / cosAtCam;
                 evert.vc = 0.0;
-                evert.vcm = 1.0  / itsaf;
+                evert.vcm = double(camera.mNumPixels)  / itsaf;
             }
 
             evert.weight = one3d;
+            return true;
         }
 
         inline bool InitLightPath(const VScene& scn,VRng& rng,VVertex& lvert,VMaterial& mtl){
@@ -455,10 +542,9 @@ namespace vnx {
 
             if constexpr(upray){
                 if(ev.vdist<0.0) {
-                    update_ray_physics(ray,evmat.eval_ior(ray.owl,f_min_wl,f_max_wl,true));
+                    update_ray_physics(ray,evmat.eval_ior(ray.owl,f_min_wl,f_max_wl));
                     //SELLMEIER NEEDS VACUUM Wavelength !! : ray.owl;
-                }
-                else update_ray_physics(ray,1.0);
+                }else update_ray_physics(ray,1.0);
             }
             return {ev,evmat};
 		}
@@ -467,32 +553,30 @@ namespace vnx {
             return blackbody_planks_law_wl_normalized(t,KC / ray.ior,ray.owl)*pwr;
 		}
 
-        inline VSample SampleBsdf_transmissive(const VScene& scn,VRng& rng,const VResult& hit,const VMaterial& mtl,const vec3d& normal,const VRay& wo,VSdfPoll& poll,VTransportMode transport_mode,double& cosOut,double* pdf = nullptr,vec3d* bsdf = nullptr){
-            bool outside = dot(wo.d,normal) >= 0;
+        inline VSample SampleBsdf_transmissive(const VScene& scn,VRng& rng,const VResult& hit,const VMaterial& mtl,const vec3d& normal,const VRay& in,VSdfPoll& poll,VTransportMode transport_mode,double& cosOut,double* pdf = nullptr,vec3d* bsdf = nullptr,double* rev_pdf = nullptr){
+            bool outside = dot(in.d,normal) >= 0;
             vec3d offAlong = outside ? -normal : normal;
 
-            auto poll_ray = wo.newOffsetted(hit.wor_pos,normal,normal,hit.dist);//offsetted_ray(hit.wor_pos,wo,normal,wo.tmin,wo.tmax,normal,hit.dist);
+            auto poll_ray = in.newOffsetted(hit.wor_pos,normal,normal,hit.dist);//offsetted_ray(hit.wor_pos,wo,normal,wo.tmin,wo.tmax,normal,hit.dist);
             auto vpoll = PollVolume(scn,poll_ray);
             if(vpoll.is_stuck())return {};
             auto etai = poll_ray.ior;
 
-            poll_ray =  wo.newOffsetted(hit.wor_pos,-normal,-normal,hit.dist);//offsetted_ray(hit.wor_pos,wo,-normal,wo.tmin,wo.tmax,-normal,hit.dist);
+            poll_ray =  in.newOffsetted(hit.wor_pos,-normal,-normal,hit.dist);//offsetted_ray(hit.wor_pos,wo,-normal,wo.tmin,wo.tmax,-normal,hit.dist);
             vpoll = PollVolume(scn,poll_ray);
             if(vpoll.is_stuck())return {};
             auto etat = poll_ray.ior;
 
 
-
-
-            double F = eval_fresnel_dielectric(-wo.d,normal,etai,etat);
+            double F = eval_fresnel_dielectric(-in.d,normal,etai,etat);
 
 
             if(cmpf(F,0.0)){
-                auto refr_dir = vnx::refract<true>(-wo.d,normal,etai,etat);
-                auto wi = wo.newOffsetted(hit.wor_pos,refr_dir,offAlong,hit.dist);//offsetted_ray(hit.wor_pos,wo,refr_dir,wo.tmin,wo.tmax,offAlong,hit.dist);
-                if(same_hemisphere(normal,wo,wi)) return VSample{D_REFRACTED,{}};
+                auto refr_dir = vnx::refract<true>(-in.d,normal,etai,etat);
+                auto out = in.newOffsetted(hit.wor_pos,refr_dir,offAlong,hit.dist);//offsetted_ray(hit.wor_pos,wo,refr_dir,wo.tmin,wo.tmax,offAlong,hit.dist);
+                if(same_hemisphere(normal,in,out)) return VSample{D_REFRACTED,{}};
 
-                poll = PollVolume(scn,wi);
+                poll = PollVolume(scn,out);
                 if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck in "<<toString(poll.emat.type)<<" after event : "<<toString(D_REFRACTED)<<" for "<<toString(mtl.type)<<" material \n";} return {};}
 
                 if(pdf) *pdf = 1.0;
@@ -504,34 +588,35 @@ namespace vnx {
                     }
                 }
 
-                if(transport_mode==RADIANCE) cosOut = adot(normal,wi.d);
-                else cosOut = adot(normal,wo.d);
-                return VSample{D_REFRACTED,wi};
+                if(transport_mode==RADIANCE) cosOut = adot(normal,out.d);
+                else cosOut = adot(normal,in.d);
+                return VSample{D_REFRACTED,out};
             }else if(cmpf(F,1.0)){
-                auto refl_dir = vnx::reflect(-wo.d,normal); //outside ? normal : -normal
-                auto wi = wo.newOffsetted(hit.wor_pos,refl_dir,-offAlong,hit.dist);//offsetted_ray(hit.wor_pos,wo,refl_dir,wo.tmin,wo.tmax,-offAlong,hit.dist);
-                if(!same_hemisphere(normal,wo,wi)) return VSample{D_SPECULAR,{}};
+                auto refl_dir = vnx::reflect(-in.d,normal); //outside ? normal : -normal
+                auto out = in.newOffsetted(hit.wor_pos,refl_dir,-offAlong,hit.dist);//offsetted_ray(hit.wor_pos,wo,refl_dir,wo.tmin,wo.tmax,-offAlong,hit.dist);
+                if(!same_hemisphere(normal,in,out)) return VSample{D_SPECULAR,{}};
 
-                poll = PollVolume(scn,wi);
+                poll = PollVolume(scn,out);
                 if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck in "<<toString(poll.emat.type)<<" after event : "<<toString(D_SPECULAR)<<" for "<<toString(mtl.type)<<" material \n";} return {};}
 
                 if(pdf) *pdf = 1.0;
+                if(rev_pdf) *rev_pdf = 1.0;
                 if(bsdf) *bsdf = toVec<double,3>(F);
 
-                if(transport_mode==RADIANCE) cosOut = adot(normal,wi.d);
-                else cosOut = adot(normal,wo.d);
-                return VSample{D_SPECULAR,wi};
+                if(transport_mode==RADIANCE) cosOut = adot(normal,out.d);
+                else cosOut = adot(normal,in.d);
+                return VSample{D_SPECULAR,out};
             }else{
-                const double rv = F;
-                if(rng.next_double()>rv){
-                    auto refr_dir = vnx::refract<true>(-wo.d,normal,etai,etat);
-                    auto wi = wo.newOffsetted(hit.wor_pos,refr_dir,offAlong,hit.dist);//offsetted_ray(hit.wor_pos,wo,refr_dir,wo.tmin,wo.tmax,offAlong,hit.dist);
-                    if(same_hemisphere(normal,wo,wi)) return VSample{D_REFRACTED,{}};
+                if(rng.next_double()>F){
+                    auto refr_dir = vnx::refract<true>(-in.d,normal,etai,etat);
+                    auto out = in.newOffsetted(hit.wor_pos,refr_dir,offAlong,hit.dist);//offsetted_ray(hit.wor_pos,wo,refr_dir,wo.tmin,wo.tmax,offAlong,hit.dist);
+                    if(same_hemisphere(normal,in,out)) return VSample{D_REFRACTED,{}};
 
-                    poll = PollVolume(scn,wi);
+                    poll = PollVolume(scn,out);
                     if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck in "<<toString(poll.emat.type)<<" after event : "<<toString(D_REFRACTED)<<" for "<<toString(mtl.type)<<" material \n";} return {};}
 
-                    if(pdf) *pdf = (1.0-rv);
+                    if(pdf) *pdf = (1.0-F);
+                    if(rev_pdf) *rev_pdf = (1.0-F);
                     if(bsdf) {
                         *bsdf = (one3d-F);
                         if(transport_mode==RADIANCE) {
@@ -540,30 +625,32 @@ namespace vnx {
                         }
                     }
 
-                    if(transport_mode==RADIANCE) cosOut = adot(normal,wi.d);
-                    else cosOut = adot(normal,wo.d);
-                    return VSample{D_REFRACTED,wi};
+                    if(transport_mode==RADIANCE) cosOut = adot(normal,out.d);
+                    else cosOut = adot(normal,in.d);
+                    return VSample{D_REFRACTED,out};
                 }else{
-                    auto refl_dir = vnx::reflect(-wo.d,normal); //outside ? normal : -normal
-                    auto wi = wo.newOffsetted(hit.wor_pos,refl_dir,-offAlong,hit.dist);//offsetted_ray(hit.wor_pos,wo,refl_dir,wo.tmin,wo.tmax,-offAlong,hit.dist);
-                    if(!same_hemisphere(normal,wo,wi)) return VSample{D_SPECULAR,{}};
+                    auto refl_dir = vnx::reflect(-in.d,normal); //outside ? normal : -normal
+                    auto out = in.newOffsetted(hit.wor_pos,refl_dir,-offAlong,hit.dist);//offsetted_ray(hit.wor_pos,wo,refl_dir,wo.tmin,wo.tmax,-offAlong,hit.dist);
+                    if(!same_hemisphere(normal,in,out)) return VSample{D_SPECULAR,{}};
 
-                    poll = PollVolume(scn,wi);
+                    poll = PollVolume(scn,out);
                     if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck in "<<toString(poll.emat.type)<<" after event : "<<toString(D_SPECULAR)<<" for "<<toString(mtl.type)<<" material \n";} return {};}
 
-                    if(pdf) *pdf = rv;
+                    if(pdf) *pdf = F;
+                    if(rev_pdf) *rev_pdf = F;
                     if(bsdf) *bsdf = toVec<double,3>(F);
 
-                    if(transport_mode==RADIANCE) cosOut = adot(normal,wi.d);
-                    else cosOut = adot(normal,wo.d);
-                    return VSample{D_SPECULAR,wi};
+                    if(transport_mode==RADIANCE) cosOut = adot(normal,out.d);
+                    else cosOut = adot(normal,in.d);
+                    return VSample{D_SPECULAR,out};
                 }
             }
             return {};
         }
 
-        inline VSample SampleBsdf(const VScene& scn,VRng& rng,VVertex& vertex,const VRay& wo,VSdfPoll& poll,VTransportMode transport_mode,double& cosOut,double* pdf = nullptr,vec3d* bsdf = nullptr){
+        inline VSample SampleBsdf(const VScene& scn,VRng& rng,VVertex& vertex,const VRay& in,VSdfPoll& poll,VTransportMode transport_mode,double& cosOut,double* pdf = nullptr,vec3d* bsdf = nullptr,double* rev_pdf = nullptr){
             if(pdf)*pdf=0.0;
+            if(rev_pdf)*rev_pdf=0.0;
             if(bsdf)*bsdf=zero3d;
 
 
@@ -573,172 +660,210 @@ namespace vnx {
 
             if(mtl.is_transmissive()){
                 if(mtl.is_delta()){
-                    return SampleBsdf_transmissive(scn,rng,hit,mtl,normal,wo,poll,transport_mode,cosOut,pdf,bsdf);
+                    return SampleBsdf_transmissive(scn,rng,hit,mtl,normal,in,poll,transport_mode,cosOut,pdf,bsdf,rev_pdf);
                 }else{
                     //ROUGH TRANSMISSION
                 }
             }else if(mtl.is_conductor()){
                 if(mtl.is_delta()){
-                    VRay wi = wo.newOffsetted(hit.wor_pos,vnx::reflect(-wo.d,normal),normal,hit.dist);//offsetted_ray(hit.wor_pos,wo,ygl::reflect(wo.d,normal),wo.tmin,wo.tmax,normal,hit.dist);
-                    if(!same_hemisphere(normal,wo,wi)) return VSample{D_SPECULAR,{}};
+                    VRay out = in.newOffsetted(hit.wor_pos,vnx::reflect(-in.d,normal),normal,hit.dist);//offsetted_ray(hit.wor_pos,wo,ygl::reflect(wo.d,normal),wo.tmin,wo.tmax,normal,hit.dist);
+                    if(!same_hemisphere(normal,in,out)) return VSample{D_SPECULAR,{}};
 
-                    poll = PollVolume(scn,wi);
+                    poll = PollVolume(scn,out);
                     if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck after : "<<toString(D_SPECULAR)<<" - "<<toString(mtl.type)<<"\n";} return {};}
 
                     if (transport_mode==RADIANCE) {
-                        bsdf_conductor(mtl,normal,wi,wo,pdf,bsdf);
-                        cosOut = adot(normal,wi.d);
+                        cosOut = adot(normal,out.d);
                     }else {
-                        bsdf_conductor(mtl,normal,wo,wi,pdf,bsdf);
-                        cosOut = adot(normal,wo.d);
+                        cosOut = adot(normal,in.d);
                     }
 
-                    return VSample{D_SPECULAR,wi}; //PERFECT SPECULAR
-                }else{
-                    VRay wi = wo.newOffsetted(hit.wor_pos,vnx::reflect(-wo.d,sample_ggx(rng.next_vecd<2>(),wo.d,normal,mtl.rs)),normal,hit.dist);//offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,sample_ggx(ygl::get_random_vec2f(rng),wo.d,normal,mtl.rs)), wo.tmin, wo.tmax, normal, hit.dist);
-                    if(!same_hemisphere(normal,wo,wi)) return VSample{SPECULAR,{}};
+                    if(bsdf) *bsdf = mtl.kr;
+                    if(pdf) *pdf = 1.0;
+                    if(rev_pdf) *rev_pdf = 1.0;
 
-                    poll = PollVolume(scn,wi);
+                    return VSample{D_SPECULAR,out}; //PERFECT SPECULAR
+                }else{
+                    VRay out = in.newOffsetted(hit.wor_pos,vnx::reflect(-in.d,sample_ggx(rng.next_vecd<2>(),in.d,normal,mtl.rs)),normal,hit.dist);//offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,sample_ggx(ygl::get_random_vec2f(rng),wo.d,normal,mtl.rs)), wo.tmin, wo.tmax, normal, hit.dist);
+                    if(!same_hemisphere(normal,in,out)) return VSample{SPECULAR,{}};
+
+                    poll = PollVolume(scn,out);
                     if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck after : "<<toString(SPECULAR)<<" - "<<toString(mtl.type)<<"\n";} return {};}
 
                     if (transport_mode==RADIANCE) {
-                        bsdf_conductor(mtl,normal,wi,wo,pdf,bsdf);
-                        cosOut = adot(normal,wi.d);
+                        if(bsdf) *bsdf = bsdf_conductor(mtl,normal,out,in);
+                        if(pdf) *pdf = pdf_conductor(mtl,normal,out,in);
+                        if(rev_pdf) *rev_pdf = pdf_conductor(mtl,normal,in,out);
+                        cosOut = adot(normal,out.d);
                     }else {
-                        bsdf_conductor(mtl,normal,wo,wi,pdf,bsdf);
-                        cosOut = adot(normal,wo.d);
+                        if(bsdf) *bsdf = bsdf_conductor(mtl,normal,in,out);
+                        if(pdf) *pdf = pdf_conductor(mtl,normal,in,out);
+                        if(rev_pdf) *rev_pdf = pdf_conductor(mtl,normal,out,in);
+                        cosOut = adot(normal,in.d);
                     }
 
-                    return VSample{SPECULAR,wi}; //ROUGH SPECULAR
+                    return VSample{SPECULAR,out}; //ROUGH SPECULAR
                 }
             }else if(mtl.is_dielectric()){
-                    auto rr = rng.next_double();
-                    VRay wi;
-                    VSample sample;
-                    if(rr<0.5){
-                        auto rn = rng.next_vecd<2>();
-                        auto offAlong = normal;//dot(wo.d,n)>=0 ? n : -n;
-                        wi = wo.newOffsetted(hit.wor_pos,sample_diffuse_cos(rn,wo.d,normal),offAlong,hit.dist);//offsetted_ray(hit.wor_pos, wo, sample_diffuse_cos(rn,wo.d,normal), wo.tmin, wo.tmax, offAlong, hit.dist);
-                        if(!same_hemisphere(normal,wo,wi)) return VSample{DIFFUSE,{}};
-                        poll = PollVolume(scn,wi);
-                        if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck after : "<<toString(DIFFUSE)<<" - "<<toString(mtl.type)<<"\n";} return {};}
+                VRay out;
+                VSample sample;
 
-                        sample = VSample{DIFFUSE,wi};
+                auto mtl_ior = mtl.eval_ior(in.ior,f_min_wl,f_max_wl);
+                auto F = eval_fresnel_dielectric(-in.d,normal,in.ior,mtl_ior);
+                auto in_r = in;
+                VRay out_r;
+
+
+                if(rng.next_double()>F){
+                    auto rn = rng.next_vecd<2>();
+                    auto offAlong = normal;//dot(wo.d,n)>=0 ? n : -n;
+                    in_r.d = -vnx::refract(-in.d,normal,in.ior,mtl_ior); //calculating refracted ray trough glossy layer
+
+                    out = in.newOffsetted(hit.wor_pos,sample_diffuse_cos(rn,in.d,normal),offAlong,hit.dist);//offsetted_ray(hit.wor_pos, wo, sample_diffuse_cos(rn,wo.d,normal), wo.tmin, wo.tmax, offAlong, hit.dist);
+                    if(!same_hemisphere(normal,in,out)) return VSample{DIFFUSE,{}};
+                    out_r = out;
+                    out_r.d = vnx::refract(out.d,normal,in_r.ior,mtl_ior);
+
+
+
+                    poll = PollVolume(scn,out);
+                    if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck after : "<<toString(DIFFUSE)<<" - "<<toString(mtl.type)<<"\n";} return {};}
+
+                    sample = VSample{DIFFUSE,out};
+                }else{
+                    auto rn = rng.next_vecd<2>();
+                    auto offAlong = normal;//dot(wo.d,n)>=0 ? n : -n;
+                    out = in.newOffsetted(hit.wor_pos,vnx::reflect(-in.d,mtl.rs>thrd ? sample_ggx(rn,in.d,normal,mtl.rs) : normal),offAlong,hit.dist);//offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,sample_ggx(rn,wo.d,normal,mtl.rs)), wo.tmin, wo.tmax, offAlong, hit.dist);
+                    if(!same_hemisphere(normal,in,out)) return VSample{mtl.rs>thrd ?SPECULAR : D_SPECULAR,{}};
+
+                    out_r = out;
+
+                    poll = PollVolume(scn,out);
+                    if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck after : "<<toString(mtl.rs>thrd ? SPECULAR : D_SPECULAR)<<" - "<<toString(mtl.type)<<"\n";} return {};}
+
+                    sample = VSample{mtl.rs>thrd ?SPECULAR : D_SPECULAR,out};
+                }
+
+                if (transport_mode==RADIANCE) {
+                    if(sample.type == D_SPECULAR){
+                        if(bsdf) *bsdf = mtl.kr*F;
+                        if(pdf) *pdf = F;
+                        if(rev_pdf) *rev_pdf = F;
+                    }else if(sample.type == SPECULAR){
+                        if(bsdf) *bsdf = bsdf_diel_specular(mtl,normal,out,in)*F;
+                        if(pdf) *pdf = pdf_dielectric(mtl,normal,out,in)*F;
+                        if(rev_pdf) *rev_pdf = pdf_dielectric(mtl,normal,in,out)*F;
                     }else{
-                        auto rn = rng.next_vecd<2>();
-                        auto offAlong = normal;//dot(wo.d,n)>=0 ? n : -n;
-                        wi = wo.newOffsetted(hit.wor_pos,vnx::reflect(-wo.d,sample_ggx(rn,wo.d,normal,mtl.rs)),offAlong,hit.dist);//offsetted_ray(hit.wor_pos, wo, ygl::reflect(wo.d,sample_ggx(rn,wo.d,normal,mtl.rs)), wo.tmin, wo.tmax, offAlong, hit.dist);
-                        if(!same_hemisphere(normal,wo,wi)) return VSample{SPECULAR,{}};
-
-                        poll = PollVolume(scn,wi);
-                        if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck after : "<<toString(SPECULAR)<<" - "<<toString(mtl.type)<<"\n";} return {};}
-
-                        sample = VSample{SPECULAR,wi};
+                        auto exit_fr = eval_fresnel_dielectric(-out.d,normal,in_r.ior,mtl_ior);
+                        if(cmpf(exit_fr,1.0)){
+                            if(bsdf) *bsdf = zero3d;
+                            if(pdf) *pdf = 0.0;
+                            if(rev_pdf) *rev_pdf = 0.0;
+                        }else{
+                            if(bsdf) *bsdf = (bsdf_diel_diffuse(mtl,normal,out,in_r)*(1.0-F))+(bsdf_diel_specular(mtl,normal,out_r,-out)*(1.0-exit_fr)); //account for glossy layer fresnel in exit
+                            if(pdf) *pdf = (pdf_lambertian(mtl,normal,out,in_r)+pdf_dielectric(mtl,normal,out_r,-out))*(1.0-F);
+                            if(rev_pdf) *rev_pdf = (pdf_lambertian(mtl,normal,in_r,out)+pdf_dielectric(mtl,normal,-out,out_r))*(1.0-F);
+                            out = out_r;
+                        }
                     }
 
-                    if (transport_mode==RADIANCE) {
-                        bsdf_dielectric(mtl,normal,wi,wo,pdf,bsdf);
-                        cosOut = adot(normal,wi.d);
-                    }else {
-                        bsdf_dielectric(mtl,normal,wo,wi,pdf,bsdf);
-                        cosOut = adot(normal,wo.d);
+                    cosOut = adot(normal,out.d);
+                }else {
+                    if(sample.type == D_SPECULAR){
+                        if(bsdf) *bsdf = mtl.kr*F;
+                        if(pdf) *pdf = F;
+                        if(rev_pdf) *rev_pdf = F;
+                    }else if(sample.type == SPECULAR){
+                        if(bsdf) *bsdf = bsdf_diel_specular(mtl,normal,in,out)*F;
+                        if(pdf) *pdf = pdf_dielectric(mtl,normal,in,out)*F;
+                        if(rev_pdf) *rev_pdf = pdf_dielectric(mtl,normal,out,in)*F;
+                    }else{
+                        auto exit_fr = eval_fresnel_dielectric(-out.d,normal,in_r.ior,mtl_ior);
+                        if(cmpf(exit_fr,1.0)){
+                            if(bsdf) *bsdf = zero3d;
+                            if(pdf) *pdf = 0.0;
+                            if(rev_pdf) *rev_pdf = 0.0;
+                        }else{
+                            if(bsdf) *bsdf = (bsdf_diel_diffuse(mtl,normal,in_r,out)*(1.0-F))*(bsdf_diel_specular(mtl,normal,-out,out_r)*(1.0-exit_fr)); //account for glossy layer fresnel in exit
+                            if(pdf) *pdf = (pdf_lambertian(mtl,normal,in_r,out)*pdf_dielectric(mtl,normal,-out,out_r))*(1.0-F);
+                            if(rev_pdf) *rev_pdf = (pdf_lambertian(mtl,normal,out,in_r)*pdf_dielectric(mtl,normal,out_r,-out))*(1.0-F);
+                            out = out_r;
+                        }
                     }
 
-                    return sample;
+                    cosOut = adot(normal,in.d);
+                }
+
+                return sample;
             }else if(mtl.is_diffuse()){
-                VRay wi = wo.newOffsetted(hit.wor_pos,sample_diffuse_cos(rng.next_vecd<2>(),wo.d,normal),normal,hit.dist);//offsetted_ray(hit.wor_pos,wo,sample_diffuse_cos(ygl::get_random_vec2f(rng),wo.d,normal),wo.tmin,wo.tmax,normal,hit.dist);
-                if(!same_hemisphere(normal,wo,wi)) return VSample{DIFFUSE,{}};
-                poll = PollVolume(scn,wi);
+                VRay out = in.newOffsetted(hit.wor_pos,sample_diffuse_cos(rng.next_vecd<2>(),in.d,normal),normal,hit.dist);//offsetted_ray(hit.wor_pos,wo,sample_diffuse_cos(ygl::get_random_vec2f(rng),wo.d,normal),wo.tmin,wo.tmax,normal,hit.dist);
+                if(!same_hemisphere(normal,in,out)) return VSample{DIFFUSE,{}};
+                poll = PollVolume(scn,out);
                 if(poll.is_stuck()){if(mStatus.bDebugMode){std::cout<<"SampleBsdf: Ray is stuck after : "<<toString(DIFFUSE)<<" - "<<toString(mtl.type)<<"\n";} return {};}
 
                 if (transport_mode==RADIANCE) {
-                    bsdf_lambertian(mtl,normal,wi,wo,pdf,bsdf);
-                    cosOut = adot(normal,wi.d);
+                    if(bsdf) *bsdf = bsdf_lambertian(mtl,normal,out,in);
+                    if(pdf) *pdf = pdf_lambertian(mtl,normal,out,in);
+                    if(rev_pdf) *rev_pdf = pdf_lambertian(mtl,normal,in,out);
+                    cosOut = adot(normal,out.d);
                 }else {
-                    bsdf_lambertian(mtl,normal,wo,wi,pdf,bsdf);
-                    cosOut = adot(normal,wo.d);
+                    if(bsdf) *bsdf = bsdf_lambertian(mtl,normal,in,out);
+                    if(pdf) *pdf = pdf_lambertian(mtl,normal,in,out);
+                    if(rev_pdf) *rev_pdf = pdf_lambertian(mtl,normal,out,in);
+                    cosOut = adot(normal,in.d);
                 }
 
-                return VSample{DIFFUSE,wi};
+                return VSample{DIFFUSE,out};
             }
 
             return {};
         }
 
+        ///UNUSED IN PATHTRACER (OBSOLETE)
         inline vec3d EvalBsdf_F(const VScene& scn,const VResult& hit,const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo){
-            if(mtl.is_delta()) return zero3d;
 
             if(mtl.is_transmissive()){
                 //TODO
             }else if(mtl.is_conductor()){
                 if(!same_hemisphere(normal,wo,wi)) return zero3d;
-                vec3d c = zero3d;
-                bsdf_conductor(mtl,normal,wi,wo,nullptr,&c);
-                return c;
+                return bsdf_conductor(mtl,normal,wi,wo);
             }else if(mtl.is_dielectric()){
                 if(!same_hemisphere(normal,wo,wi)) return zero3d;
-                vec3d c = zero3d;
-                bsdf_dielectric(mtl,normal,wi,wo,nullptr,&c);
-                return c;
+                return bsdf_diel_diffuse(mtl,normal,wi,wo)+bsdf_diel_specular(mtl,normal,wi,wo); //MISSING FRESNEL
             }else if(mtl.is_diffuse()){
                 if(!same_hemisphere(normal,wo,wi)) return zero3d;
-                vec3d c = zero3d;
-                bsdf_lambertian(mtl,normal,wi,wo,nullptr,&c);
-                return c;
+                return bsdf_lambertian(mtl,normal,wi,wo);
             }
             return zero3d;
         }
+        ///
 
-        inline double EvalBsdf_Pdf(const VScene& scn,const VResult& hit,const VMaterial& mtl,const vec3d& normal,const VRay& wi,const VRay& wo){
-            if(mtl.is_delta()) return 0.0;
-
-            if(mtl.is_transmissive()){
-                    //TODO
-            }else if(mtl.is_conductor()){
-                if(!same_hemisphere(normal,wo,wi)) return 0.0;
-                double pdf = 0.0;
-                bsdf_conductor(mtl,normal,wi,wo,&pdf);
-                return pdf;
-            }else if(mtl.is_dielectric()){
-                if(!same_hemisphere(normal,wo,wi)) return 0.0;
-                double pdf = 0.0;
-                bsdf_dielectric(mtl,normal,wi,wo,&pdf);
-                return pdf;
-            }else if(mtl.is_diffuse()){
-                if(!same_hemisphere(normal,wo,wi)) return 0.0;
-                double pdf = 0.0;
-                bsdf_lambertian(mtl,normal,wi,wo,&pdf);
-                return pdf;
-            }
-            return 0.0;
-        }
-
-        inline vec3d EvalOcclusion_ToCamera(const VScene& scn,const VResult& hit,const VCamera& camera,VRay& to_cam,bool& intersected,vec2i& pixel_id){
+        inline vec3d EvalOcclusion_ToCamera(const VScene& scn,const VResult& hit,const VCamera& camera,const vec3d& wPoint,VRay& to_cam,bool& intersected){
             vec3d tr_w = one3d;
             VMaterial occ_mtl;
             VResult occ_hit;
             vec3d occ_normal;
             intersected = false;
 
-            auto max_dist = distance(hit.wor_pos,camera.mOrigin);
+            auto max_dist = distance(hit.wor_pos,wPoint);
 
             while(max_element(tr_w)>0.0){
                 VSdfPoll poll = PollVolume(scn,to_cam);
                 occ_hit = scn.intersect(to_cam,i_max_march_iterations);
 
                 if(!occ_hit.isFound()){
-                    intersected = camera.WorldToPixel(hit.wor_pos,pixel_id);
+                    intersected = true;
                     if(poll.is_in_transmissive() && poll.emat.sigma_t()>0.0){
-                        tr_w*=exp(-poll.emat.sigma_t_vec()*distance(poll.eres.wor_pos,camera.mOrigin));
+                        tr_w*=exp(-poll.emat.sigma_t_vec()*distance(poll.eres.wor_pos,wPoint));
                     }
                     break;
                 }else{
 
                     auto occ_dist = distance(hit.wor_pos,occ_hit.wor_pos);
                     if(occ_dist>max_dist-(f_ray_tmin*2.0)){
-                        intersected = camera.WorldToPixel(hit.wor_pos,pixel_id);
+                        intersected = true;
                         if(poll.is_in_transmissive() && poll.emat.sigma_t()>0.0){
-                            tr_w*=exp(-poll.emat.sigma_t_vec()*distance(poll.eres.wor_pos,camera.mOrigin));
+                            tr_w*=exp(-poll.emat.sigma_t_vec()*distance(poll.eres.wor_pos,wPoint));
                         }
                         break;
                     }
@@ -757,7 +882,6 @@ namespace vnx {
                 //if(outside) break; //AVOID bypassing other volumes properties [Needs Testing]
                 to_cam = to_cam.newOffsetted(occ_hit.wor_pos,to_cam.d,outside ? -occ_normal : occ_normal,occ_hit.dist);
             }
-            if(!pixel_id.x || !pixel_id.y) return zero3d;
             return tr_w;
         }
 
@@ -818,13 +942,15 @@ namespace vnx {
                   break;
                 }
 
-                //CONTINUE (IF HITTED A TRANSMISSIVE NOT REFRACTIVE)
+
                 if(poll.is_in_transmissive() && poll.emat.sigma_t()>0.0){
                     tr_w*=exp(-poll.emat.sigma_t_vec()*ygl::distance(to_vertex.o,occ_hit.wor_pos));
                 }
                 occ_hit.getMaterial(occ_mtl);
                 occ_normal = scn.eval_normals(occ_hit, f_normal_eps);
                 occ_mtl.eval_mutator(occ_hit, occ_normal, occ_mtl);
+
+                //CONTINUE (IF HITTED A TRANSMISSIVE NOT REFRACTIVE)
                 if(!occ_mtl.is_transmissive() || occ_mtl.is_refractive()) return zero3d;
 
                 bool outside = dot(occ_normal,to_vertex.d)<0.0; //DON'T TEST FOR OUTSIDE | INSIDE , there is no chance for indirect bounce in connectVertices (TODO: TEST)
@@ -909,12 +1035,11 @@ namespace vnx {
             double cosAtLp;
 
             if(lp_vertex.type == SURFACE){
-                lp_bsdf = EvalBsdf_F(scn,lp_vertex.hit,lp_vertex.mtl,lp_vertex.normal,lp_vertex.wi,to_ep_vertex);
+                if(isDeltaSample(EvalDirectSample(rng,lp_vertex.mtl,lp_vertex.normal,lp_vertex.wi,to_ep_vertex,lp_bsdf,&lp_pdfW,&lp_rev_pdfW))) return zero3d;
                 if(isTracingInvalid(lp_bsdf)) return zero3d;
-                lp_pdfW = EvalBsdf_Pdf(scn,lp_vertex.hit,lp_vertex.mtl,lp_vertex.normal,lp_vertex.wi,to_ep_vertex);
                 if(isTracingInvalid(lp_pdfW)) return zero3d;
-                lp_rev_pdfW = EvalBsdf_Pdf(scn,lp_vertex.hit,lp_vertex.mtl,lp_vertex.normal,to_ep_vertex,lp_vertex.wi);
                 if(isTracingInvalid(lp_rev_pdfW)) return zero3d;
+
                 cosAtLp = dot(lp_vertex.normal,to_ep_vertex_dir);
             }else if(lp_vertex.type == EMITTER){
                 lp_bsdf = one3d;
@@ -931,11 +1056,9 @@ namespace vnx {
             VResult occ_hit;
             vec3d tr_w = one3d;
             if(ep_vertex.type==SURFACE){
-                ep_bsdf = EvalBsdf_F(scn,hit,mtl,normal,to_lp_vertex,out);
+                if(isDeltaSample(EvalDirectSample(rng,ep_vertex.mtl,ep_vertex.normal,to_lp_vertex,out,ep_bsdf,&ep_pdfW,&ep_rev_pdfW))) return zero3d;
                 if(isTracingInvalid(ep_bsdf)) return zero3d;
-                ep_pdfW = EvalBsdf_Pdf(scn,hit,mtl,normal,to_lp_vertex,out);
                 if(isTracingInvalid(ep_pdfW)) return zero3d;
-                ep_rev_pdfW = EvalBsdf_Pdf(scn,hit,mtl,normal,out,to_lp_vertex);
                 if(isTracingInvalid(ep_rev_pdfW)) return zero3d;
                 cosAtEp = dot(normal,to_lp_vertex_dir);
 
@@ -983,8 +1106,8 @@ namespace vnx {
             auto lp_pdfA = PdfWtoA(lp_pdfW,dist,cosAtEp);
 
 
-            auto w_lp = ep_pdfA * ((lp_vertex.vcm+lp_vertex.vc)*lp_rev_pdfW);
-            auto w_ep = lp_pdfA * ((ep_vertex.vcm+ep_vertex.vc)*ep_rev_pdfW);
+            auto w_lp = ep_pdfA * (lp_vertex.vcm+lp_vertex.vc*lp_rev_pdfW);
+            auto w_ep = lp_pdfA * (ep_vertex.vcm+ep_vertex.vc*ep_rev_pdfW);
 
 
             auto mw = 1.0/(w_lp+1.0+w_ep);
@@ -1015,15 +1138,16 @@ namespace vnx {
             vec3d occ_normal;
             vec3d bsdf;
             double bsdf_pdfW;
+            double bsdf_rev_pdfW;
 
 
             if(vtype==SURFACE){
-                bsdf = EvalBsdf_F(scn,hit,mtl,normal,to_light,out);
+                if(isDeltaSample(EvalDirectSample(rng,mtl,normal,to_light,out,bsdf,&bsdf_pdfW,useBidirectional() ? &bsdf_rev_pdfW : nullptr))) zero3d;
                 if(isTracingInvalid(bsdf)) return zero3d;
-                bsdf_pdfW = EvalBsdf_Pdf(scn,hit,mtl,normal,to_light,out);
                 if(isTracingInvalid(bsdf_pdfW)) return zero3d;
             }else if(vtype==VOLUME){
                 bsdf_pdfW = 1.0/(4.0*pid);
+                bsdf_rev_pdfW = 1.0/(4.0*pid);
                 bsdf = one3d;
             }else{
                 return zero3d;
@@ -1039,38 +1163,34 @@ namespace vnx {
             auto light_pdfW = PdfAtoW(1.0,distance(hit.wor_pos,occ_hit.wor_pos),cosAtLight);
             if(isTracingInvalid(light_pdfW)) return zero3d;
 
+            light_pdfW*=lightChoosePdf(scn);
+
+            const auto cosToLight = vtype == VOLUME ? 1.0 : adot(normal,to_light.d);
+            auto li = tr_w*vertex.weight*lc*(bsdf*cosToLight);
+
             if(useBidirectional()){
-                const auto bsdf_rev_pdfW = EvalBsdf_Pdf(scn,hit,mtl,normal,out,to_light);
-                if(isTracingInvalid(bsdf_rev_pdfW)) return zero3d;
+                if(isTracingInvalid(bsdf_rev_pdfW)) bsdf_rev_pdfW = 0.0;
 
-                const auto cosToLight = vtype == VOLUME ? 1.0 : adot(normal,to_light.d);
+                const auto emitted_pdfW = 1.0 / (2.0 * pid);
 
-                const auto emitted_pdfW = 1.0 / (2.0 * pid);//1.0 *cosAtLight*(1.0/pid);
-
-                const double w_light = bsdf_pdfW / (lightChoosePdf(scn)*light_pdfW);
-                const double w_camera = (emitted_pdfW * cosToLight / (light_pdfW * cosAtLight)) * ((vertex.vcm + vertex.vc)*bsdf_rev_pdfW);
-
+                const double w_light = bsdf_pdfW / light_pdfW;
+                const double w_camera = (emitted_pdfW * cosToLight / (light_pdfW * cosAtLight)) * (vertex.vcm + vertex.vc *bsdf_rev_pdfW);
                 const double mw = 1.0 / (w_light + 1.0 + w_camera);
 
-
-                const vec3d li = (mw*cosToLight/(lightChoosePdf(scn)*light_pdfW))*(lc*bsdf);
-
-                return tr_w*vertex.weight*li;
+                li *= mw/light_pdfW;
+                return li;
             }else{
+                const double mw = balance_heuristic(light_pdfW*lightChoosePdf(scn),bsdf_pdfW);
 
-
-                const auto cosToLight = (vtype == VOLUME) ? 1.0 : adot(normal,to_light.d);
-                auto li = tr_w*lc*bsdf*(cosToLight / light_pdfW);
-                auto mw = balance_heuristic(light_pdfW*lightChoosePdf(scn),bsdf_pdfW);
-
-                return vertex.weight*mw*li;
+                li *= mw/light_pdfW;
+                return li;
             }
 
             return zero3d;
         }
 
         inline void ConnectToCamera(const VScene& scn,
-                                    image3d& img,
+                                    VRng& rng,
                                     VCamera& camera,
                                     const VVertex& vertex,
                                     const VRay& in
@@ -1081,11 +1201,19 @@ namespace vnx {
             const vec3d& normal = vertex.normal;
             const VVertexType& vtype = vertex.type;
 
+            //Sample point on camera lens and create connection ray
+            auto lens_p = sample_disk_point(rng.next_vecd<2>())*camera.mAperture;
+            vec3d cOrigin = ygl::transform_point(camera.mCameraToWorld,lens_p);
 
-            auto dir = normalize(camera.mOrigin-hit.wor_pos);
-            const double cosAtCam = dot(-camera.mForward,-dir);
+            auto dir = normalize(cOrigin-hit.wor_pos);
+            const double cosAtCam = dot(camera.mForward,-dir);
             if(cosAtCam<=0.0) return;
 
+            vec2i pixel_id = zero2<int>;
+            auto focusPoint = cOrigin-dir*(camera.mAperture > thrd ? camera.mFocus : 1.0); //-dir
+            auto rasterPoint = ygl::transform_point(camera.mCameraToRaster,ygl::transform_point(camera.mWorldToCamera,focusPoint));
+            if(!camera.RasterToPixel(rasterPoint,pixel_id))return;
+            //
 
 
             VRay to_cam;
@@ -1095,13 +1223,13 @@ namespace vnx {
             VResult occ_hit;
             VMaterial occ_mtl;
             vec3d tr_w = one3d;
-            vec2i pixel_id = zero2<int>;
+
             bool intersected = false;
 
             if(vtype==VOLUME){
                 to_cam = in.newOffsetted(hit.wor_pos,dir,dir,in.tmin);//offsetted_ray(hit.wor_pos,in,dir,in.tmin,in.tmax,dir,in.tmin);
                 VRay ray = to_cam;
-                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,ray,intersected,pixel_id);
+                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,cOrigin,ray,intersected);
                 if(!intersected) return;
 
                 bsdf = one3d;
@@ -1111,11 +1239,10 @@ namespace vnx {
 
 
                 if(vtype != EMITTER){
-                    bsdf = EvalBsdf_F(scn,hit,mtl,normal,in,to_cam);
+                    if(isDeltaSample(EvalDirectSample(rng,mtl,normal,to_cam,in,bsdf,nullptr,useBidirectional() ? &bsdf_rev_pdfW : nullptr))) return;
                     if(isTracingInvalid(bsdf)) return;
                     if(useBidirectional()) {
-                        bsdf_rev_pdfW = EvalBsdf_Pdf(scn,hit,mtl,normal,to_cam,in);
-                        if(isTracingInvalid(bsdf_rev_pdfW)) return;
+                        if(isTracingInvalid(bsdf_rev_pdfW)) bsdf_rev_pdfW = 0.0;
                     }
                 }else{
                     bsdf = toVec<double,3>(EvalLe(in,mtl.e_power,mtl.e_temp));
@@ -1123,40 +1250,43 @@ namespace vnx {
                 }
 
                 VRay ray = to_cam;
-                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,ray,intersected,pixel_id);
+                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,cOrigin,ray,intersected);
                 if(!intersected) return;
             }
 
 
 
-            double cosToCam = vtype==VOLUME ? 1.0 : dot(normal,dir);
+            const double cosToCam = vtype==VOLUME ? 1.0 : dot(normal,dir);
             if(cosToCam<=0.0) return;
 
+            const double invSqrDist = 1.0/distance_squared(cOrigin,hit.wor_pos);
+
+            const double invAperture = camera.mAperture>thrd ? 1.0/(camera.mAperture*camera.mAperture*(1.0/pid)) : 1.0;
             const double iptcd = camera.mImagePlaneDist /  cosAtCam;
             const double itsaf = fsipow(iptcd,2)  / cosAtCam;
-            const double itsf = itsaf * std::abs(cosToCam) / distance_squared(camera.mOrigin,hit.wor_pos);
 
-            const double stif = 1.0 / itsf;
-
-            double mw = 1.0;
-            double sc_f = mSamplesQuot*stif;
+            const double camera_we = itsaf*invAperture / cosAtCam;
+            const double geom_term = (cosToCam*cosAtCam)*invSqrDist;
+            vec3d rd = tr_w*vertex.weight*bsdf* camera_we * geom_term  / (double(camera.mNumPixels)*invAperture);
 
             if(useBidirectional()){
-                double w_light = (itsf) * ((vertex.vcm + vertex.vc) * bsdf_rev_pdfW);
-                mw = (1.0 / (w_light+1.0));
+                const double lv_pdfA = itsaf*std::abs(cosToCam)*invSqrDist;
+                double w_light = (lv_pdfA/double(camera.mNumPixels)) * (vertex.vcm + vertex.vc * bsdf_rev_pdfW);
+                double mw = (1.0 / (w_light+1.0));
+                rd*=mw;
             }
 
 
-            auto rd = tr_w*mw*(vertex.weight*bsdf) / sc_f;
+
             if(isTracingInvalid(rd)) return;
-            camera.mFrameBuffer.add(pixel_id,rd*spectral_to_rgb(to_cam.wl));
+            camera.Splat(camera.mFilms.size()-1,pixel_id,rd*spectral_to_rgb(to_cam.wl));
         }
 
 
-        inline VSampleType SampleVolumeDist(const VScene& scn,VRng& rng,const VResult& hit,VRay& in,VSdfPoll& poll,double& pdf,double& dist){ //TODO
+        inline VSample SampleVolumeDist(const VScene& scn,VRng& rng,const VResult& hit,VRay& in,VSdfPoll& poll,double& pdf,double& dist){ //TODO
             double tFar = (!hit.isFound()) ?  in.tmax : ygl::distance(in.o,hit.wor_pos);
             double omega = poll.emat.sigma_t_maj();
-            if(isTracingInvalid(omega)) return INVALID;
+            if(isTracingInvalid(omega)) return VSample{INVALID,in};
             dist = 0.0;
             pdf = 1.0/std::exp(-omega*tFar);
 
@@ -1167,29 +1297,29 @@ namespace vnx {
                 if(dist>tFar){
                     in = o_in;
                     poll = o_poll;
-                    return UNSCATTERED;
+                    return VSample{UNSCATTERED,in};
                 }
                 in.o = o_in.o+(in.d*dist);
                 poll = PollVolume(scn,in);
                 if(poll.is_in_not_participating() || poll.is_stuck()){ //HACK : HANDLES DEGENERATE CASES and nested dielectrics
                     in = o_in;
                     poll = o_poll;
-                    return UNSCATTERED;
+                    return VSample{UNSCATTERED,in};
                 }
                 omega = poll.emat.sigma_t_maj();
                 if(isTracingInvalid(omega)){
                     in = o_in;
                     poll = o_poll;
-                    return UNSCATTERED;
+                    return VSample{UNSCATTERED,in};
                 }
                 pdf += 1.0/std::exp(-omega*tFar);
                 if(rng.next_double()<poll.emat.sigma_s / omega) break;
             }
-            if(rng.next_double()<max_element(poll.emat.sigma_a) / omega) return ABSORBED;
-            return SCATTERED;
+            if(rng.next_double()<max_element(poll.emat.sigma_a) / omega) return VSample{ABSORBED,in};
+            return VSample{SCATTERED,in};
         }
 
-        inline vec3d Radiance(const VScene& scn, VRng& rng,image3d& img,VCamera& camera, const VRay& ray) {
+        inline vec3d Radiance(const VScene& scn, VRng& rng,VCamera& camera, const VRay& ray) {
             if(i_debug_primary!=DBG_NONE){
                 if(i_debug_primary==DBG_EYELIGHT){
                     VResult hit = scn.intersect(ray,i_max_march_iterations);
@@ -1244,7 +1374,7 @@ namespace vnx {
                 if(InitLightPath(scn,rng,vertex,vertex.mtl)){
                     //if(useBidirectional()) {light_path.push_back(vertex);}
 
-                    if(b_gather_to_camera && !useBidirectional()) ConnectToCamera(scn,img,camera,vertex,vertex.wo);
+                    if(b_gather_to_camera && !useBidirectional()) ConnectToCamera(scn,rng,camera,vertex,vertex.wo);
 
                     vec3d bsdf;
                     double pdf;
@@ -1261,20 +1391,17 @@ namespace vnx {
 
                     VSdfPoll poll = PollVolume(scn,vertex.wo);
                     if(poll.is_stuck()) {return zero3d;}
-                    int nd_b = 0;
+
                     for(int b=0;;b++){ //Trace from light and store path vertices
-                        camera.mFrameBuffer.HintScale(nd_b); //TAKES THE MAX between mScale and b parameter, needed to divide framebuffer contribution
-                        //camera.mFrameBuffer.HintScale(useLighttracing() ? nd_b : 0); //nd_b;
                         hit = scn.intersect(wo,i_max_march_iterations);
                         mStatus.mRaysEvaled++;
                         if(poll.is_in_transmissive()){
                             if(poll.is_in_participating()){
                                 double dist;
-                                VSampleType volEvent = SampleVolumeDist(scn,rng,hit,wo,poll,pdf,dist);
+                                sampled = SampleVolumeDist(scn,rng,hit,wo,poll,pdf,dist);
                                 bsdf = one3d;
 
-                                if(volEvent==SCATTERED){
-                                    nd_b++;
+                                if(sampled.type==SCATTERED){
                                     //wo.o = wo.o+(wo.d*dist);
                                     //poll = PollVolume<true>(scn, wo);
 
@@ -1291,7 +1418,7 @@ namespace vnx {
                                         //vertex.vc /= adot(normal,vertex.wo.d);
                                     }
 
-                                    if(b_gather_to_camera) ConnectToCamera(scn,img,camera,vertex,wi);
+                                    if(b_gather_to_camera) ConnectToCamera(scn,rng,camera,vertex,wi);
                                     wo.d =  sample_sphere_direction<double>(rng.next_vecd<2>());
                                     cosOut = 1.0;
 
@@ -1305,7 +1432,7 @@ namespace vnx {
                                     }
 
                                     continue;
-                                }else if(volEvent==UNSCATTERED){
+                                }else if(sampled.type==UNSCATTERED){
                                     if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
                                     vertex.type = SURFACE;
                                 }else{break;}
@@ -1334,19 +1461,19 @@ namespace vnx {
 
                         if(mtl.is_emissive()){
                             type = EMITTER;
-                            if(!useBidirectional() && b_gather_to_camera) ConnectToCamera(scn,img,camera,vertex,wi);
+                            if(!useBidirectional() && b_gather_to_camera) ConnectToCamera(scn,rng,camera,vertex,wi);
                             break;
                         }
                         if(!mtl.is_delta()){
-                            nd_b++;
-                            if(b_gather_to_camera) ConnectToCamera(scn,img,camera,vertex,wi);
+                            if(b_gather_to_camera) ConnectToCamera(scn,rng,camera,vertex,wi);
                             if(useBidirectional()) {
                                 light_path.push_back(vertex);
                             }
                         }
                         if(b_no_scatter) break;
 
-                        sampled = SampleBsdf(scn,rng,vertex,wi,poll,VTransportMode::IMPORTANCE,cosOut,&pdf,&bsdf);//Sample
+                        double rev_pdf = 0.0;
+                        sampled = SampleBsdf(scn,rng,vertex,wi,poll,VTransportMode::IMPORTANCE,cosOut,&pdf,&bsdf,useBidirectional() ? &rev_pdf : nullptr);//Sample
                         if(isTracingInvalid(sampled)){if(mStatus.bDebugMode){std::cout<<"Primary LT Loop: Invalid Sample ->mtl: "<<toString(mtl.type)<<" for sample : "<<toString(sampled.type)<<"\n";} break;}
                         if(isTracingInvalid(pdf)){if(mStatus.bDebugMode){std::cout<<"Primary LT Loop: Invalid PDF: "<<pdf<<" ->mtl: "<<toString(mtl.type)<<" for sample : "<<toString(sampled.type)<<"\n";} break;}
                         if(isTracingInvalid(bsdf)){if(mStatus.bDebugMode){std::cout<<"Primary LT Loop: Invalid BSDF: "<<bsdf<<" ->mtl: "<<toString(mtl.type)<<" for sample : "<<toString(sampled.type)<<"\n";} break;}
@@ -1358,9 +1485,9 @@ namespace vnx {
                                 vertex.vc *= cosOut;
                                 vertex.vcm = 0.0;
                             }else{
-                                double rev_pdf = EvalBsdf_Pdf(scn,hit,mtl,normal,vertex.wi,vertex.wo);
+                                //double rev_pdf = EvalBsdf_Pdf(scn,hit,mtl,normal,vertex.wi,vertex.wo);
                                 if(isTracingInvalid(rev_pdf)) rev_pdf = 0.0;
-                                vertex.vc = (cosOut / pdf) *(vertex.vcm + (vertex.vc*rev_pdf));
+                                vertex.vc = (cosOut / pdf) *(vertex.vc*rev_pdf+vertex.vcm);
                                 vertex.vcm = 1.0 / pdf;
                             }
                         }
@@ -1374,6 +1501,7 @@ namespace vnx {
 
 
                     }
+
                 }
             } //IF !UNIDIRECTIONAL
             if(useLighttracing()){return zero3d;}
@@ -1390,7 +1518,7 @@ namespace vnx {
             VSample sampled;
 
             VVertex vertex;
-            InitEyePath(scn,camera,ray,vertex);
+            if(!InitEyePath(scn,camera,ray,light_path.size(),vertex))return zero3d; //This acts as a debug/fix, in the very unlikely case that a camera ray fails to be cast properly
 
             VMaterial& mtl = vertex.mtl;
             VResult& hit = vertex.hit;
@@ -1416,10 +1544,11 @@ namespace vnx {
                 if(poll.is_in_transmissive()){
                     if(poll.is_in_participating()){
                         double dist;
-                        VSampleType volEvent = SampleVolumeDist(scn,rng,hit,wi,poll,pdf,dist);
+                        sampled = SampleVolumeDist(scn,rng,hit,wi,poll,pdf,dist);
                         bsdf = one3d;
 
-                        if(volEvent == SCATTERED){
+                        if(sampled.type == SCATTERED){
+
                             lastDelta = false;
                             allDelta = false;
                             //wi.o = wi.o+(wi.d*dist);
@@ -1460,7 +1589,7 @@ namespace vnx {
                                 vcm = 1.0 / pdf;
                             }
                             continue;
-                        }else if(volEvent == UNSCATTERED){
+                        }else if(sampled.type == UNSCATTERED){
                             if(!hit.isFound() || !hit.isValid()){mStatus.mRaysLost++;break;}
                             vertex.type = SURFACE;
                         }else{break;}
@@ -1498,9 +1627,9 @@ namespace vnx {
                     double mw;
                     if(useBidirectional()){
                         auto cosAtLight = adot(normal,wo.d);
-                        auto light_pdfW = lightChoosePdf(scn);//PdfAtoW(1.0,distance(hit.wor_pos,poll.eres.wor_pos),cosAtLight);
+                        auto light_pdfW = lightChoosePdf(scn);//<!>this is Area Probability...
                         const double emitted_pdfW = lightChoosePdf(scn) / (2.0*pid);
-                        const double w_camera = ((light_pdfW*cosAtLight) / (emitted_pdfW*cosOut)) * ((vertex.vcm + vertex.vc)*emitted_pdfW);
+                        const double w_camera = light_pdfW * vertex.vcm + emitted_pdfW *vertex.vc;
                         mw = 1.0 / (1.0 + w_camera);
                     }else{
                         auto cosAtLight = dot(normal,wo.d);
@@ -1517,7 +1646,6 @@ namespace vnx {
 
                     break;
                 }
-
 
 
                 if(!mtl.is_delta()){
@@ -1537,7 +1665,8 @@ namespace vnx {
 
                 if(b_no_scatter) break;
 
-                sampled = SampleBsdf(scn,rng,vertex,wo,poll,VTransportMode::RADIANCE,cosOut,&pdf,&bsdf);//Sample
+                double rev_pdf = 0.0;
+                sampled = SampleBsdf(scn,rng,vertex,wo,poll,VTransportMode::RADIANCE,cosOut,&pdf,&bsdf,useBidirectional() ? &rev_pdf : nullptr);//Sample
                 if(isTracingInvalid(sampled)){if(mStatus.bDebugMode){std::cout<<"Primary EYE Loop: Invalid Sample ->mtl: "<<toString(mtl.type)<<" for sample : "<<toString(sampled.type)<<"\n";} break;}
                 if(isTracingInvalid(pdf)){if(mStatus.bDebugMode){std::cout<<"Primary EYE Loop: Invalid PDF: "<<pdf<<" ->mtl: "<<toString(mtl.type)<<" for sample : "<<toString(sampled.type)<<"\n";} break;}
                 if(isTracingInvalid(bsdf)){if(mStatus.bDebugMode){std::cout<<"Primary EYE Loop: Invalid BSDF: "<<bsdf<<" ->mtl: "<<toString(mtl.type)<<" for sample : "<<toString(sampled.type)<<"\n";} break;}
@@ -1558,9 +1687,8 @@ namespace vnx {
                     }else{
                         lastDelta = false;
                         allDelta = false;
-                        double rev_pdf = EvalBsdf_Pdf(scn,hit,mtl,normal,wo,wi);
                         if(isTracingInvalid(rev_pdf)) break;
-                        vertex.vc = (cosOut / pdf) *(vertex.vcm + (vertex.vc*rev_pdf));
+                        vertex.vc = (cosOut / pdf) *(vertex.vc*rev_pdf+vertex.vcm);
                         vertex.vcm = 1.0 / pdf;
                     }
                 }else{
@@ -1572,35 +1700,20 @@ namespace vnx {
             return output*spectral_to_rgb(gathered_wl);
         }
 
-		void EvalImageRow(const VScene& scn, VRng& rng, image3d& img, int width, int height, int j) {
-		    const double f_ray_samples = (double)i_ray_samples;
-		    const double f_ray_samples_2 = f_ray_samples*f_ray_samples;
-		    const auto f_img_size = vec2f{img.size.x,img.size.y};
+		void EvalImageRow(const VScene& scn, VRng& rng, int width, int height, int j) {
+		    auto& cam_ref = const_cast<VCamera&>(scn.camera);
 
 			for (int i = 0; i < width && !mStatus.bStopped; i++) {
 				vec3d color = zero3d;
 
                 //JITTERED
-
+                const auto pxc = vec2i{i,j};
                 for (int s = 0; s < i_ray_samples; s++) {
-                    auto px_uv = rng.next_vecd<2>();
-                    VRay ray = scn.camera.RayCast(i,j,rng,!i_debug_primary ? (px_uv) : zero2d);
+                    VRay ray = scn.camera.RayCast(i,j,rng,!i_debug_primary ? (rng.next_vecd<2>()) : zero2d);
                     InitRay(rng,ray);
-                    color += (Radiance(scn, rng, img, const_cast<VCamera&>(scn.camera), ray)/ f_ray_samples);
+
+                    cam_ref.Splat(0,pxc,Radiance(scn, rng, cam_ref, ray));
                 }
-
-                //STRATIFIED
-                /*
-                for(int s=0;s<i_ray_samples;s++){
-                    for(int t=0;t<i_ray_samples;t++){
-                        VRay ray = scn.camera.RayCast(i,j,rng,!i_debug_primary ? (vec2d{s,t}+rng.next_vecd<2>())/f_ray_samples : zero2d);
-                        InitRay(rng,ray);
-                        color += (Radiance(scn, rng, img, const_cast<VCamera&>(scn.camera), ray)/ f_ray_samples_2);
-                    }
-                }*/
-
-				auto& px = at(img,{i, j});
-				px += color;
 			}
 		}
 

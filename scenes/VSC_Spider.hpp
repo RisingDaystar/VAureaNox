@@ -301,9 +301,12 @@ namespace vscndef {
 	void init_spider_scene(VScene& scn) {
 		scn.id = "spider";
         scn.camera.mYfov = radians(45.0);
-        scn.camera.mOrigin = {0,10.1f,16.0f};
-        scn.camera.mTarget = {0,5.1f,0};
+        scn.camera.mOrigin = {0,10.1,16.0};
+        scn.camera.mTarget = {0,5.1,0.01};
         scn.camera.mUp = {0,1.0f,0};
+        scn.camera.mAperture = 0.0;
+        scn.camera.mFocus = length(scn.camera.mTarget-scn.camera.mOrigin);
+        scn.camera.mAutoFocus = true;
 
 		auto grey_steel_material = scn.add_material("grey_steel_material");
 		grey_steel_material->type = conductor;
@@ -371,7 +374,7 @@ namespace vscndef {
 
 		auto emissive = scn.add_material("emissive");
 		emissive->e_temp = 6500;
-		emissive->e_power = 24500;
+		emissive->e_power = 12500;
 
 		auto emissive_dim = scn.add_material("emissive_dim");
 		emissive_dim->e_temp = 18500;

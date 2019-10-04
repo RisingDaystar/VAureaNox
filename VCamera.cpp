@@ -37,13 +37,13 @@ namespace vnx{
         mNumPixels = mResolution.x*mResolution.y;
 
         mClipToRaster =
-            scaling_mat(vec3d{mResolution.x*0.5,mResolution.y*-0.5,1.0})*
-            //scaling_mat(vec3d{0.5,-0.5,1.0})*
-            translation_mat(vec3d{1.0,-1.0,0.0});
+            scaling_mat(vec3d{mResolution.x*0.5,mResolution.y*0.5,1.0})*
+            translation_mat(vec3d{1.0,1.0,0.0});
+        mRasterToClip = inverse(mClipToRaster);
 
-        mCameraToClip = ygl::perspective_mat(mYfov,mAspect,0.1,10000.0);
+        mCameraToClip = ygl::perspective_mat(mYfov,mAspect,0.1);
         mCameraToRaster = mClipToRaster*mCameraToClip;
-        mCameraToWorld = frame_to_mat(lookat_frame(mOrigin,mTarget,mUp));
+        mCameraToWorld = frame_to_mat(lookat_frame(mOrigin,mTarget,mUp,true));
 
         mWorldToCamera = inverse(mCameraToWorld);
         mWorldToRaster = mCameraToRaster*mWorldToCamera;
@@ -53,16 +53,14 @@ namespace vnx{
         mRasterToWorld = inverse(mWorldToRaster);
 
 
-        mForward = transform_point(mCameraToWorld,vec3d{0,0,1.0});
-        double tha = std::tan(mYfov)/mAspect;
-        mImagePlaneDist = mResolution.x / (2.0*tha);
+        mForward = normalize(mTarget-mOrigin);
 
-        mFrameBuffer.Create(mResolution);
+        mImagePlaneDist =(mResolution.y*0.5) / std::tan(mYfov*0.5);
     }
 
     void VCamera::EvalAutoFocus(const VScene& scn,double tmin,double tmax,int nm){
         if(mAutoFocus){
-            VRay focus_ray = {mOrigin,normalize(mTarget-mOrigin),tmin,tmax};
+            VRay focus_ray = {mOrigin,mForward,tmin,tmax};
             auto hit = scn.intersect(focus_ray,nm,nullptr,nullptr);
             if(hit.isFound()) mFocus = length(focus_ray.o-hit.wor_pos);
             else mFocus = focus_ray.tmax;

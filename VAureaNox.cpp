@@ -93,19 +93,19 @@ namespace vnx {
 		if (renderer != nullptr) { delete renderer; renderer = nullptr; }
 	}
 
-	void init(VScene& scn, VRenderer** renderer, image3d& img,const VFileConfigs& config) {
+	void init(VScene& scn, VRenderer** renderer,const VFileConfigs& config) {
 
 		auto renderer_type = config.TryGet("VAureaNox","renderer_type", "");
 		auto scn_to_render = config.TryGet("VAureaNox","render_scene", "cornell");
 
 
 		if(scn_to_render.substr(scn_to_render.find_last_of(".") + 1) == "vnxs"){
-            printf("**Loading external Scene : \"%s\"...\n",scn_to_render.c_str());
+            std::cout<<"**Loading external Scene : \""<<scn_to_render<<"\"...\n";
             VVnxsParser sparser;
             scn_to_render = "scene_files/"+scn_to_render;
             sparser.parse(scn,scn_to_render);
 		}else{
-		    printf("**Loading internal Scene : \"%s\"...\n",scn_to_render.c_str());
+		    std::cout<<"**Loading internal Scene : \""<<scn_to_render<<"\"...\n";
             if (stricmp(scn_to_render,std::string("cornell"))) { vscndef::init_cornell_scene(scn); }
             else if (stricmp(scn_to_render,std::string("spider"))) { vscndef::init_spider_scene(scn); }
             else if (stricmp(scn_to_render,std::string("pathtracing"))) { vscndef::init_pathtracing_scene(scn); }
@@ -115,7 +115,7 @@ namespace vnx {
 		}
         std::cout<<"**Loaded Scene, id =  \""<<scn.id<<"\"\n";
 
-        printf("**Loading Renderer...\n");
+        std::cout<<"**Loading Renderer...\n";
 		/*if (stricmp(renderer_type,std::string("pathtracer"))) {
 			*renderer = new vnx::VRE_Pathtracer(config,"configs/VRE_Pathtracer.ini");
 		}else */if (stricmp(renderer_type,std::string("experimental_pt"))) {
@@ -125,18 +125,11 @@ namespace vnx {
 		if (*renderer == nullptr) { throw VException("Invalid Renderer."); }
         (*renderer)->Init(scn);
         std::cout<<"**Loaded Renderer : \""<<(*renderer)->Type()<<"\"\n";
-
-		int w = config.TryGet("VAureaNox","i_image_width", 648);
-		int h = config.TryGet("VAureaNox","i_image_height", 480);
-		if (w <= 0 || h <= 0) { throw VException("Invalid image dimensions."); }
-		init_image(img,{w, h});
-		std::cout<<"**Output resolution:  \""<<img.size.x<<"\" x \""<<img.size.y<<"\"\n";
-		//scn.camera.Setup(scn,vec2f{float(w),float(h)});
 	}
 
-	void task(int id, const VScene& scn, VRenderer* renderer, image3d& img, std::mutex& mtx, VRng& rng, volatile std::atomic<int>& lrow, volatile std::atomic<int>& rowCounter) {
-		const int width = img.size.x;
-		const int height = img.size.y;
+	void task(int id, const VScene& scn, VRenderer* renderer, std::mutex& mtx, VRng& rng, volatile std::atomic<int>& lrow, volatile std::atomic<int>& rowCounter) {
+		const int width = scn.camera.mResolution.x;
+		const int height = scn.camera.mResolution.y;
 
 
 		while (!renderer->mStatus.bStopped) {
@@ -144,28 +137,26 @@ namespace vnx {
 			mtx.lock();
 			int j = lrow;
 			lrow++;
-			if (j >= img.size.y) {
+			if (j >= height) {
 				mtx.unlock(); break;
 			}
 			mtx.unlock();
 
-			renderer->EvalImageRow(scn, rng, img, width, height, j);
+			renderer->EvalImageRow(scn, rng, width, height, j);
 
 			mtx.lock();
 			std::cout<<"Current Row:"<<j<<" -> Total:{"<<(++rowCounter)<<" / "<<height<<"} -> Worker:{"<<id<<"}\n";
-			//printf("Current Row:{%u} -> Total:{%u / %u} -> Worker:{%d}\n", j, ++rowCounter, height, id);
 			mtx.unlock();
 
 		}
 		mtx.lock();
-		//printf("\t#Worker %d finished\n", id);
 		std::cout<<"\t#Worker "<<id<<" finished\n";
 		mtx.unlock();
 	}
 
 
     //Utilizza "conio.h" , non standard, disattivabile in compilazione.
-	void monitor_task(std::mutex& mtx, const VScene& scn,VRenderer* renderer,const image3d& img, int i_image_bpp){
+	void monitor_task(std::mutex& mtx, const VScene& scn,VRenderer* renderer, const std::string& e_save_format,bool b_apply_tonemap){
         #ifdef MONITOR_THREAD_SUPPORT
         while(!renderer->mStatus.bStopped && !renderer->mStatus.bFinished){
             if(!kbhit()){std::this_thread::sleep_for(std::chrono::milliseconds(1000));continue;} //1s sleep, per evitare massiccio overhead
@@ -173,28 +164,26 @@ namespace vnx {
 
             if(k == 27){ //EXIT
                 if(!renderer->mStatus.bPauseMode)mtx.lock();
-                    printf("\n***Termination Requested***\n\n");
+                    std::cout<<"\n***Termination Requested***\n\n";
                     renderer->mStatus.bStopped = true;
                 if(!renderer->mStatus.bPauseMode)mtx.unlock();
             }else if(k == '1'){ //PREVIEW
                 if(!renderer->mStatus.bPauseMode)mtx.lock();
-                    auto fname = "VAureaNox_"+scn.id+"_"+std::to_string(img.size.x) + "x" + std::to_string(img.size.y) + ("_"+renderer->Type())+renderer->ImgAffix(scn)+"_PREVIEW";
-                    printf("\n*Saving Preview image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_image_bpp);
-                    image3d img_tmp = img;
-                    scn.camera.mFrameBuffer.MergeToImg(img_tmp);
-                    if(vnx::save_ppm(fname, img_tmp, i_image_bpp)) printf("OK\n\n");
-                    else printf("FAIL\n\n");
+                    auto fname = "VAureaNox_"+scn.id+"_"+std::to_string(int(scn.camera.mResolution.x)) + "x" + std::to_string(int(scn.camera.mResolution.y)) + ("_"+renderer->Type())+renderer->ImgAffix(scn)+"_PREVIEW";
+                    std::cout<<"\n*Saving Preview image \""<<fname<<"\" ";
+                    if(vnx::save_image(fname, scn.camera.ToImg(), e_save_format,b_apply_tonemap)) std::cout<<"OK\n\n";
+                    else std::cout<<"FAIL\n\n";
                 if(!renderer->mStatus.bPauseMode)mtx.unlock();
             }else if(k=='2'){ //DEBUG
                 if(!renderer->mStatus.bPauseMode)mtx.lock();
                     renderer->mStatus.bDebugMode = !renderer->mStatus.bDebugMode;
-                    if(renderer->mStatus.bDebugMode) printf("\n*Debug flag set\n\n");
-                    else printf("\n*Debug flag unset\n\n");
+                    if(renderer->mStatus.bDebugMode) std::cout<<"\n*Debug flag set\n\n";
+                    else std::cout<<"\n*Debug flag unset\n\n";
                 if(!renderer->mStatus.bPauseMode)mtx.unlock();
             }else if(k=='3'){ //PAUSE
                 renderer->mStatus.bPauseMode = !renderer->mStatus.bPauseMode;
-                if(renderer->mStatus.bPauseMode) {printf("\n*Rendering Paused\n\n");mtx.lock();}
-                else {printf("\n*Rendering Resumed\n\n");mtx.unlock();}
+                if(renderer->mStatus.bPauseMode) {std::cout<<"\n*Rendering Paused\n\n";mtx.lock();}
+                else {std::cout<<"\n*Rendering Resumed\n\n";mtx.unlock();}
             }
         }
         #endif
@@ -216,15 +205,13 @@ int main() {
 
 	VScene scn;
 	VRenderer* renderer = nullptr;
-	image3d img;
 	bool b_start_monitor = false;
 
-	int i_image_bpp = 255;
-
 	const std::string section = "VAureaNox";
+	std::string e_save_format = "hdr";
 
 	try {
-		printf("<--- VAureaNox - Distance Fields Renderer - v: 0.0.9 --->\n\n");
+		std::cout<<"<--- VAureaNox - Distance Fields Renderer - v: 0.0.9 --->\n\n";
 		config.parse();
 
 
@@ -247,10 +234,14 @@ int main() {
         std::string i_normals_algo = config.TryGet(section,"i_normals_algo","tht");
         std::string i_eh_precalc_algo = config.TryGet(section,"i_eh_precalc_algo","progressive");
 
-        i_image_bpp = config.TryGet(section,"i_image_bpp",255);
-        if(i_image_bpp<2 || i_image_bpp>65535){ throw VException("i_image_bpp must be in range 2 - 65535 inclusive.");}
+        e_save_format = config.TryGet(section,"e_save_format","hdr");
 
-		init(scn, &renderer, img, config);
+		init(scn, &renderer, config);
+
+		int img_w = config.TryGet("VAureaNox","i_image_width", 648);
+		int img_h = config.TryGet("VAureaNox","i_image_height", 480);
+		if (img_w <= 0 || img_h <= 0) { throw VException("Invalid image dimensions."); }
+		std::cout<<"**Output resolution:  \""<<img_w<<"\" x \""<<img_h<<"\"\n";
 
 		if(stricmp(i_st_algo,std::string("relaxed"))) scn.intersect_algo = &VScene::intersect_rel;
 		else if(stricmp(i_st_algo,std::string("enhanced"))) scn.intersect_algo = &VScene::intersect_enh;
@@ -267,48 +258,49 @@ int main() {
 		b_start_monitor = config.TryGet(section,"b_start_monitor",false);
 		//
 
-        printf("\n**Preparing scene...\n");
-        printf("**Transforming nodes coordinates...\n");
+
+        std::cout<<"\n**Preparing scene...\n";
+        std::cout<<"**Transforming nodes coordinates...\n";
 		apply_transforms(scn.root,identity_frame3d);
-		printf("**Setting up camera...\n");
-        scn.camera.Setup(vec2f{img.size.x,img.size.y});
+		std::cout<<"**Setting up camera...\n";
+        scn.camera.Setup(vec2f{img_w,img_h});
         scn.camera.EvalAutoFocus(scn,f_ray_tmin,f_ray_tmax,i_max_march_iterations);
 
-		printf("\n**Calculating emissive hints...\n");
+		std::cout<<"\n**Calculating emissive hints...\n";
 		auto t_start = std::chrono::steady_clock::now();
 		auto lc_stats = scn.populate_emissive_hints(i_em_evals,i_max_march_iterations,f_ray_tmin,f_ray_tmax,f_normal_eps,config.TryGet(section,"b_verbose_precalc",false));
         auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t_start).count();
         int n_lights = scn.emissive_hints.size();
 
         const auto mb_alloc = (sizeof(VResult)*lc_stats.x)/(1024*1024);
-		printf("**Calculated : \"%d\" lights -> \"%d\" emissive hints --> (\"%d\" misses) -->(\"%d\" restarts) :: [Allocated %d MB] \n",n_lights,lc_stats.x,lc_stats.y,lc_stats.z,mb_alloc);
-		printf("**In: ");
+        std::cout<<"**Calculated : \""<<n_lights<<"\" lights -> \""<<lc_stats.x<<"\" emissive hints --> (\""<<lc_stats.y<<"\" misses) -->(\""<<lc_stats.z<<"\" restarts) :: [Allocated "<<mb_alloc<<" MB] \n";
+		std::cout<<"**In: ";
 		print_hhmmss(seconds);
-		printf("\n");
+		std::cout<<"\n";
 
 		renderer->PostInit(scn);
-	}
-	catch (std::exception& ex) {
+	}catch (std::exception& ex) {
 		shut(scn, renderer);
-		printf("**Fatal Exception: %s \nPress any key to quit...",ex.what());
+		std::cout<<"**Fatal Exception: "<<ex.what()<<" \nPress any key to quit...";
 		std::cin.get();
 		return -1;
 	}
+
+	bool b_apply_tonemap = config.TryGet(section,"b_apply_tonemap", true);
+
 
 	int i_max_threads = config.TryGet(section,"i_max_threads", 0);
 	int nThreads = std::thread::hardware_concurrency();
 	if (i_max_threads>0) nThreads = std::min(nThreads, i_max_threads);
 
-
-
 	std::thread* monitor = nullptr;
 
-	printf("**Rendering \"%s\" using \"%d\" threads\n", scn.id.c_str(),  std::max(1,nThreads));
+    std::cout<<"**Rendering \""<<scn.id<<"\" using \""<<std::max(1,nThreads)<<"\" threads\n";
 	if(b_start_monitor){
-        monitor = new std::thread(monitor_task, std::ref(mtx), std::ref(scn), renderer, std::ref(img), i_image_bpp);
-        printf("**Monitor Thread started\n");
+        monitor = new std::thread(monitor_task, std::ref(mtx), std::ref(scn), renderer, e_save_format, b_apply_tonemap);
+        std::cout<<"**Monitor Thread started\n";
 	}
-	printf("\n<----    Rendering Log    ---->\n\n");
+	std::cout<<"\n<----    Rendering Log    ---->\n\n";
 
     std::chrono::time_point<std::chrono::steady_clock> t_start;
 	if (nThreads > 1) {
@@ -325,7 +317,7 @@ int main() {
 		t_start = std::chrono::steady_clock::now();
 
 		for (int i = 0; i < nThreads; i++) {
-            worker[i] = new std::thread(task, i, std::ref(scn), renderer, std::ref(img), std::ref(mtx), std::ref(rng[i]), std::ref(lastRow), std::ref(rowCounter));
+            worker[i] = new std::thread(task, i, std::ref(scn), renderer, std::ref(mtx), std::ref(rng[i]), std::ref(lastRow), std::ref(rowCounter));
         }
 		for (int i = 0; i < nThreads; i++) { if (worker[i] && worker[i]->joinable()) { worker[i]->join(); }}
 		for (int i = 0; i < nThreads; i++) { if (worker[i]){delete worker[i];} worker[i] = nullptr;}
@@ -334,7 +326,7 @@ int main() {
 	else {
         VRng rng(get_time());
         t_start = std::chrono::steady_clock::now();
-		task(0,scn, renderer, img, mtx, rng, lastRow, rowCounter);
+		task(0,scn, renderer, mtx, rng, lastRow, rowCounter);
 	}
 	renderer->mStatus.bFinished = true;
 	auto t_end = std::chrono::steady_clock::now();
@@ -350,31 +342,31 @@ int main() {
 
 	auto seconds = std::chrono::duration_cast<std::chrono::seconds>(t_end - t_start).count();
 
-	if(!renderer->mStatus.bStopped) printf("\n*Rendering completed in : ");
-	else printf("\n*Rendering stopped after : ");
+	if(!renderer->mStatus.bStopped) std::cout<<"\n*Rendering completed in : ";
+	else std::cout<<"\n*Rendering stopped after : ";
 	print_hhmmss(seconds);
 
-	auto fname = "VAureaNox_"+scn.id+"_"+std::to_string(img.size.x) + "x" + std::to_string(img.size.y) + ("_"+renderer->Type())+renderer->ImgAffix(scn);
+	auto fname = "VAureaNox_"+scn.id+"_"+std::to_string(int(scn.camera.mResolution.x)) + "x" + std::to_string(int(scn.camera.mResolution.y)) + ("_"+renderer->Type())+renderer->ImgAffix(scn);
 	if(renderer->mStatus.bStopped) fname+="_UNCOMPLETED";
 
-	printf("\n*Saving image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_image_bpp);
-	scn.camera.mFrameBuffer.MergeToImg(img);
-    if(vnx::save_ppm(fname, img, i_image_bpp)) printf("OK\n");
+    std::cout<<"\n*Saving image \""<<fname<<"\" ";
+	auto img = scn.camera.ToImg();
+    if(vnx::save_image(fname, img, e_save_format,b_apply_tonemap)) std::cout<<"OK\n";
     else {
-        printf("FAIL\n");
+        std::cout<<"FAIL\n";
         while(true){
-            printf("<!>Press 1 to retry, other key to skip.\n");
+            std::cout<<"<!>Press 1 to retry, other key to skip.\n";
             auto ch = getch();
             if(ch=='1'){
-                printf("\n*Saving image \"%s\"  @ \"%d\" color depth... ", fname.c_str(),i_image_bpp);
-                if(vnx::save_ppm(fname, img, i_image_bpp)) {printf("OK\n");break;}
-                else printf("FAIL\n");
+                std::cout<<"\n*Saving image \""<<fname<<"\"\n";
+                if(vnx::save_image(fname, img, e_save_format,b_apply_tonemap)) {std::cout<<"OK\n";break;}
+                else std::cout<<"FAIL\n";
             }else break;
         }
     }
 
 	shut(scn, renderer);
-	printf("\nPress any key to quit...");
+	std::cout<<"\nPress any key to quit...";
 	std::cin.get();
 	return 0;
 }

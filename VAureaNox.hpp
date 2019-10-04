@@ -607,6 +607,73 @@ namespace vnx {
 
     using VRng = VRng_pcg32x2; //DEFAULT VRng_pcg32
 
+
+
+    template<typename T>
+    struct VImg{
+        vec2i mResolution;
+        std::vector<vec<T,3>> mPixels;
+        VImg(){}
+        VImg(const vec2i& res){
+            mResolution = res;
+            mPixels.resize(res.x*res.y);
+        }
+
+        inline vec<T,3>& at(const vec2i& pid) {
+            return mPixels[pid.y * mResolution.x + pid.x];
+        }
+        inline vec<T,3>& at(int pidx,int pidy) {
+            return mPixels[pidy * mResolution.x + pidx];
+        }
+        inline const vec<T,3>& at(const vec2i& pid) const{
+            return mPixels[pid.y * mResolution.x + pid.x];
+        }
+        inline const vec<T,3>& at(int pidx,int pidy) const{
+            return mPixels[pidy * mResolution.x + pidx];
+        }
+    };
+
+    struct VFilm{
+        struct VPixel{
+            vec3d wr = zero3d;
+            int num = 0;
+        };
+
+        vec2i mResolution = zero2i;
+        std::vector<VPixel> mPixels;
+        double mScale = 1.0;
+        bool mScaleOnSplat = false;
+
+        VFilm(vec2i resolution) : mResolution(resolution){
+            mPixels.resize(resolution.x*resolution.y);
+            mScale = 1.0;
+        }
+
+        inline void Splat(const vec2i& pid,vec3d cc){
+            if(!(pid.x>=0&&pid.x<mResolution.x && pid.y>=0 && pid.y<mResolution.y)) return;
+            auto& px = mPixels[(pid.y*mResolution.x)+pid.x];
+            px.wr += mScaleOnSplat ? (cc*mScale) : cc;
+            px.num++;
+        }
+
+        inline void SetScale(double v){mScale = v;}
+
+        inline void SetScaleOnSplat(bool v){mScaleOnSplat = v;}
+
+        inline VPixel& at(const vec2i& pid) {
+            return mPixels[pid.y * mResolution.x + pid.x];
+        }
+        inline VPixel& at(int pidx,int pidy) {
+            return mPixels[pidy * mResolution.x + pidx];
+        }
+        inline const VPixel& at(const vec2i& pid) const{
+            return mPixels[pid.y * mResolution.x + pid.x];
+        }
+        inline const VPixel& at(int pidx,int pidy) const{
+            return mPixels[pidy * mResolution.x + pidx];
+        }
+    };
+
 	//////////////////////////
 	//String and Parsing Utils/
 	//////////////////////////
@@ -1478,6 +1545,13 @@ namespace vnx {
     }
 
     template<typename T>
+    constexpr vec<T,3> sample_disk_point(const vec<T,2>& ruv) {
+        auto r   = std::sqrt(ruv.y);
+        auto phi = 2 * pi<T> * ruv.x;
+        return {std::cos(phi) * r, std::sin(phi) * r, 0};
+    }
+
+    template<typename T>
     constexpr vec<T,3> sample_diffuse_cos(const vec<T,2>& rn,const vec<T,3>& o,const vec<T,3>& n,double* pdf = nullptr){
         auto fp = dot(n, o) >= 0 ? make_frame_fromz(zero3<T>, n) : make_frame_fromz(zero3<T>, -n);
         //auto fp = make_frame_fromz(zero3<T>, n);
@@ -1756,16 +1830,13 @@ namespace vnx {
             return false;
 		}
 
-		inline bool is_delta() const{return rs<=thrd && !is_diffuse();}
+		inline bool is_delta() const{return rs<=thrd && (is_conductor() || is_transmissive());}
 
 		inline bool has_kr() const{return !cmpf(kr,zero3d);}
 
-		inline double eval_ior(double wl,double min_wl,double max_wl,bool do_wl_depend = true) const{
-		    if(ior_type==non_wl_dependant) return ior;
-		    if(!is_refractive()) return 1.0;
-
-            if(do_wl_depend && is_dispersive()) return sellmeier_law(smc,wl);
-
+		inline double eval_ior(double wl,double min_wl,double max_wl) const{
+		    if(ior_type==non_wl_dependant || !is_dispersive()) return ior;
+            if(ior_type==wl_dependant && is_dispersive()) return sellmeier_law(smc,wl);
             if(is_dispersive()){
                 auto ior_min = sellmeier_law(smc,min_wl);
                 auto ior_max = sellmeier_law(smc,max_wl);
@@ -2042,8 +2113,8 @@ namespace vnx {
         return ldr;
 	}
 
-	inline bool save_ppm(std::string fname, const image3d& img,int depth = 255) {
-		const int x = img.size.x, y = img.size.y;
+	inline bool save_ppm(const std::string& fname, const VImg<double>& img,bool apply_tonemap,int depth = 255) {
+		const int x = img.mResolution.x, y = img.mResolution.y;
 		std::ofstream fp;
 		fp.open((fname + ".ppm").c_str(),std::ios::binary);
         if(!fp.is_open()) return false;
@@ -2051,13 +2122,13 @@ namespace vnx {
 
 		for (int j = 0; j < y; ++j){
 			for (int i = 0; i < x; ++i){
-                auto pixel = AcesFilmic(at(img,{i, j}));
+                const vec3d &pixel = apply_tonemap ? AcesFilmic(img.at(i,j)) : img.at(i,j);
                 if (depth<256){
 
                     auto r = static_cast<byte>(clamp(static_cast<int>(std::round(pixel.x * (depth+1))), 0, depth));
                     auto g = static_cast<byte>(clamp(static_cast<int>(std::round(pixel.y * (depth+1))), 0, depth));
                     auto b = static_cast<byte>(clamp(static_cast<int>(std::round(pixel.z * (depth+1))), 0, depth));
-                    fp<<r<<g<<b; //fprintf(fp, "%d %d %d\n", r, g, b);
+                    fp<<r<<g<<b;
                 }else{
                     auto r = static_cast<unsigned int>(clamp(static_cast<int>(std::round(pixel.x * (depth+1))), 0, depth));
                     auto g = static_cast<unsigned int>(clamp(static_cast<int>(std::round(pixel.y * (depth+1))), 0, depth));
@@ -2077,6 +2148,44 @@ namespace vnx {
 		fp.close();
 		return true;
 	}
+
+	inline bool save_hdr(const std::string& fname, const VImg<double>& img,bool apply_tonemap) {
+		const int x = img.mResolution.x, y = img.mResolution.y;
+		std::ofstream fp;
+		fp.open((fname + ".hdr").c_str(),std::ios::binary);
+        if(!fp.is_open()) return false;
+        fp <<"#?RADIANCE"<<'\n';
+        fp <<"#VAureaNox"<<'\n';
+        fp <<"FORMAT=32-bit_rle_rgbe"<<"\n\n";
+        fp <<"-Y "<<y<<" +X "<<x<<'\n';
+
+		for (int j = 0; j < y; ++j){
+			for (int i = 0; i < x; ++i){
+                const vec3d &rgb = apply_tonemap ? AcesFilmic(img.at(i,j)) : img.at(i,j);
+                float mx_l = float(max_element(rgb));
+                if(mx_l>mint<float>()){
+                    int e;
+                    mx_l = float(frexp(mx_l,&e)*256.0f/mx_l);
+                    fp<<static_cast<byte>(static_cast<float>(rgb.x)*mx_l);
+                    fp<<static_cast<byte>(static_cast<float>(rgb.y)*mx_l);
+                    fp<<static_cast<byte>(static_cast<float>(rgb.z)*mx_l);
+                    fp<<static_cast<byte>(e+128);
+                }
+			}
+		}
+
+		fp.close();
+		return true;
+	}
+
+	inline bool save_image(std::string fname, const VImg<double>& img,const std::string& ext,bool apply_tonemap = true) {
+        if(stricmp(ext,std::string("hdr"))){
+            return save_hdr(fname,img,apply_tonemap);
+        }else{
+            return save_ppm(fname,img,apply_tonemap);
+        }
+	}
+
 
 	frame3d calculate_frame(const VNode* node,const frame3d& parent);
 	void apply_transforms(VNode* node, const frame3d& parent);
@@ -2115,6 +2224,7 @@ namespace vnx {
             else if(stricmp(k,std::string("fused_silica"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,0.0,1.4585,0.0,{{0.6961663,fsipow(0.0684043,2)},{0.4079426,fsipow(0.1162414,2)},{0.8974794,fsipow(9.896161,2)}});
             else if(stricmp(k,std::string("carbon_diamond"))) return VMaterial(dielectric,wl_dependant,zero3d,zero3d,0.0,0.0,0.0,0.0,2.4175,0.0,{{0.3306,fsipow(0.1750,2)},{4.3356,fsipow(0.1060,2)}});
             else if(stricmp(k,std::string("water"))) return VMaterial(dielectric,wl_dependant,zero3d,{0.1,0.1,0.01},0.0,0.0,0.0,0.0,1.3218,0.0,{{0.75831,0.01007},{0.08495,8.91377}});
+            else if(stricmp(k,std::string("dispersive_plastic"))) return VMaterial(dielectric,wl_dependant,{0.8,0.8,0.8},zero3d,-1.0,0.0,0.0,0.0,1.5168,0.01,{{1.03961212,0.00600069867},{0.231792344,0.0200179144},{1.01046945,103.560653}});
             return VMaterial();
     }
 
