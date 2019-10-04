@@ -30,13 +30,16 @@ Dielectrics implemented as a dual layer material: Diffuse + (Glossy\[GGX\]/Smoot
 
 Emissive materials (Blackbody : temperature + "power")
 Lambertian Diffuse and variant derived from Ashikhmin for dielectrics
-Rough Specular (GGX)
-Glossy Dielectric (GGX)
+Smooth - Rough Specular (GGX)
+Smooth - Glossy Dielectric (GGX)
+Transmissive - Refractive Materials (Rough refractives are still to be implemented)
+
 
 Materials with fixed or variable ior (Dispersion) , using Sellmeier Coefficients, 
 accounting for ray wavelength (Sensitive values, as wavelength(s), stored by Ray)
 
 Basilar support for Participating media (Homogeneous | Heterogenous), 
+using Delta Tracking , accounting for absorption and scattering,
 currently only uniform phase function.
 
 Materials can be attached with a mutator (only on the source code side), 
