@@ -19,13 +19,15 @@ Feauteres a LvcBdpt (Light vertex cache Bidirectional Pathtracer) with MIS since
 Surfaces categorizeable between Conductors and Dielectrics with dedicated Fresnel function (not using Schlick's)
 Microfacet brdf for specular surfaces using GGX
 
-Diffuse model which accounts for energy conservation, that allows for proper ( i hope...) handling of mixed specular / diffuse surfaces , especially when fresnel effect kicks in.
+Lambertian Diffuse
+
+Experimenting with a dual layered Dielectric Model (Diffuse\[Derived from Ashikhmin\]+Glossy\[Smooth|Rough\])
 
 Refractive materials with fixed or variable ior accounting for ray wavelength (keeps track of original_wl/wl/ior) to simulate dispersion. Material parametrizable with a fixed ior or with Sellmeier coefficients (for dispersion)
 
 There is basilar support for homogeneous and scattering media, so far (v 0.07) only uniform phase function.
 
-Materials can be attached with a mutator , which allows to change the evaluated material at runtime , accounting also for normals and object loc/world pos...
+Materials can be attached with a mutator (only on the source code side), which allows to change the evaluated material at runtime , accounting also for normals and object loc/world pos...
 
 
 The enforced floating point precision is ***double*** : Dealing with SDFs is, by nature, very error prone precision wise , using ***float*** (before version 0.0.7) lead to many lingering (yet , "show changing") precision errors . Errors that would grow a lot in non trivial scenes (lots of SDFs, non distance preserving operators , etc...). 
