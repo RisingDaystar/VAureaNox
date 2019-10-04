@@ -13,22 +13,37 @@ A "Switch" part, responsable for initialization,Pre-render tasks, thread initial
 
 A "Renderer" part : the selected renderer processes the scene
 
+<br />
+<h4>
+  <b>Features</b>
+  <hr />
+</h4>
+<pre>
+Implemented <b>LVCBdpt</b> (Light vertex cache - Bidirectional Pathtracer) with MIS
 
-Feauteres a LvcBdpt (Light vertex cache Bidirectional Pathtracer) with MIS since v 0.0.9
+Framework for other "renderers"
+Dedicated configs and scenes file format (.vnxs - Still WIP)
 
-Surfaces categorizeable between Conductors and Dielectrics with dedicated Fresnel function (not using Schlick's)
-Microfacet brdf for specular surfaces using GGX
+Conductor | Dielectric - Materials
+Dedicated fresnel functions (not using Schlick's)
+Dielectrics implemented as a dual layer material: Diffuse + (Glossy\[GGX\]/Smooth)
 
-Lambertian Diffuse
+Emissive materials (Blackbody : temperature + "power")
+Lambertian Diffuse and variant derived from Ashikhmin for dielectrics
+Rough Specular (GGX)
+Glossy Dielectric (GGX)
 
-Experimenting with a dual layered Dielectric Model (Diffuse\[Derived from Ashikhmin\]+Glossy\[Smooth|Rough\])
+Materials with fixed or variable ior (Dispersion) , using Sellmeier Coefficients, 
+accounting for ray wavelength (Sensitive values, as wavelength(s), stored by Ray)
 
-Refractive materials with fixed or variable ior accounting for ray wavelength (keeps track of original_wl/wl/ior) to simulate dispersion. Material parametrizable with a fixed ior or with Sellmeier coefficients (for dispersion)
+Basilar support for Participating media (Homogeneous | Heterogenous), 
+currently only uniform phase function.
 
-There is basilar support for homogeneous and scattering media, so far (v 0.07) only uniform phase function.
+Materials can be attached with a mutator (only on the source code side), 
+which allows to change the evaluated material at runtime , 
+accounting also for normals and object loc/world pos...
 
-Materials can be attached with a mutator (only on the source code side), which allows to change the evaluated material at runtime , accounting also for normals and object loc/world pos...
-
+</pre>
 
 The enforced floating point precision is ***double*** : Dealing with SDFs is, by nature, very error prone precision wise , using ***float*** (before version 0.0.7) lead to many lingering (yet , "show changing") precision errors . Errors that would grow a lot in non trivial scenes (lots of SDFs, non distance preserving operators , etc...). 
 
