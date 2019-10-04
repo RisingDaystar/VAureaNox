@@ -32,7 +32,7 @@ Emissive materials (Blackbody : temperature + "power")
 Lambertian Diffuse and variant derived from Ashikhmin for dielectrics
 Smooth - Rough Specular (GGX)
 Smooth - Glossy Dielectric (GGX)
-Transmissive - Refractive Materials (Rough refractives are still to be implemented)
+Transmissive - Refractive Materials (Roughness is still not used, TODO)
 
 
 Materials with fixed or variable ior (Dispersion) , using Sellmeier Coefficients, 
