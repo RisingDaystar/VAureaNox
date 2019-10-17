@@ -21,40 +21,40 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "VFileConfigs.hpp"
 
-namespace vnx{
+namespace vnx {
 
-    struct VConfigurable {
-        VConfigurable(const VFileConfigs& configref,const std::string& section);
+	struct VConfigurable {
+		VConfigurable(const VFileConfigs& configref, const std::string& section);
 
-        const VFileConfigs& mConfigsRef;
-        std::string mSection;
+		const VFileConfigs& mConfigsRef;
+		std::string mSection;
 
-        inline std::string TryGet(const std::string& k, std::string dVal) const {
-            return mConfigsRef.TryGet(mSection,k,dVal);
-        }
-        inline double TryGet(const std::string& k, double dVal) const {
-            return mConfigsRef.TryGet(mSection,k,dVal);
-        }
-        inline float TryGet(const std::string& k, float dVal) const {
-            return mConfigsRef.TryGet(mSection,k,dVal);
-        }
-        inline int TryGet(const std::string& k, int dVal) const { //also bool
-            return mConfigsRef.TryGet(mSection,k,dVal);
-        }
+		inline std::string TryGet(const std::string& k, std::string dVal) const {
+			return mConfigsRef.TryGet(mSection, k, dVal);
+		}
+		inline double TryGet(const std::string& k, double dVal) const {
+			return mConfigsRef.TryGet(mSection, k, dVal);
+		}
+		inline float TryGet(const std::string& k, float dVal) const {
+			return mConfigsRef.TryGet(mSection, k, dVal);
+		}
+		inline int TryGet(const std::string& k, int dVal) const { //also bool
+			return mConfigsRef.TryGet(mSection, k, dVal);
+		}
 
-        inline std::string TryGet(const std::string& s,const std::string& k, std::string dVal) const {
-            return mConfigsRef.TryGet(s,k,dVal);
-        }
-        inline double TryGet(const std::string& s,const std::string& k, double dVal) const {
-            return mConfigsRef.TryGet(s,k,dVal);
-        }
-        inline float TryGet(const std::string& s,const std::string& k, float dVal) const {
-            return mConfigsRef.TryGet(s,k,dVal);
-        }
-        inline int TryGet(const std::string& s,const std::string& k, int dVal) const { //also bool
-            return mConfigsRef.TryGet(s,k,dVal);
-        }
-    };
+		inline std::string TryGet(const std::string& s, const std::string& k, std::string dVal) const {
+			return mConfigsRef.TryGet(s, k, dVal);
+		}
+		inline double TryGet(const std::string& s, const std::string& k, double dVal) const {
+			return mConfigsRef.TryGet(s, k, dVal);
+		}
+		inline float TryGet(const std::string& s, const std::string& k, float dVal) const {
+			return mConfigsRef.TryGet(s, k, dVal);
+		}
+		inline int TryGet(const std::string& s, const std::string& k, int dVal) const { //also bool
+			return mConfigsRef.TryGet(s, k, dVal);
+		}
+	};
 }
 
 #endif // VCONFIGURABLE_HPP_INCLUDED

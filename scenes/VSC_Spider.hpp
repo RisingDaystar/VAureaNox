@@ -32,7 +32,7 @@ namespace vscndef {
 			new vvo_sd_ellipsoid(name + "_el",mat,dims),
 			new vvo_sd_ellipsoid(name + "_sub",mat,dims),
 			//new vvo_sd_ellipsoid(name + "_sub2",mat,{dims.x / 1.5f,dims.y*2,dims.z}),
-		});
+			});
 
 		sh_root->select(name + "_sub")->set_translation({ 0,0,-0.5f });
 		//sh_root->_(name + "_sub2")->set_translation({ 0,dims.y/3.0f,0.0f });
@@ -112,7 +112,7 @@ namespace vscndef {
 					}),
 				}),
 			}),
-		});
+			});
 
 
 		hand->select("palm_main_int")->set_translation(0, -0.2f, 0);
@@ -202,7 +202,7 @@ namespace vscndef {
 				new vvo_sd_ellipsoid(name + "_1_axel", mat1,{ 0.3f,1.0f,0.3f }),
 				hand,
 			}),
-		});
+			});
 
 		hand->select("fingers")->set_translation(0, -0.20f, 0.1f);
 		hand->select("palm_fingers")->set_translation(0, 0, 0);
@@ -239,7 +239,7 @@ namespace vscndef {
 					}),
 				}),
 			}),
-		});
+			});
 
 
 		leg->select(name + "_0_axel")->set_translation({ 0 ,-1.5f, 0 });
@@ -278,7 +278,7 @@ namespace vscndef {
 		return leg;
 	}
 
-	vnx::VNode* make_hood(const std::string& name,vnx::VMaterial* mat1,vnx::VMaterial* mat2) {
+	vnx::VNode* make_hood(const std::string& name, vnx::VMaterial* mat1, vnx::VMaterial* mat2) {
 		using namespace vnx;
 		auto hood = new vop_subtraction(name, 0.2f, false, {
 			new vop_union(name + "_u",{
@@ -289,7 +289,7 @@ namespace vscndef {
 			new vvo_sd_ellipsoid(name + "_h_s1",mat1,{ 0.5f,0.3f,0.5f }),
 			new vvo_sd_ellipsoid(name + "_h_s2",mat1,{ 0.6f,0.4f,0.4f }),
 			new vvo_sd_ellipsoid(name + "_h_s3",mat1,{ 0.3f,0.4f,0.4f }),
-		});
+			});
 		hood->select(name + "_h_1")->set_translation(0, -0.3f, 0);
 		hood->select(name + "_h_2")->set_translation(0, -0.3f, 0);
 		hood->select(name + "_h_s1")->set_translation(0, 0.1f, 0.5f);
@@ -300,13 +300,13 @@ namespace vscndef {
 
 	void init_spider_scene(VScene& scn) {
 		scn.mID = "spider";
-        scn.camera.mYfov = 45.0;
-        scn.camera.mOrigin = {0,10.1,13.0};
-        scn.camera.mTarget = {0,5.1,0.01};
-        scn.camera.mUp = {0,1.0f,0};
-        scn.camera.mAperture = 0.0;
-        scn.camera.mFocus = length(scn.camera.mTarget-scn.camera.mOrigin);
-        scn.camera.mAutoFocus = true;
+		scn.camera.mYfov = 45.0;
+		scn.camera.mOrigin = { 0,10.1,13.0 };
+		scn.camera.mTarget = { 0,5.1,0.01 };
+		scn.camera.mUp = { 0,1.0f,0 };
+		scn.camera.mAperture = 0.0;
+		scn.camera.mFocus = length(scn.camera.mTarget - scn.camera.mOrigin);
+		scn.camera.mAutoFocus = true;
 
 		auto grey_steel_material = scn.add_material("grey_steel_material");
 		grey_steel_material->type = conductor;
@@ -369,7 +369,7 @@ namespace vscndef {
 		blue_partecipating->sigma_a = { 0.9f,0.9f,0.01f };
 
 
-		auto sea_material = scn.add_material("sea_material",get_material_archetype("water"));
+		auto sea_material = scn.add_material("sea_material", get_material_archetype("water"));
 
 
 		auto emissive = scn.add_material("emissive");
@@ -385,24 +385,25 @@ namespace vscndef {
 		auto grey_diffuse_no_refl_adv = scn.add_material("grey_diffuse_no_refl_adv");
 		grey_diffuse_no_refl_adv->type = diffuse;
 		grey_diffuse_no_refl_adv->kr = { 0.5,0.5,0.5 };
-		auto mtor = [](const VResult& hit,const vec3d& n, VMaterial& mat) {
-		    const auto thr = (sin(hit.wor_pos.x)*sin(hit.wor_pos.y)*sin(hit.wor_pos.z));
-            if (thr >0.2) {
-                mat.kr = {0.2,0.5,0.2};
-            }else if(thr<-0.2){
-                mat.kr = vec3d{0.5,0.2,0.2};
-            }
+		auto mtor = [](const VResult& hit, const vec3d& n, VMaterial& mat) {
+			const auto thr = (sin(hit.wor_pos.x) * sin(hit.wor_pos.y) * sin(hit.wor_pos.z));
+			if (thr > 0.2) {
+				mat.kr = { 0.2,0.5,0.2 };
+			}
+			else if (thr < -0.2) {
+				mat.kr = vec3d{ 0.5,0.2,0.2 };
+			}
 		};
 		grey_diffuse_no_refl_adv->mutator = mtor;
 
 		auto base_plane = new vvo_sd_plane("base_plane", grey_diffuse_no_refl_adv);
 		auto base_plane_v = new vvo_sd_plane("base_plane_v", grey_diffuse_no_refl_adv);
-		base_plane->set_displacement([](const vec3d& p){
-			auto dv = sin(p.x)*sin(p.y)*sin(p.z);
+		base_plane->set_displacement([](const vec3d& p) {
+			auto dv = sin(p.x) * sin(p.y) * sin(p.z);
 			return dv;
-        });
+			});
 
-        /*
+		/*
 		auto ftor2 = [](const vec3d& wor_pos,const vec3d& loc_pos, const VNode* tref) {
 			//loc_pos = ygl::transform_point_inverse(tref->_frame, wor_pos);
 			float dv = ygl::dot(loc_pos, ygl::normalize(vec3d{ 0,1,0 }));
@@ -442,7 +443,7 @@ namespace vscndef {
 					new vvo_sd_sphere("j_ei",red_diff_material,0.15f),
 				}),
 			}),
-		});
+			});
 		//sword->set_translation(5.0f, 5.0f, 0);
 		sword->select("hilt")->set_translation(0, 0.5f, 0);
 		sword->select("lama")->set_translation(0, 0.0f, 0);
@@ -456,7 +457,7 @@ namespace vscndef {
 		auto root_union = new vop_union("root", {
 			//sea,
 			//new vop_repeat("rrep",{19.0,5.0,39.0},{true,false,true},
-                new vop_union("robot_root",{
+				new vop_union("robot_root",{
 				new vop_union("top_root",{
 					new vop_union("sc_head_root",0.3f,{
 						new vvo_sd_ellipsoid("sc_neck",black_material,{ 0.8f,0.5f,0.5f }),
@@ -516,14 +517,14 @@ namespace vscndef {
 					}),
 				}),
 			}),
-//),
+			//),
 
-			new vop_union("base_plane_group",20.0f,{
-				base_plane,
-				base_plane_v,
-			}),
-			main_light,
-		});
+						new vop_union("base_plane_group",20.0f,{
+							base_plane,
+							base_plane_v,
+						}),
+						main_light,
+			});
 		scn.set_root(root_union);
 
 
@@ -603,12 +604,12 @@ namespace vscndef {
 		sc_root->select("arm_dx_0")->select("arm_dx_hand")->select("finger_4_2")->set_rotation_degs(5, 0, 0);
 		sc_root->select("arm_dx_0")->select("arm_dx_hand")->select("finger_5_2")->set_rotation_degs(5, 0, 0);
 
-		auto energy_ball = new vop_twist("energy",Y, 5.0f,
+		auto energy_ball = new vop_twist("energy", Y, 5.0f,
 			new vop_union("energy_e", {
 				new vvo_sd_box("ball",sea_material,0.5f),
 				new vvo_sd_box("ball_em",emissive_dim,0.2f),
-			})
-			);
+				})
+				);
 		energy_ball->select("energy_e")->set_rotation_degs(45, 0, 0);
 		energy_ball->set_translation(0, -1.0f, -1.7f);
 

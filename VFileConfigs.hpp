@@ -21,70 +21,70 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "VAureaNox.hpp"
 
-namespace vnx{
+namespace vnx {
 
-    struct VFileConfigs{
+	struct VFileConfigs {
 
-        struct VFCException : public VException{
-            VFCException(const std::string& msg):VException(msg),bFatal(true){}
-            VFCException(bool fatal,std::string msg):VException(msg),bFatal(fatal){}
-            bool bFatal = true;
-        };
+		struct VFCException : public VException {
+			VFCException(const std::string& msg) :VException(msg), bFatal(true) {}
+			VFCException(bool fatal, std::string msg) :VException(msg), bFatal(fatal) {}
+			bool bFatal = true;
+		};
 
-        std::map<std::string,std::map<std::string,std::string>> mMappings;
-        std::string mFilename;
+		std::map<std::string, std::map<std::string, std::string>> mMappings;
+		std::string mFilename;
 
-        VFileConfigs(std::string fn){
-            mFilename = fn;
-        }
+		VFileConfigs(std::string fn) {
+			mFilename = fn;
+		}
 
-        void parse();
-        void eval(const std::string& line,uint lid,std::string& cur_section);
+		void parse();
+		void eval(const std::string& line, uint lid, std::string& cur_section);
 
-        inline const std::map<std::string,std::string>* getSection(const std::string& s) const{
-            auto ms = mMappings.find(s);
-            if(ms == mMappings.end()) return nullptr;
-            return &ms->second;
-        }
+		inline const std::map<std::string, std::string>* getSection(const std::string& s) const {
+			auto ms = mMappings.find(s);
+			if (ms == mMappings.end()) return nullptr;
+			return &ms->second;
+		}
 
-        inline void ExceptionAtLine(const std::string& msg,uint lid,bool fatal = true){
-            throw VFCException(fatal,msg+" | line : "+std::to_string(lid));
-        }
+		inline void ExceptionAtLine(const std::string& msg, uint lid, bool fatal = true) {
+			throw VFCException(fatal, msg + " | line : " + std::to_string(lid));
+		}
 
 
-        inline std::string TryGet(const std::string& section,const std::string& k, std::string dVal) const {
-            auto ms = getSection(section);
-            if(!ms) return dVal;
-            auto match = ms->find(k);
-            if (match == ms->end()) { return dVal; }
-            return match->second;
-        }
-        inline double TryGet(const std::string& section,const std::string& k, double dVal) const {
-            auto ms = getSection(section);
-            if(!ms) return dVal;
-            auto match = ms->find(k);
-            if (match == ms->end()) { return dVal; }
-            return strto_d(match->second);
-        }
-        inline float TryGet(const std::string& section,const std::string& k, float dVal) const {
-            auto ms = getSection(section);
-            if(!ms) return dVal;
-            auto match = ms->find(k);
-            if (match == ms->end()) { return dVal; }
-            return strto_f(match->second);
-        }
-        inline int TryGet(const std::string& section,const std::string& k, int dVal) const { //also bool
-            auto ms = getSection(section);
-            if(!ms) return dVal;
-            auto match = ms->find(k);
-            if (match == ms->end()) { return dVal; }
+		inline std::string TryGet(const std::string& section, const std::string& k, std::string dVal) const {
+			auto ms = getSection(section);
+			if (!ms) return dVal;
+			auto match = ms->find(k);
+			if (match == ms->end()) { return dVal; }
+			return match->second;
+		}
+		inline double TryGet(const std::string& section, const std::string& k, double dVal) const {
+			auto ms = getSection(section);
+			if (!ms) return dVal;
+			auto match = ms->find(k);
+			if (match == ms->end()) { return dVal; }
+			return strto_d(match->second);
+		}
+		inline float TryGet(const std::string& section, const std::string& k, float dVal) const {
+			auto ms = getSection(section);
+			if (!ms) return dVal;
+			auto match = ms->find(k);
+			if (match == ms->end()) { return dVal; }
+			return strto_f(match->second);
+		}
+		inline int TryGet(const std::string& section, const std::string& k, int dVal) const { //also bool
+			auto ms = getSection(section);
+			if (!ms) return dVal;
+			auto match = ms->find(k);
+			if (match == ms->end()) { return dVal; }
 
-            if (stricmp(match->second, std::string("true"))) { return 1; }
-            if (stricmp(match->second, std::string("false"))) { return 0; }
+			if (stricmp(match->second, std::string("true"))) { return 1; }
+			if (stricmp(match->second, std::string("false"))) { return 0; }
 
-            return strto_i(match->second);
-        }
-    };
+			return strto_i(match->second);
+		}
+	};
 
 };
 

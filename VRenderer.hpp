@@ -21,19 +21,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "VConfigurable.hpp"
 
-namespace vnx{
+namespace vnx {
 
-	struct VRenderer : VConfigurable{
-	    VStatus mStatus;
-		VRenderer(const VFileConfigs& cfgs,std::string section) : VConfigurable(cfgs,section){
+	struct VRenderer : VConfigurable {
+		VStatus mStatus;
+		VRenderer(const VFileConfigs& cfgs, std::string section) : VConfigurable(cfgs, section) {
 		}
 
-		virtual ~VRenderer() {Shut();}
+		virtual ~VRenderer() { Shut(); }
 		virtual void Shut() {}
 		virtual void Init(VScene& scn) {};
 		virtual void PostInit(VScene& scn) = 0;
 		virtual std::string Type() const = 0;
-		virtual std::string ImgAffix(const VScene& scn) const {return std::string("");};
+		virtual std::string ImgAffix(const VScene& scn) const { return std::string(""); };
 		virtual void EvalImageRow(const VScene& scn, VRng& rng, uint width, uint height, uint j) = 0;
 	};
 };
