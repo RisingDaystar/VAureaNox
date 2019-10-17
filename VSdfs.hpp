@@ -16,7 +16,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-
 #ifndef _VSdfs_H
 #define _VSdfs_H
 
@@ -117,7 +116,6 @@ inline double sdf2d_circle(const vec2d& ep);
 inline double sdf2d_line(const vec2d& ep);
 inline double sdf2d_rhombus(const vec2d& ep);
 
-
 //Personalizzabile
 
 struct vvo_sdf2d_cross : public VSdf {
@@ -138,7 +136,6 @@ struct vvo_sdf2d_cross : public VSdf {
 		double dv = sdf2d_cross(vec2d{ ep.x,ep.z }, mB, mR) + eval_displacement(ep) - mRounding;
 		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
 	}
-
 };
 
 struct vvo_blended : public VSdf {
@@ -192,7 +189,6 @@ struct vvo_shadered : public VSdf {
 
 	inline void eval(const vec3d& p, VResult& res) {
 		vec3d ep = eval_ep(p);
-
 
 		float dv = maxd;
 		if (mShader != nullptr) { dv = mShader(p, ep, this); }
@@ -406,7 +402,6 @@ struct vvo_sd_round_cone : public VSdf {
 	}
 };
 
-
 struct vvo_sd_pyramid4 : public VSdf {
 	vec3d mDims = one3d;
 	vvo_sd_pyramid4(std::string ids, VMaterial* mtl) : VSdf(ids, mtl), mDims(one3d) {}
@@ -424,11 +419,9 @@ struct vvo_sd_pyramid4 : public VSdf {
 		const double dv = sdf3d_pyramid4(ep, mDims) + eval_displacement(ep) - mRounding;
 		res = VResult{ this,this,mMaterial,mMaterial,dv,dv,p,ep };
 	}
-
 };
 
 struct vvo_sd_diamond : public VSdf {
-
 	vvo_sd_diamond(const std::string& ids, VMaterial* mtl) : VSdf(ids, mtl) {}
 
 	inline void DoRelate(const VMappedEntry* entry) {

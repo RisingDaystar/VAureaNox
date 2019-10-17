@@ -51,8 +51,8 @@ namespace vnx {
 		bool set_translation(const std::string& idv, const vec3d& amount);
 		bool set_translation(const std::string& idv, double x, double y, double z);
 
-		bool set_rotation(std::string n, const vec3d& amount);
-		bool set_rotation(std::string n, double x, double y, double z);
+		bool set_rotation(const std::string& idv, const vec3d& amount);
+		bool set_rotation(const std::string& idv, double x, double y, double z);
 
 		bool set_rotation_degs(const std::string& idv, const vec3d& amount);
 		bool set_rotation_degs(const std::string& idv, double x, double y, double z);
@@ -76,7 +76,6 @@ namespace vnx {
 			if (root != nullptr) { root->eval(p, res); res.wor_pos = p; if (res.vdist > 0.0) { res.vmtl = nullptr; res.vsur = nullptr; } } // ensure wor_pos is set to world coord
 		}
 
-
 		inline VNode* set_root(VNode* n) { root = n; return root; }
 		inline VNode* get_root() { return root; }
 
@@ -85,8 +84,6 @@ namespace vnx {
 			if (root->mID == idv) { return root; }
 			return root->select(idv);
 		}
-
-
 
 		inline vec3d eval_normals(const VResult& er, double eps) const {
 			return normalize(std::invoke(normals_algo, this, er, eps));
@@ -140,7 +137,6 @@ namespace vnx {
 			return norm;
 		}
 
-
 		///original naive sphere tracing algorithm
 		inline VResult intersect_naive(const VRay& ray, int miters, int* iters = nullptr, int* overs = nullptr) const {
 			double t = 0.0;
@@ -173,8 +169,6 @@ namespace vnx {
 		///it simply cannot determine wether it is an "error" or a legit inside trace.
 		///TODO ,over rel & lipschitz fixer for "started inside" tracings
 
-
-
 		inline VResult intersect_rel(const VRay& ray, int miters, int* iters = nullptr, int* overs = nullptr) const {
 			//const double hmaxf = maxd/2.0; ///consider using this to avoid over/underflows (depending on sign of the leading expression, it might happen, needs testing) .
 			constexpr double maxf_m1 = maxd - 1.0;
@@ -195,16 +189,14 @@ namespace vnx {
 					if (absd < ray.tmin) { vre._found = true; if (iters) { *iters = i; }if (overs) { *overs = no; }return vre; }
 					t += absd;
 					pd = d;
-				}
-				else {  //started outside
+				} else {  //started outside
 					if (absd > os) {
 						if (d < ray.tmin && d >= 0.0) { vre._found = true; if (iters) { *iters = i; }if (overs) { *overs = no; }return vre; }
 						if (absd < ray.tmin) d -= ray.tmin - absd; //precision fix
 						os = d * ygl::clamp(0.5 * std::max(d / pd, os / pd), -1.0, 1.0);
 						t += d + os;
 						pd = d;
-					}
-					else {
+					} else {
 						const auto aos = std::abs(os);
 						no++;
 						t -= aos;
@@ -246,8 +238,7 @@ namespace vnx {
 					}
 					t += absd;
 					//pd = d;
-				}
-				else {  //started outside
+				} else {  //started outside
 					auto d = vre.vdist; ///MARCH BY VDIST OUTSIDE, NO NEED TO ACCOUNT FOR NESTED
 					///VDIST allows for precise back-tracing in case of oversteps and discontinuities
 					auto absd = std::abs(d);
@@ -261,7 +252,6 @@ namespace vnx {
 							os = 0.0;
 							pd = d;
 							continue;
-
 						}
 
 						//auto cc = std::abs((d-os)/pd)*std::max(std::abs(d/pd),std::abs(os/pd)) ///gives a strange miss in the cornell box scene (right in the middle, where ray is perpendicular to box), might be prone to undetected overstep
@@ -271,9 +261,7 @@ namespace vnx {
 						//os = d*std::max(-1.0,std::min(1.0,0.5*(d/pd)));
 						t += d + os;
 						pd = d;
-
-					}
-					else {
+					} else {
 						no++;
 						const auto aos = std::abs(os);
 						t -= aos;

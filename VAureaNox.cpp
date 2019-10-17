@@ -38,7 +38,6 @@ using namespace ygl;
 using namespace vnx;
 
 namespace vnx {
-
 	frame3d calculate_frame(const VNode* node, const frame3d& parent) {
 		if (node == nullptr) { return identity_frame3d; }
 		auto fr = parent * ygl::translation_frame(node->mTranslation);
@@ -75,7 +74,7 @@ namespace vnx {
 				ygl::rotation_frame(vec3d{ 1,0,0 }, node->mRotation.x);
 			break;
 		}
-		auto n_scale = !cmpf(node->mScale, zero3d) ? one3d / node->mScale : one3d;
+		auto n_scale = !has_zero(node->mScale) ? one3d / node->mScale : one3d;
 		return fr * scaling_frame(n_scale);
 	}
 
@@ -86,33 +85,23 @@ namespace vnx {
 		for (auto& child : chs) { apply_transforms(child, node->mFrame); }
 	}
 
-
-
 	void shut(VScene& scn, VRenderer* renderer) {
 		scn.shut();
 		if (renderer != nullptr) { delete renderer; renderer = nullptr; }
 	}
 
 	void init(VScene& scn, VRenderer** renderer, const VFileConfigs& config) {
-
 		auto renderer_type = config.TryGet("VAureaNox", "renderer_type", "");
 		auto scn_to_render = config.TryGet("VAureaNox", "render_scene", "cornell");
-
 
 		if (scn_to_render.substr(scn_to_render.find_last_of(".") + 1) == "vnxs") {
 			std::cout << "**Loading external Scene : \"" << scn_to_render << "\"...\n";
 			VVnxsParser sparser;
 			scn_to_render = "scene_files/" + scn_to_render;
 			sparser.parse(scn, scn_to_render);
-		}
-		else {
+		} else {
 			std::cout << "**Loading internal Scene : \"" << scn_to_render << "\"...\n";
-			if (stricmp(scn_to_render, std::string("cornell"))) { vscndef::init_cornell_scene(scn); }
-			else if (stricmp(scn_to_render, std::string("spider"))) { vscndef::init_spider_scene(scn); }
-			else if (stricmp(scn_to_render, std::string("pathtracing"))) { vscndef::init_pathtracing_scene(scn); }
-			else if (stricmp(scn_to_render, std::string("gi_test"))) { vscndef::init_gi_test_scene(scn); }
-			else if (stricmp(scn_to_render, std::string("nested"))) { vscndef::init_nested_scene(scn); }
-			else { throw VException("Invalid Scene."); }
+			if (stricmp(scn_to_render, std::string("cornell"))) { vscndef::init_cornell_scene(scn); } else if (stricmp(scn_to_render, std::string("spider"))) { vscndef::init_spider_scene(scn); } else if (stricmp(scn_to_render, std::string("pathtracing"))) { vscndef::init_pathtracing_scene(scn); } else if (stricmp(scn_to_render, std::string("gi_test"))) { vscndef::init_gi_test_scene(scn); } else if (stricmp(scn_to_render, std::string("nested"))) { vscndef::init_nested_scene(scn); } else { throw VException("Invalid Scene."); }
 		}
 		std::cout << "**Loaded Scene, id =  \"" << scn.mID << "\"\n";
 
@@ -128,10 +117,9 @@ namespace vnx {
 		std::cout << "**Loaded Renderer : \"" << (*renderer)->Type() << "\"\n";
 	}
 
-	void task(uint id, const VScene& scn, VRenderer* renderer, std::mutex& mtx, VRng& rng, volatile std::atomic<uint>& lrow, volatile std::atomic<uint>& rowCounter) {
+	void task(uint id, const VScene& scn, VRenderer* renderer, std::mutex& mtx, VRng& rng, std::atomic<uint>& lrow, std::atomic<uint>& rowCounter) {
 		const uint width = scn.camera.mResolution.x;
 		const uint height = scn.camera.mResolution.y;
-
 
 		while (!renderer->mStatus.bStopped) {
 			//sincronizzazione per evitare data race...insignificante overhead
@@ -148,13 +136,11 @@ namespace vnx {
 			mtx.lock();
 			std::cout << "Current Row:" << j << " -> Total:{" << (++rowCounter) << " / " << height << "} -> Worker:{" << id << "}\n";
 			mtx.unlock();
-
 		}
 		mtx.lock();
 		std::cout << "\t#Worker " << id << " finished\n";
 		mtx.unlock();
 	}
-
 
 	//Utilizza "conio.h" , non standard, disattivabile in compilazione.
 	void monitor_task(std::mutex& mtx, const VScene& scn, VRenderer* renderer, const std::string& e_save_format, bool b_apply_tonemap) {
@@ -168,34 +154,27 @@ namespace vnx {
 				std::cout << "\n***Termination Requested***\n\n";
 				renderer->mStatus.bStopped = true;
 				if (!renderer->mStatus.bPauseMode)mtx.unlock();
-			}
-			else if (k == '1') { //PREVIEW
+			} else if (k == '1') { //PREVIEW
 				if (!renderer->mStatus.bPauseMode)mtx.lock();
 				auto fname = "VAureaNox_" + scn.mID + "_" + std::to_string(int(scn.camera.mResolution.x)) + "x" + std::to_string(int(scn.camera.mResolution.y)) + ("_" + renderer->Type()) + renderer->ImgAffix(scn) + "_PREVIEW";
 				std::cout << "\n*Saving Preview image \"" << fname << "\" ";
 				if (vnx::save_image(fname, scn.camera.ToImg(), e_save_format, b_apply_tonemap)) std::cout << "OK\n\n";
 				else std::cout << "FAIL\n\n";
 				if (!renderer->mStatus.bPauseMode)mtx.unlock();
-			}
-			else if (k == '2') { //DEBUG
+			} else if (k == '2') { //DEBUG
 				if (!renderer->mStatus.bPauseMode)mtx.lock();
 				renderer->mStatus.bDebugMode = !renderer->mStatus.bDebugMode;
 				if (renderer->mStatus.bDebugMode) std::cout << "\n*Debug flag set\n\n";
 				else std::cout << "\n*Debug flag unset\n\n";
 				if (!renderer->mStatus.bPauseMode)mtx.unlock();
-			}
-			else if (k == '3') { //PAUSE
+			} else if (k == '3') { //PAUSE
 				renderer->mStatus.bPauseMode = !renderer->mStatus.bPauseMode;
-				if (renderer->mStatus.bPauseMode) { std::cout << "\n*Rendering Paused\n\n"; mtx.lock(); }
-				else { std::cout << "\n*Rendering Resumed\n\n"; mtx.unlock(); }
+				if (renderer->mStatus.bPauseMode) { std::cout << "\n*Rendering Paused\n\n"; mtx.lock(); } else { std::cout << "\n*Rendering Resumed\n\n"; mtx.unlock(); }
 			}
 		}
 #endif
 	}
-
 };
-
-
 
 int main() {
 	std::mutex mtx;
@@ -216,7 +195,6 @@ int main() {
 	try {
 		std::cout << "<--- VAureaNox - Distance Fields Renderer - v: 0.0.9 --->\n\n";
 		config.parse();
-
 
 		int i_em_evals = config.TryGet(section, "i_em_evals", 10000);
 		if (i_em_evals <= 0) { throw VException("i_em_evals <= 0"); }
@@ -262,7 +240,6 @@ int main() {
 		b_start_monitor = config.TryGet(section, "b_start_monitor", false);
 		//
 
-
 		std::cout << "\n**Preparing scene...\n";
 		std::cout << "**Transforming nodes coordinates...\n";
 		apply_transforms(scn.root, identity_frame3d);
@@ -282,14 +259,12 @@ int main() {
 			std::cout << "**In: ";
 			print_hhmmss(seconds);
 			std::cout << "\n";
-		}
-		else {
+		} else {
 			std::cout << "\n**Skipping Emissive Hints calculation.\n";
 		}
 
 		renderer->PostInit(scn);
-	}
-	catch (std::exception & ex) {
+	} catch (std::exception & ex) {
 		shut(scn, renderer);
 		std::cout << "**Fatal Exception: " << ex.what() << " \nPress any key to quit...";
 		std::cin.get();
@@ -297,7 +272,6 @@ int main() {
 	}
 
 	bool b_apply_tonemap = config.TryGet(section, "b_apply_tonemap", true);
-
 
 	unsigned int i_max_threads = config.TryGet(section, "i_max_threads", 0);
 	const unsigned int nThreads = i_max_threads == 0 ? std::thread::hardware_concurrency() : std::min(std::thread::hardware_concurrency(), i_max_threads);
@@ -331,8 +305,7 @@ int main() {
 		for (uint i = 0; i < nThreads; i++) { if (worker[i] && worker[i]->joinable()) { worker[i]->join(); } }
 		for (uint i = 0; i < nThreads; i++) { if (worker[i]) { delete worker[i]; } worker[i] = nullptr; }
 		worker.clear();
-	}
-	else {
+	} else {
 		VRng rng(get_time());
 		t_start = std::chrono::steady_clock::now();
 		task(0, scn, renderer, mtx, rng, lastRow, rowCounter);
@@ -368,10 +341,8 @@ int main() {
 			auto ch = _getch();
 			if (ch == '1') {
 				std::cout << "\n*Saving image \"" << fname << "\"\n";
-				if (vnx::save_image(fname, img, e_save_format, b_apply_tonemap)) { std::cout << "OK\n"; break; }
-				else std::cout << "FAIL\n";
-			}
-			else break;
+				if (vnx::save_image(fname, img, e_save_format, b_apply_tonemap)) { std::cout << "OK\n"; break; } else std::cout << "FAIL\n";
+			} else break;
 		}
 	}
 

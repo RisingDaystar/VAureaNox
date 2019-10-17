@@ -42,7 +42,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace ygl;
 
 namespace vnx {
-
 	using uint = unsigned int;
 
 	template< typename C > struct is_char : std::integral_constant<bool, std::is_same<C, char>::value> {};
@@ -111,7 +110,6 @@ namespace vnx {
 	constexpr double KSB = 5.670373e-8;
 	constexpr double KWD = 2.8977721e-3;
 
-
 	struct VResult;
 	struct VMaterial;
 	struct VNode;
@@ -122,7 +120,6 @@ namespace vnx {
 	struct VSceneParser;
 	struct VRenderer;
 	struct VConfigurable;
-
 
 	typedef double (*displ_ftor)(const vec3d&);
 	typedef void (*mtlm_ftor)(const VResult&, const vec3d&, VMaterial&);
@@ -258,9 +255,7 @@ namespace vnx {
 			if constexpr (N == 3) return { next_double(),next_double(),next_double() };
 			if constexpr (N == 4) return { next_double(),next_double(),next_double(),next_double() };
 		}
-
 	};
-
 
 	struct VRng_pcg32x2 {
 		VRng_pcg32 gen[2];
@@ -350,9 +345,7 @@ namespace vnx {
 			if constexpr (N == 3) return { next_double(),next_double(),next_double() };
 			if constexpr (N == 4) return { next_double(),next_double(),next_double(),next_double() };
 		}
-
 	};
-
 
 	struct VRng_splmix64 {
 		//implements splitmix64 algorithm
@@ -440,7 +433,6 @@ namespace vnx {
 			if constexpr (N == 3) return { next_double(),next_double(),next_double() };
 			if constexpr (N == 4) return { next_double(),next_double(),next_double(),next_double() };
 		}
-
 	};
 
 	struct VRng_xrs256ss { //TODO
@@ -601,8 +593,6 @@ namespace vnx {
 
 	using VRng = VRng_pcg32x2; //DEFAULT VRng_pcg32
 
-
-
 	template<typename T>
 	struct VImg {
 		vec2i mResolution;
@@ -682,7 +672,6 @@ namespace vnx {
 		std::vector<std::string>::size_type size() { return tokens.size(); }
 		bool allocated() { return ptr != nullptr; }
 
-
 		std::vector<std::string> tokens;
 		void* ptr = nullptr;
 	};
@@ -700,11 +689,9 @@ namespace vnx {
 		bool empty() { return mMappings.empty(); }
 		bool allocated() { return ptr != nullptr; }
 
-
 		std::map<std::string, std::string> mMappings;
 		void* ptr = nullptr;
 	};
-
 
 	template<typename T>
 	inline float strto_f(const std::basic_string<T>& str, T** eptr = nullptr) {
@@ -753,14 +740,12 @@ namespace vnx {
 		constexpr L _lmin = std::numeric_limits<L>::min();
 
 		long v = 0;
-		if constexpr (is_wchar<T>::value) { v = wcstol(str.c_str(), eptr, radix); }
-		else { v = strtol(str.c_str(), eptr, radix); }
+		if constexpr (is_wchar<T>::value) { v = wcstol(str.c_str(), eptr, radix); } else { v = strtol(str.c_str(), eptr, radix); }
 
 		if (v > _lmax) {
 			errno = ERANGE;
 			return _lmax;
-		}
-		else if (v < _lmin) {
+		} else if (v < _lmin) {
 			errno = ERANGE;
 			return _lmin;
 		}
@@ -774,14 +759,12 @@ namespace vnx {
 		constexpr L _lmin = std::numeric_limits<L>::min();
 
 		long v = 0;
-		if constexpr (is_wchar<T>::value) { v = wcstol(cstr, eptr, radix); }
-		else { v = strtol(cstr, eptr, radix); }
+		if constexpr (is_wchar<T>::value) { v = wcstol(cstr, eptr, radix); } else { v = strtol(cstr, eptr, radix); }
 
 		if (v > _lmax) {
 			errno = ERANGE;
 			return _lmax;
-		}
-		else if (v < _lmin) {
+		} else if (v < _lmin) {
 			errno = ERANGE;
 			return _lmin;
 		}
@@ -908,8 +891,7 @@ namespace vnx {
 				if constexpr (N >= 4) { if (i == 3) { v.w = try_strtoi(cpnts[3], 0); } }
 			}
 			return v;
-		}
-		else {
+		} else {
 			auto cpnt = try_strtoi(ss, 0);
 			return toVec<int, N>(cpnt);
 		}
@@ -924,15 +906,13 @@ namespace vnx {
 			auto cpnts = strDeGroup(ss);
 			vec<bool, N> v;
 			for (typename std::vector<std::basic_string<T>>::size_type i = 0; i < cpnts.size() && i < N; i++) {
-
 				if constexpr (N >= 1) { if (i == 0) { v.x = try_strtoi(cpnts[0], 0); continue; } }
 				if constexpr (N >= 2) { if (i == 1) { v.y = try_strtoi(cpnts[1], 0); continue; } }
 				if constexpr (N >= 3) { if (i == 2) { v.z = try_strtoi(cpnts[2], 0); continue; } }
 				if constexpr (N >= 4) { if (i == 3) { v.w = try_strtoi(cpnts[3], 0); } }
 			}
 			return v;
-		}
-		else {
+		} else {
 			auto cpnt = try_strtoi(ss, 0);
 			return toVec<bool, N>(cpnt);
 		}
@@ -953,8 +933,7 @@ namespace vnx {
 				if constexpr (N >= 4) { if (i == 3) { v.w = try_strtof(cpnts[3], 0); } }
 			}
 			return v;
-		}
-		else {
+		} else {
 			auto cpnt = try_strtof(ss, 0);
 			return toVec<float, N>(cpnt);
 		}
@@ -975,8 +954,7 @@ namespace vnx {
 				if constexpr (N >= 4) { if (i == 3) { v.w = try_strtof(cpnts[3], 0); } }
 			}
 			return v;
-		}
-		else {
+		} else {
 			auto cpnt = try_strtof(ss, 0);
 			return toVec<double, N>(cpnt);
 		}
@@ -1011,8 +989,7 @@ namespace vnx {
 
 	template <typename T>
 	inline T sign(T v) {
-		if (v > 0.0) { return 1.0; }
-		else if (v < 0.0) { return -1.0; }
+		if (v > 0.0) { return 1.0; } else if (v < 0.0) { return -1.0; }
 		return 0.0;
 	}
 
@@ -1043,7 +1020,6 @@ namespace vnx {
 		return (in / pi<T>) * 180.0;
 	}
 
-
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
 	template <typename T>
 	inline T gl_fract(T x) {
@@ -1055,7 +1031,6 @@ namespace vnx {
 	inline T gl_mod(T x, T y) {
 		return x - y * std::floor(x / y);
 	}
-
 
 	//SOURCE : Inigo Quilezles http://www.iquilezles.org/ & GLSL DOCS
 	template <typename T>
@@ -1234,7 +1209,6 @@ namespace vnx {
 		return lookat;
 	}
 
-
 	constexpr mat4d scaling_mat(const vec3d& sc) {
 		mat4d m = identity_mat4d;
 		m.x.x = sc.x;
@@ -1295,6 +1269,15 @@ namespace vnx {
 	}
 
 	template<typename T, int N>
+	constexpr bool has_zero(const vec<T, N>& a) {
+		static_assert(N > 0 && N < 5, "N must be in range 1 | 4");
+		if constexpr (N == 1) return cmpf(a.x, 0.0);
+		else if constexpr (N == 2) return cmpf(a.x, 0.0) || cmpf(a.y, 0.0);
+		else if constexpr (N == 3) return cmpf(a.x, 0.0) || cmpf(a.y, 0.0) || cmpf(a.z, 0.0);
+		else if constexpr (N == 4) return cmpf(a.x, 0.0) || cmpf(a.y, 0.0) || cmpf(a.z, 0.0) || cmpf(a.w, 0.0);
+	}
+
+	template<typename T, int N>
 	constexpr bool has_nan(const vec<T, N>& a) {
 		static_assert(N > 0 && N < 5, "N must be in range 1 | 4");
 		if constexpr (N == 1) return std::isnan(a.x);
@@ -1351,8 +1334,7 @@ namespace vnx {
 		if (e % 2 == 0) {
 			T h = fsipow(x, e / 2);
 			return h * h;
-		}
-		else {
+		} else {
 			T h = fsipow(x, e / 2);
 			return h * h * x;
 		}
@@ -1364,13 +1346,11 @@ namespace vnx {
 		if (e % 2 == 0) {
 			vec<T, N> h = fsipow(x, e / 2);
 			return h * h;
-		}
-		else {
+		} else {
 			vec<T, N> h = fsipow(x, e / 2);
 			return h * h * x;
 		}
 	}
-
 
 	template<typename T, int D = 3>
 	inline constexpr T smax(T a, T b, T k) {
@@ -1385,8 +1365,6 @@ namespace vnx {
 		const T h = std::max(k - std::abs(a - b), 0.0) / k;
 		return std::min(a, b) - fsipow(h, D) * k * c;
 	}
-
-
 
 	template<typename T>
 	constexpr vec<T, 3> gamma_to_linear(const vec<T, 3>& srgb, T gamma = 2.2f) {
@@ -1413,33 +1391,27 @@ namespace vnx {
 			R = -(w - 440.0) / (440.0 - 350.0);
 			G = 0.0;
 			B = 1.0;
-		}
-		else if (w >= 440.0 && w < 490.0) {
+		} else if (w >= 440.0 && w < 490.0) {
 			R = 0.0;
 			G = (w - 440.0) / (490.0 - 440.0);
 			B = 1.0;
-		}
-		else if (w >= 490.0 && w < 510.0) {
+		} else if (w >= 490.0 && w < 510.0) {
 			R = 0.0;
 			G = 1.0;
 			B = -(w - 510.0) / (510.0 - 490.0);
-		}
-		else if (w >= 510.0 && w < 580.0) {
+		} else if (w >= 510.0 && w < 580.0) {
 			R = (w - 510.0) / (580.0 - 510.0);
 			G = 1.0;
 			B = 0.0;
-		}
-		else if (w >= 580.0 && w < 645.0) {
+		} else if (w >= 580.0 && w < 645.0) {
 			R = 1.0;
 			G = -(w - 645.0) / (645.0 - 580.0);
 			B = 0.0;
-		}
-		else if (w >= 645.0 && w <= 780.0) {
+		} else if (w >= 645.0 && w <= 780.0) {
 			R = 1.0;
 			G = 0.0;
 			B = 0.0;
-		}
-		else {
+		} else {
 			R = 0.0;
 			G = 0.0;
 			B = 0.0;
@@ -1447,14 +1419,11 @@ namespace vnx {
 
 		if (w >= 380.0 && w < 420.0) {
 			l = 0.3 + 0.7 * (w - 350.0) / (420.0 - 350.0);
-		}
-		else if (w >= 420.0 && w <= 700.0) {
+		} else if (w >= 420.0 && w <= 700.0) {
 			l = 1.0;
-		}
-		else if (w > 700.0 && w <= 780.0) {
+		} else if (w > 700.0 && w <= 780.0) {
 			l = 0.3 + 0.7 * (780.0 - w) / (780.0 - 700.0);
-		}
-		else {
+		} else {
 			l = 0.0;
 		}
 		return { l * R,l * G,l * B };
@@ -1559,8 +1528,7 @@ namespace vnx {
 		T sint = (etai / etat) * std::sqrt(std::max(0.0, 1.0 - cosi * cosi));
 		if (sint >= 1.0) {
 			return 1.0;
-		}
-		else {
+		} else {
 			T cost = std::sqrt(std::max(0.0, 1.0 - sint * sint));
 			cosi = std::abs(cosi);
 			T Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
@@ -1630,7 +1598,6 @@ namespace vnx {
 		return normalize(target - orig);
 	}
 
-
 	//////Hints from
 	//https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 	//////
@@ -1645,12 +1612,10 @@ namespace vnx {
 	constexpr vec<T, 3> refract(const vec<T, 3>& I, const vec<T, 3>& N, T etai, T etat) {
 		T cosi = ygl::clamp(dot(I, N), -1.0, 1.0);
 		vec<T, 3> n = N;
-		if (cosi < 0) { cosi = -cosi; }
-		else { if constexpr (sw_eta) { std::swap(etai, etat); } n = -N; }
+		if (cosi < 0) { cosi = -cosi; } else { if constexpr (sw_eta) { std::swap(etai, etat); } n = -N; }
 		T eta = etai / etat;
 		T k = 1.0 - eta * eta * (1.0 - cosi * cosi);
 		return k < 0 ? zero3<T> : eta * I + (eta * cosi - std::sqrt(k)) * n;
-
 	}
 
 	template<typename T>
@@ -1727,7 +1692,6 @@ namespace vnx {
 		inline VRay newOffsettedTo(const vec3d& _o, const vec3d& _dest, const vec3d& _offalong, double _dist) const {
 			return newOffsetted(_o, normalize(-_dest - _o), _offalong, _dist);
 		}
-
 	};
 
 	constexpr bool same_hemisphere(const vec3d& n, const VRay& r1, const VRay& r2) {
@@ -1762,7 +1726,6 @@ namespace vnx {
 		ray.owl = ray.wl;
 		ray.ior = 1.0;
 	}
-
 
 	inline double GTerm(const vec3d& v1, const vec3d& n1, const vec3d& v2, const vec3d& n2) {
 		const auto v1_to_v2 = normalize(v2 - v1);
@@ -1821,7 +1784,6 @@ namespace vnx {
 
 		vec3d kr = zero3d;
 
-
 		vec3d sigma_a = zero3d;
 		double sigma_s = -1.0;
 		double sigma_u = 0.0;
@@ -1849,7 +1811,6 @@ namespace vnx {
 
 			ior = try_strtof(entry->try_get("ior"), ior);
 			rs = try_strtof(entry->try_get("rs"), rs);
-
 
 			for (auto i = 1;; i++) {
 				auto sm_B = try_strtof(entry->try_get("s_b" + std::to_string(i)), -1.0);
@@ -1980,7 +1941,6 @@ namespace vnx {
 
 		inline void getMaterial(VMaterial& _mtl) { _mtl = hasMaterial() ? (*mtl) : VMaterial{}; }
 		inline void getVMaterial(VMaterial& _vmtl) { _vmtl = hasVMaterial() ? (*vmtl) : VMaterial{}; }
-
 	};
 
 	//TODO
@@ -2010,7 +1970,6 @@ namespace vnx {
 		VRotationOrder mRotationOrder = VRO_XYZ;
 		double mRounding = 0.0;
 		displ_ftor mDisplacement = nullptr;
-
 
 		VNode(std::string idv) : mID(idv),
 			mFrame(identity_frame3d),
@@ -2171,13 +2130,11 @@ namespace vnx {
 			for (int i = 0; i < x; ++i) {
 				const vec3d& pixel = apply_tonemap ? AcesFilmic(img.at(i, j)) : img.at(i, j);
 				if (depth < 256) {
-
 					auto r = static_cast<byte>(clamp(static_cast<int>(std::round(pixel.x * (depth + 1))), 0, depth));
 					auto g = static_cast<byte>(clamp(static_cast<int>(std::round(pixel.y * (depth + 1))), 0, depth));
 					auto b = static_cast<byte>(clamp(static_cast<int>(std::round(pixel.z * (depth + 1))), 0, depth));
 					fp << r << g << b;
-				}
-				else {
+				} else {
 					auto r = static_cast<unsigned int>(clamp(static_cast<int>(std::round(pixel.x * (depth + 1))), 0, depth));
 					auto g = static_cast<unsigned int>(clamp(static_cast<int>(std::round(pixel.y * (depth + 1))), 0, depth));
 					auto b = static_cast<unsigned int>(clamp(static_cast<int>(std::round(pixel.z * (depth + 1))), 0, depth));
@@ -2226,15 +2183,13 @@ namespace vnx {
 		return true;
 	}
 
-	inline bool save_image(std::string fname, const VImg<double>& img, const std::string& ext, bool apply_tonemap = true) {
+	inline bool save_image(const std::string& fname, const VImg<double>& img, const std::string& ext, bool apply_tonemap = true) {
 		if (stricmp(ext, std::string("hdr"))) {
 			return save_hdr(fname, img, apply_tonemap);
-		}
-		else {
+		} else {
 			return save_ppm(fname, img, apply_tonemap);
 		}
 	}
-
 
 	frame3d calculate_frame(const VNode* node, const frame3d& parent);
 	void apply_transforms(VNode* node, const frame3d& parent);
@@ -2276,8 +2231,6 @@ namespace vnx {
 		else if (stricmp(k, std::string("dispersive_plastic"))) return VMaterial(dielectric, wl_dependant, { 0.8,0.8,0.8 }, zero3d, -1.0, 0.0, 0.0, 0.0, 1.5168, 0.01, { {1.03961212,0.00600069867},{0.231792344,0.0200179144},{1.01046945,103.560653} });
 		return VMaterial();
 	}
-
 };
-
 
 #endif

@@ -26,7 +26,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace vnx;
 
 namespace vscndef {
-
 	void init_cornell_scene(vnx::VScene& scn) {
 		scn.camera.mYfov = 45.0;
 		scn.camera.mOrigin = { 0,0.0,11.2 };
@@ -36,7 +35,6 @@ namespace vscndef {
 		scn.camera.mFocus = length(scn.camera.mTarget - scn.camera.mOrigin);
 		scn.camera.mAutoFocus = true;
 		scn.mID = "cornell";
-
 
 		auto material_emissive = scn.add_material("material_emissive");
 		material_emissive->e_temp = 6500.0;
@@ -89,7 +87,6 @@ namespace vscndef {
 		non_dispersive_glass->sigma_a = zero3d;//{0.1,0.1,0.01};
 		non_dispersive_glass->sigma_s = 0.0;
 
-
 		auto diff_white = scn.add_material("diff_white");
 		diff_white->type = diffuse;
 		diff_white->kr = { 0.8,0.8,0.8 };
@@ -113,9 +110,7 @@ namespace vscndef {
 		cornell_composite_mat->ior_type = non_wl_dependant;
 		cornell_composite_mat->rs = 0.01;
 		auto mtor_e = [](const VResult& hit, const vec3d& n, VMaterial& mat) {
-			if (hit.loc_pos.x <= -3.995) { mat.kr = { 0.0,0.4,0.0 }; }
-			else if (hit.loc_pos.x >= 3.995) { mat.kr = { 0.4,0.0,0.0 }; }
-			else if (hit.loc_pos.z < -3.995) {
+			if (hit.loc_pos.x <= -3.995) { mat.kr = { 0.0,0.4,0.0 }; } else if (hit.loc_pos.x >= 3.995) { mat.kr = { 0.4,0.0,0.0 }; } else if (hit.loc_pos.z < -3.995) {
 				if (!on_pattern_gradient_oblique(hit.loc_pos, 45, 1.0)) {
 					mat.kr = one3d;
 					mat.rs = 0.03;
@@ -143,17 +138,12 @@ namespace vscndef {
 				//new vvo_sd_box("fog",participating_mat,{100.0,100.0,100.0}),
 				//new vvo_sd_sphere("fog",participating_mat,10.0),
 
-
 				new vvo_sd_sphere("ball_1",diff_white,1.5f),
 				new vvo_sd_sphere("ball_2",non_dispersive_glass,1.5),
 				new vvo_sd_sphere("ball_3",dispersive_material,1.5),
 				new vvo_sd_sphere("ball_4",dispersive_material,1.5),
 
-
-
-
 				//new vvo_sd_sphere("ball_4",dispersive_material,1.5),
-
 
 				//new vvo_blended("btest",dispersive_material,new vvo_sd_sphere("bb1",dispersive_material,1.5),new vvo_sd_diamond("sb1",dispersive_material),0.5),
 				//new vvo_sd_diamond("sb1",dispersive_material),
@@ -170,7 +160,6 @@ namespace vscndef {
 					new vvo_sd_box("ice_cube",water_material,0.3),
 				}),
 
-
 				new vop_cut("mirror",{0,1,1},{0,0,0},0.1,new vop_onion("mirror_o",0.06,new vvo_sd_sphere("mirror_i",sp_mat))),
 				*/
 
@@ -180,14 +169,10 @@ namespace vscndef {
 					new vvo_sd_box("box3",diff_white,0.45),
 					new vvo_sd_box("box4",diff_white,0.4),
 				}),*/
-
-
 			}),
-
 			});
 
 		scn.set_root(root);
-
 
 		//VARIOUS INSIDE
 
@@ -206,7 +191,6 @@ namespace vscndef {
 
 		scn.set_translation("mirror", { 2.8,0,-2.8 });
 		scn.set_rotation_degs("mirror", { 0,-45,0 });
-
 
 		//FRONT GLASS PANEL
 		scn.set_translation("panel", { 0,0.0,4.0 });
@@ -229,7 +213,6 @@ namespace vscndef {
 		scn.set_translation("light", { 0.0,4.1,0 });
 		scn.set_translation("light2", { 0.0,-2.1,0 });
 
-
 		//GLASS
 		scn.set_translation("glass", 0, -1.8, 0);
 		scn.set_translation("inner", 0, 0.6, 0);
@@ -240,7 +223,6 @@ namespace vscndef {
 		scn.set_translation("obs", { -0.4,1.1f,0 });
 		scn.set_rotation_degs("obs", { 0,45,20 });
 
-
 		//WATER
 		scn.set_translation("water", { 0,0.0,0 });
 
@@ -249,9 +231,7 @@ namespace vscndef {
 			const double fd = f * 1;
 			return (std::sin(f * p.x) * std::sin(f * p.y) * std::sin(f * p.z)) / fd;
 			});
-
 	}
-
 }
 
 #endif

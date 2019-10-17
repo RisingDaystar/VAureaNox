@@ -22,7 +22,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VAureaNox.hpp"
 
 namespace vnx {
-
 	struct VCamera {
 		std::vector<VFilm> mFilms;
 
@@ -51,14 +50,12 @@ namespace vnx {
 				for (auto pxx = 0; pxx < mFilms[i].mResolution.x && pxx < mResolution.x; pxx++) {
 					for (auto pxy = 0; pxy < mFilms[i].mResolution.y && pxy < mResolution.y; pxy++) {
 						auto& film = mFilms[i];
-						if (film.mScaleOnSplat) { img.at(pxx, pxy) += film.at(pxx, pxy).wr; }
-						else { img.at(pxx, pxy) += film.at(pxx, pxy).wr * film.mScale; }
+						if (film.mScaleOnSplat) { img.at(pxx, pxy) += film.at(pxx, pxy).wr; } else { img.at(pxx, pxy) += film.at(pxx, pxy).wr * film.mScale; }
 					}
 				}
 			}
 			return img;
 		}
-
 
 		double mFocus = 1.0;
 		double mAperture = 0.0;
@@ -83,8 +80,6 @@ namespace vnx {
 		mat4d mCameraToRaster = identity_mat4d;
 		mat4d mCameraToClip = identity_mat4d;
 		mat4d mClipToRaster = identity_mat4d;
-
-
 
 		mat4d mCameraToWorld = identity_mat4d;
 		mat4d mRasterToWorld = identity_mat4d;
@@ -126,7 +121,6 @@ namespace vnx {
 				rr.o = vec3d{ lens_point.x,lens_point.y,0.0 };
 				rr.d = normalize(focal_point - rr.o);
 			}
-
 
 			rr.o = transform_point(mCameraToWorld, rr.o);
 			rr.d = transform_vector(mCameraToWorld, rr.d);

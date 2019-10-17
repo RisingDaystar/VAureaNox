@@ -18,8 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "VConfigurable.hpp"
 
-namespace vnx{
-
-    VConfigurable::VConfigurable(const VFileConfigs& configref,const std::string& section):mConfigsRef(configref),mSection(section){}
-
+namespace vnx {
+	VConfigurable::VConfigurable(const VFileConfigs& configref, const std::string& section) :mConfigsRef(configref), mSection(section) {}
 }

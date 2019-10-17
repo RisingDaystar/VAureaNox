@@ -22,7 +22,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VFileConfigs.hpp"
 
 namespace vnx {
-
 	struct VConfigurable {
 		VConfigurable(const VFileConfigs& configref, const std::string& section);
 

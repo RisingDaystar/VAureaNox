@@ -25,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace vnx;
 
 namespace vscndef {
-
 	vnx::VNode* make_shell(const std::string& name, vnx::VMaterial* mat, const vec3d& dims) {
 		using namespace vnx;
 		vop_subtraction* sh_root = new vop_subtraction(name, 0.02f, {
@@ -114,11 +113,9 @@ namespace vscndef {
 			}),
 			});
 
-
 		hand->select("palm_main_int")->set_translation(0, -0.2f, 0);
 
 		if (!dx) {
-
 			hand->select("palm")->set_translation(-0.05f, 0, 0.1f);
 
 			hand->select("palm_main_2")->set_translation(-0.3f, -0.15f, 0);
@@ -138,8 +135,7 @@ namespace vscndef {
 			hand->select("finger_2")->set_rotation_degs(0, 0, -2);
 			*/
 			hand->select("finger_1")->set_rotation_degs(0, -90, -22);
-		}
-		else {
+		} else {
 			hand->select("palm")->set_translation(0.05f, 0, 0.1f);
 
 			hand->select("palm_main_2")->set_translation(0.3f, -0.15f, 0);
@@ -159,10 +155,7 @@ namespace vscndef {
 			hand->select("finger_2")->set_rotation_degs(0, 0, 2);
 			*/
 			hand->select("finger_1")->set_rotation_degs(0, 90, 22);
-
 		}
-
-
 
 		hand->select("finger_1")->select("axel")->set_translation(0, -0.17f, 0.05f);
 		hand->select("finger_2")->select("axel")->set_translation(0, -0.3f, 0.05f);
@@ -192,8 +185,6 @@ namespace vscndef {
 		hand->select("finger_4_2")->select("axel")->set_translation(0, -0.03f, 0);
 		hand->select("finger_5_2")->select("axel")->set_translation(0, -0.03f, 0);
 
-
-
 		auto arm = new vop_union(name + "_0", 0.15f, {
 			new vvo_sd_sphere(name + "_0_joint", mat3, 0.55f),
 			new vvo_sd_ellipsoid(name + "_0_axel", mat1,{ 0.4f,0.8f,0.4f }),
@@ -207,7 +198,6 @@ namespace vscndef {
 		hand->select("fingers")->set_translation(0, -0.20f, 0.1f);
 		hand->select("palm_fingers")->set_translation(0, 0, 0);
 		hand->set_translation(0, -1.8f, 0.03f);
-
 
 		arm->select(name + "_0_axel")->set_translation(0, -1.0f, 0.0f);
 		arm->select(name + "_1")->set_translation(0, -1.6f, 0.0f);
@@ -241,7 +231,6 @@ namespace vscndef {
 			}),
 			});
 
-
 		leg->select(name + "_0_axel")->set_translation({ 0 ,-1.5f, 0 });
 		leg->select(name + "_1")->set_translation({ 0 ,-2.8f, 0 });
 		leg->select(name + "_1_axel")->set_translation({ 0 ,-1.5f, 0 });
@@ -256,18 +245,15 @@ namespace vscndef {
 			leg->select(name + "_3_nail")->set_translation({ 0.1f,-1.4f,0 });
 			leg->select(name + "_3_nail_e_sub")->set_translation({ -0.15f,0.9f,0 });
 
-
 			leg->select(name + "_1")->set_rotation_degs({ 0,0,-65 });
 			leg->select(name + "_2")->set_rotation_degs({ 0,0,-35 });
 			leg->select(name + "_3")->set_rotation_degs({ 0,0,-45 });
 			leg->select(name + "_3_nail")->set_rotation_degs({ 0,0,-18 });
-		}
-		else {
+		} else {
 			leg->select(name + "_1_shell")->set_translation({ -0.2f,-1.2f,0 });
 			leg->select(name + "_2_shell")->set_translation({ -0.1f,-1.2f,0 });
 			leg->select(name + "_3_nail")->set_translation({ -0.1f,-1.4f,0 });
 			leg->select(name + "_3_nail_e_sub")->set_translation({ 0.15f,0.9f,0 });
-
 
 			leg->select(name + "_1")->set_rotation_degs({ 0,0,65 });
 			leg->select(name + "_2")->set_rotation_degs({ 0,0,35 });
@@ -343,7 +329,6 @@ namespace vscndef {
 		auto red_material = scn.add_material("red_material");
 		red_material->kr = { 0.55f,0.0f,0.0f };
 
-
 		auto black_material = scn.add_material("black_material");
 		black_material->type = dielectric;
 		black_material->ior_type = non_wl_dependant;
@@ -353,7 +338,6 @@ namespace vscndef {
 
 		auto green_material = scn.add_material("green_material");
 		green_material->kr = { 0.0f,0.2f,0.0f };
-
 
 		auto grey_diff_material = scn.add_material("grey_diff_material");
 		grey_diff_material->kr = { 0.3f,0.3f,0.3f };
@@ -368,9 +352,7 @@ namespace vscndef {
 		blue_partecipating->sigma_s = 0.0f;
 		blue_partecipating->sigma_a = { 0.9f,0.9f,0.01f };
 
-
 		auto sea_material = scn.add_material("sea_material", get_material_archetype("water"));
-
 
 		auto emissive = scn.add_material("emissive");
 		emissive->e_temp = 6500;
@@ -389,8 +371,7 @@ namespace vscndef {
 			const auto thr = (sin(hit.wor_pos.x) * sin(hit.wor_pos.y) * sin(hit.wor_pos.z));
 			if (thr > 0.2) {
 				mat.kr = { 0.2,0.5,0.2 };
-			}
-			else if (thr < -0.2) {
+			} else if (thr < -0.2) {
 				mat.kr = vec3d{ 0.5,0.2,0.2 };
 			}
 		};
@@ -527,7 +508,6 @@ namespace vscndef {
 			});
 		scn.set_root(root_union);
 
-
 		auto sc_root = scn.select("robot_root");
 		sc_root->set_translation(0.0f, 9.0f, -5.0f);
 		sc_root->set_rotation_degs(0, 45, 0.0f);
@@ -551,7 +531,6 @@ namespace vscndef {
 
 		scn.set_translation("womb_rear_sub_0", { 0,2.05f,0 });
 		scn.set_translation("womb_rear_sub_1", { 0,2.05f,0 });
-
 
 		scn.set_rotation_degs("arm_sx_0", { -10,0,0 });
 		//scn.rotate_node_degs("arm_dx_0", { -50,0,-50 }); // -70 0 -20
@@ -583,9 +562,6 @@ namespace vscndef {
 		sc_root->select("arm_sx_0")->select("arm_sx_hand")->select("finger_3_2")->set_rotation_degs(10, 0, 0);
 		sc_root->select("arm_sx_0")->select("arm_sx_hand")->select("finger_4_2")->set_rotation_degs(10, 0, 0);
 		sc_root->select("arm_sx_0")->select("arm_sx_hand")->select("finger_5_2")->set_rotation_degs(10, 0, 0);
-
-
-
 
 		sc_root->select("arm_dx_0")->select("arm_dx_hand")->select("finger_1_1")->set_rotation_degs(25, 0, 0);
 		sc_root->select("arm_dx_0")->select("arm_dx_hand")->select("finger_2_1")->set_rotation_degs(125, 0, 0);
@@ -664,14 +640,10 @@ namespace vscndef {
 		scn.set_rotation_degs("body_shaper_sx", { 0, 0, -55 });
 		scn.set_rotation_degs("body_shaper_dx", { 0, 0, 55 });
 
-
 		scn.set_translation("sc_head_root", { 0.0f, 1.80f, 0.0f });
 		scn.set_translation("sc_head", { 0.0f, 1.2f, 0.0f });
 		scn.set_translation("top_root", { 0.0f, -2.8f, 0.0f });
-
-
 	}
-
 }
 
 #endif

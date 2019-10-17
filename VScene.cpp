@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VScene.hpp"
 
 namespace vnx {
-
 	void VScene::shut() {
 		if (root) delete root;
 		mMaterials.clear();
@@ -51,14 +50,14 @@ namespace vnx {
 		return true;
 	}
 
-	bool VScene::set_rotation(std::string n, const vec3d& amount) {
-		auto node = select(n);
+	bool VScene::set_rotation(const std::string& idv, const vec3d& amount) {
+		auto node = select(idv);
 		if (node == nullptr) { return false; }
 		node->set_rotation(amount);
 		return true;
 	}
-	bool VScene::set_rotation(std::string n, double x, double y, double z) {
-		auto node = select(n);
+	bool VScene::set_rotation(const std::string& idv, double x, double y, double z) {
+		auto node = select(idv);
 		if (node == nullptr) { return false; }
 		node->set_rotation(x, y, z);
 		return true;
@@ -139,7 +138,6 @@ namespace vnx {
 				}
 			}
 
-
 			//N.B: tests any possible volume , searching for emissive materials (which can happen even if assigned material is not
 			//homogeneously emissive, because of procedural mutated materials)
 
@@ -163,8 +161,7 @@ namespace vnx {
 					vre._found = true;
 					epoints->push_back(vre); stats.x++;
 					//if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
-				}
-				else if (vre_material.is_emissive() && vre.sur) {
+				} else if (vre_material.is_emissive() && vre.sur) {
 					std::vector<VResult>* epoints = &emap[vre.sur->mID];
 					vre._found = true;
 					epoints->push_back(vre); stats.x++;
@@ -187,8 +184,7 @@ namespace vnx {
 						vre = intersect(ray, n_max_iters);
 						stats.y++;
 						if (!vre.isValid())continue;
-					}
-					else if (rng.next_double() > 0.95) {
+					} else if (rng.next_double() > 0.95) {
 						dir = sample_sphere_direction<double>(rng.next_vecd<2>());
 						//auto rn_nor = ygl::get_random_vec3f(rng);
 						//vec3d rn_nor_off = {rn_nor.x,rn_nor.y,rn_nor.z};
@@ -216,30 +212,25 @@ namespace vnx {
 					if (dot(ray.d, norm) > 0.0) {
 						fp = ygl::make_frame_fromz(zero3d, -norm);
 						offalong = -norm;
-					}
-					else {
+					} else {
 						if (vre.vdist < 0.0) {
 							if (er_material.is_emissive()) {
 								fp = ygl::make_frame_fromz(zero3d, -norm);
 								offalong = -norm;
-							}
-							else if (vre.dist < 0.0) {
+							} else if (vre.dist < 0.0) {
 								if (er_material.mutator && rng.next_double() < 0.95) {
 									fp = ygl::make_frame_fromz(zero3d, -norm);
 									offalong = -norm;
-								}
-								else {
+								} else {
 									//fp = ygl::make_frame_fromz(zero3d, norm);
 									straight = true;
 									offalong = norm;
 								}
-							}
-							else {
+							} else {
 								fp = ygl::make_frame_fromz(zero3d, norm);
 								offalong = norm;
 							}
-						}
-						else {
+						} else {
 							fp = ygl::make_frame_fromz(zero3d, -norm);
 							offalong = -norm;
 						}
@@ -249,7 +240,6 @@ namespace vnx {
 					else dir = ray.d;
 					//if(ygl::get_random_float(rng)>0.5)dir = ygl::reflect(-ray.d,dir);
 					ray = offsetted_ray(vre.wor_pos, {}, dir, tmin, tmax, offalong, vre.dist); //TEST -norm && norm
-
 
 					//if(vre.dist<0.0f && vre.vdist<0.0f){
 					//AVOID EXTERNAL EM POINTS (vdist>0.0)
@@ -264,8 +254,7 @@ namespace vnx {
 						vre._found = true;
 						epoints->push_back(vre); stats.x++;
 						//if(verbose) std::cout<<"EM ( light: "<<vre.vsur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
-					}
-					else if (er_material.is_emissive() && vre.sur) {
+					} else if (er_material.is_emissive() && vre.sur) {
 						std::vector<VResult>* epoints = &emap[vre.sur->mID];
 						vre._found = true;
 						epoints->push_back(vre); stats.x++;
@@ -277,8 +266,7 @@ namespace vnx {
 			}
 			if (!stats.x) { stats.y = 0; stats.z = 0; } //if no emissive found, ignore other stats
 			if (verbose)std::cout << "->Found: " << stats.x << "/(" << stats.y << "/" << stats.z << ")\n";
-		}
-		else {
+		} else {
 			if (verbose)std::cout << "::Parsing Operator " << ptr->mID << "\n";
 		}
 
@@ -291,8 +279,6 @@ namespace vnx {
 
 		return stats;
 	}
-
-
 
 	vec3i VScene::precalc_emissive_hints_strict(VRng& rng, std::map<std::string, std::vector<VResult>>& emap, VNode* ptr, int n_em_e, int n_max_iters, double tmin, double tmax, double neps, bool verbose, frame3d parent_frame) {
 		if (!ptr) { return { 0,0,0 }; }
@@ -327,7 +313,6 @@ namespace vnx {
 					epoints->push_back(vre); stats.x++;
 					//if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
 
-
 					auto dir = sample_sphere_direction<double>(rng.next_vecd<2>());
 					auto ray = VRay{ vre.wor_pos,dir,tmin,tmax };
 					VResult fvre = vre;
@@ -342,8 +327,7 @@ namespace vnx {
 							ray = offsetted_ray(fvre.wor_pos, {}, dir, tmin, tmax, zero3d, 0.0);
 							vre = intersect(ray, n_max_iters);
 							stats.y++;
-						}
-						else if (rng.next_double() > 0.95) {
+						} else if (rng.next_double() > 0.95) {
 							dir = sample_sphere_direction<double>(rng.next_vecd<2>());
 							ray = offsetted_ray(fvre.wor_pos, {}, dir, tmin, tmax, zero3d, 0.0);
 							vre = intersect(ray, n_max_iters);
@@ -368,19 +352,16 @@ namespace vnx {
 						if (dot(ray.d, norm) > 0.0) {
 							fp = ygl::make_frame_fromz(zero3d, -norm);
 							offalong = -norm;
-						}
-						else {
+						} else {
 							if (vre.vdist < 0.0) {
 								if (er_material.is_emissive() || vre.dist < 0.0) {
 									fp = ygl::make_frame_fromz(zero3d, -norm);
 									offalong = -norm;
-								}
-								else {
+								} else {
 									fp = ygl::make_frame_fromz(zero3d, norm);
 									offalong = norm;
 								}
-							}
-							else {
+							} else {
 								fp = ygl::make_frame_fromz(zero3d, -norm);
 								offalong = -norm;
 							}
@@ -390,7 +371,6 @@ namespace vnx {
 
 						//if(ygl::get_random_float(rng)>0.5)dir = ygl::reflect(-ray.d,dir);
 						ray = offsetted_ray(vre.wor_pos, {}, dir, tmin, tmax, offalong, vre.dist); //TEST -norm && norm
-
 
 						//if(vre.dist<0.0f && vre.vdist<0.0f){
 						//AVOID EXTERNAL EM POINTS (vdist>0.0)
@@ -412,8 +392,7 @@ namespace vnx {
 			}
 			if (!stats.x) { stats.y = 0; stats.z = 0; } //if no emissive found, ignore other stats
 			if (verbose)std::cout << "->Found: " << stats.x << "/(" << stats.y << "/" << stats.z << ")\n";
-		}
-		else {
+		} else {
 			if (verbose)std::cout << "::Parsing Operator " << ptr->mID << "\n";
 		}
 		auto chs = ptr->get_childs();
@@ -434,5 +413,4 @@ namespace vnx {
 		}
 		return stats;
 	}
-
 };

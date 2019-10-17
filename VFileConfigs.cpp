@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VFileConfigs.hpp"
 
 namespace vnx {
-
 	void VFileConfigs::parse() {
 		if (mFilename == "") { throw VFCException("Invalid config filename."); }
 		std::ifstream in;
@@ -35,8 +34,7 @@ namespace vnx {
 		std::string cur_section = "";
 		while (std::getline(in, line)) {
 			lid++;
-			try { eval(line, lid, cur_section); }
-			catch (VFCException & ex) {
+			try { eval(line, lid, cur_section); } catch (VFCException & ex) {
 				std::cout << "Config parser {" << mFilename.c_str() << "}: " << ex.what() << "\n";
 				if (ex.bFatal) { cur_section.clear(); break; }
 			}
@@ -89,13 +87,11 @@ namespace vnx {
 				continue;
 			}
 
-			if (state == 0) { name += line[i]; }
-			else if (state == 1) { value += line[i]; }
+			if (state == 0) { name += line[i]; } else if (state == 1) { value += line[i]; }
 		}
 
 		if (!cur_section.empty()) {
 			if (!name.empty() && !value.empty()) mMappings[cur_section][name] = value;
 		}
 	}
-
 };

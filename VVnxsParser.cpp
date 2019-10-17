@@ -1,9 +1,7 @@
-
 #include "VVnxsParser.hpp"
 #include "VScene.hpp"
 #include "VSdfOperators.hpp"
 #include "VSdfs.hpp"
-
 
 ////////////////////////////////////////////////////////
 ////////TTTTTTTT////OOOO//////DDDD///////OOOO///////////
@@ -33,8 +31,7 @@ namespace vnx {
 		std::string cur_id = "";
 		while (std::getline(in, line)) {
 			lid++;
-			try { eval(line, lid, cur_id); }
-			catch (VVNException & ex) {
+			try { eval(line, lid, cur_id); } catch (VVNException & ex) {
 				if (ex.bFatal) {
 					in.close();
 					std::string str = "Vnxs Loader -> Parser Exception -> ";
@@ -53,9 +50,7 @@ namespace vnx {
 			scn.camera.Relate(&mMappings["#_CAMERA"]);
 			scn.root = static_cast<VNode*>(mMappings[root_id].ptr);
 			scn.mID = mMappings["#_SCENE"].try_get("id");
-
-		}
-		catch (const VException & ex) {
+		} catch (const VException & ex) {
 			std::string str = "Vnxs Loader -> Linker Exception -> ";
 			str += ex.what();
 			throw VException(str);
@@ -63,7 +58,6 @@ namespace vnx {
 	}
 
 	void VVnxsParser::eval(const std::string& line, uint lid, std::string& cur_id) {
-
 		std::string arg_name = "";
 		std::string arg_value = "";
 		bool fve = false;
@@ -114,17 +108,14 @@ namespace vnx {
 						IDMode = 0;
 						cur_id = "#_ROOT";
 						mMappings[cur_id] = VMappedEntry();
-					}
-					else if (stricmp(tag_type, std::string("vscene"))) {
+					} else if (stricmp(tag_type, std::string("vscene"))) {
 						IDMode = 0;
 						cur_id = "#_SCENE";
 						mMappings[cur_id] = VMappedEntry();
-					}
-					else if (stricmp(tag_type, std::string("vmaterial"))) {
+					} else if (stricmp(tag_type, std::string("vmaterial"))) {
 						IDMode = 2;
 						cur_id = "#_mtl_";
-					}
-					else if (stricmp(tag_type, std::string("vcamera"))) {
+					} else if (stricmp(tag_type, std::string("vcamera"))) {
 						IDMode = 0;
 						cur_id = "#_CAMERA";
 						mMappings[cur_id] = VMappedEntry();
@@ -135,7 +126,6 @@ namespace vnx {
 					if (hasId) {
 						std::string id = "";
 						for (i++; i < line.size(); i++) {
-
 							auto ch = line[i];
 							if (ch == '#') ExceptionAtLine("Illegal character " + std::string(1, ch) + "", lid, true);
 							if (isspace(ch)) {
@@ -154,21 +144,17 @@ namespace vnx {
 							cur_id = id;
 							mMappings[cur_id] = VMappedEntry();
 							mMappings[cur_id].add_token("id", cur_id); //Not necessary, but might be usefull
-						}
-						else if (IDMode == 2) {
+						} else if (IDMode == 2) {
 							if (id.empty()) ExceptionAtLine("Undefined id for type " + tag_type + " requiring it", lid, true);
 							cur_id += id;
 							mMappings[cur_id] = VMappedEntry();
 							mMappings[cur_id].add_token("id", cur_id); //Not necessary, but might be usefull
 						}
-
-
 					}
 
 					mMappings[cur_id].add_token("#_type", tag_type);
 					if (line[i] == '>') cur_id.clear();
-				}
-				else {
+				} else {
 					ExceptionAtLine("Illegal character before tag definition", lid, true);
 				}
 				fve = true;
@@ -179,13 +165,11 @@ namespace vnx {
 				if (group) ExceptionAtLine("Illegal character {, group already open in args specification", lid, true);
 				group = true;
 				//character gathered, needed for group evaluation at link time
-			}
-			else if (line[i] == '}') {
+			} else if (line[i] == '}') {
 				if (!group) ExceptionAtLine("Illegal character }, group not open in args specification", lid, true);
 				group = false;
 				//character gathered, needed for group evaluation at link time
-			}
-			else if (line[i] == '=') {
+			} else if (line[i] == '=') {
 				if (group) ExceptionAtLine("Illegal character =, within a group", lid, true);
 				if (!parsing_name) ExceptionAtLine("Illegal character = in args specification", lid, true);
 				if (!arg_name.empty()) parsing_name = false;
@@ -212,8 +196,7 @@ namespace vnx {
 			if (enforceType[0] == '!') {
 				enforceType.erase(0, 1);
 				if (enforceType != "" && stricmp(entry->at("#_type"), enforceType)) { throw VException("Reference \"" + id + "\" is of type \"" + enforceType + "\""); }
-			}
-			else {
+			} else {
 				if (!stricmp(entry->at("#_type"), enforceType)) { throw VException("Reference \"" + id + "\" is not of type \"" + enforceType + "\""); }
 			}
 		}
@@ -226,8 +209,7 @@ namespace vnx {
 			auto mid = entry->try_get("id");
 			scn.mMaterials[mid] = VMaterial();
 			scn.mMaterials[mid].Relate(entry);
-		}
-		else if (stricmp(type, std::string("vop_union")) ||
+		} else if (stricmp(type, std::string("vop_union")) ||
 			stricmp(type, std::string("vop_intersection")) ||
 			stricmp(type, std::string("vop_subtraction")) ||
 			stricmp(type, std::string("vop_cut")) ||
@@ -259,8 +241,7 @@ namespace vnx {
 
 			e->Relate(entry);
 			scn.mNodes.push_back(e);
-		}
-		else { //VOLUMI
+		} else { //VOLUMI
 			auto mtl_id = entry->try_get("material");
 			VMaterial* mtl = nullptr;
 			if (mtl_id != "") {
@@ -297,8 +278,7 @@ namespace vnx {
 						e = new vvo_blended(id, mtl, v1_ptr, v2_ptr);
 					}
 				}
-			}
-			else {
+			} else {
 				throw VException("Unrecognized Entity \"" + type + "\"");
 			}
 
@@ -309,4 +289,3 @@ namespace vnx {
 		}
 	}
 }
-

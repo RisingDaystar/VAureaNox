@@ -22,9 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VAureaNox.hpp"
 
 namespace vnx {
-
 	struct VFileConfigs {
-
 		struct VFCException : public VException {
 			VFCException(const std::string& msg) :VException(msg), bFatal(true) {}
 			VFCException(bool fatal, std::string msg) :VException(msg), bFatal(fatal) {}
@@ -50,7 +48,6 @@ namespace vnx {
 		inline void ExceptionAtLine(const std::string& msg, uint lid, bool fatal = true) {
 			throw VFCException(fatal, msg + " | line : " + std::to_string(lid));
 		}
-
 
 		inline std::string TryGet(const std::string& section, const std::string& k, std::string dVal) const {
 			auto ms = getSection(section);
@@ -85,7 +82,6 @@ namespace vnx {
 			return strto_i(match->second);
 		}
 	};
-
 };
 
 #endif // VFILECONFIGS_HPP_INCLUDED

@@ -22,7 +22,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VConfigurable.hpp"
 
 namespace vnx {
-
 	struct VRenderer : VConfigurable {
 		VStatus mStatus;
 		VRenderer(const VFileConfigs& cfgs, std::string section) : VConfigurable(cfgs, section) {

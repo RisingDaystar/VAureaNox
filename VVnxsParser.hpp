@@ -15,7 +15,6 @@ namespace vnx {
 	public:
 		VVnxsParser() {};
 
-
 		void parse(VScene& scn, const std::string& scn_id);
 		void eval(const std::string& line, uint lid, std::string& cur_id);
 		void link(VScene& scn, const std::string& id, std::string enforceType = "");
@@ -29,7 +28,6 @@ namespace vnx {
 			if (ms == mMappings.end()) return nullptr;
 			return &ms->second;
 		}
-
 	};
 }
 

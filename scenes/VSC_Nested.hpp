@@ -25,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace vnx;
 
 namespace vscndef {
-
 	void init_nested_scene(vnx::VScene& scn) {
 		scn.camera.mYfov = 45.0;
 		scn.camera.mOrigin = { 0,10,15.0f };
@@ -41,8 +40,6 @@ namespace vscndef {
 		diffuse->kr = { 0.9f,0.95f,0.95f };
 		//diffuse->kr = one3f;
 
-
-
 		//auto transmissive = scn.add_material("transmissive",get_material_archetype("carbon_diamond"));
 
 		auto diffuse2 = scn.add_material("diffuse2");
@@ -53,7 +50,6 @@ namespace vscndef {
 			}
 		};
 		diffuse2->mutator = mtor;
-
 
 		auto root = new vop_union("root", {
 			//new vop_invert("sph_inv",new vvo_sd_sphere("dome",diffuse2,50.0f)),
@@ -69,7 +65,6 @@ namespace vscndef {
 		scn.set_translation("light", { 5,0.5f,0 });
 		//scn.set_translation("plane",{0,-1.0f,0});
 	}
-
 }
 
 #endif

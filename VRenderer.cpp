@@ -18,6 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "VRenderer.hpp"
 
-namespace vnx{
-    //TODO
+namespace vnx {
+	//TODO
 };

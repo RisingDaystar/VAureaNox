@@ -16,7 +16,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-
 #ifndef _VSC_GI_TEST_H_
 #define _VSC_GI_TEST_H_
 
@@ -26,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace vnx;
 
 namespace vscndef {
-
 	void init_gi_test_scene(vnx::VScene& scn) {
 		scn.camera.mYfov = 45.0;
 		scn.camera.mOrigin = { 0,5,20.0 };
@@ -135,9 +133,7 @@ namespace vscndef {
 		scn.set_translation("plane_v", { 0,0,-45 });
 		scn.set_rotation_degs("plane_v", { 90,0,0 });
 		scn.set_rotation_degs("sph2_group", { 25,25,25 });
-
 	}
-
 };
 
 #endif // VSC_GI_TEST_H_INCLUDED

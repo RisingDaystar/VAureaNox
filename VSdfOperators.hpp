@@ -51,8 +51,7 @@ struct vop_union : public VSdfOperator {
 				if (abs(vre.dist) < abs(res.dist)) { res = vre; }
 				if (vre.vdist < vdist) { vdist = vre.vdist; vmat = vre.vmtl; vsur = vre.vsur; }
 			}
-		}
-		else {
+		} else {
 			auto sdist = res.dist;
 			auto vsdist = res.vdist;
 			for (std::vector<VNode*>::size_type i = 1; i < mChilds.size(); i++) {
@@ -63,7 +62,6 @@ struct vop_union : public VSdfOperator {
 				//if (vre.dist < res.dist) { res = vre; }
 				if (abs(vre.dist) < abs(res.dist)) { res = vre; }
 				if (vre.vdist < vdist) { vdist = vre.vdist; vmat = vre.vmtl; vsur = vre.vsur; }
-
 			}
 			res.dist = sdist;
 			vdist = vsdist;
@@ -83,7 +81,6 @@ struct vop_union : public VSdfOperator {
 	};
 };
 
-
 struct vop_intersection : public VSdfOperator {
 	double mBlendFactor = 0.0;
 	bool mPreserveMtl = false;
@@ -98,7 +95,6 @@ struct vop_intersection : public VSdfOperator {
 		mBlendFactor = try_strtod(entry->try_get("blend"), mBlendFactor);
 		mPreserveMtl = try_strtob(entry->try_get("preserve"), mPreserveMtl);
 	}
-
 
 	inline const char* Type() { return "vop_intersection"; }
 
@@ -122,8 +118,7 @@ struct vop_intersection : public VSdfOperator {
 				if (vre.dist > res.dist) { res = vre; }
 				if (vre.vdist > vdist) { vdist = vre.vdist; vmat = vre.vmtl; vsur = vre.vsur; }
 			}
-		}
-		else {
+		} else {
 			auto sdist = res.dist;
 			auto vsdist = res.vdist;
 			for (std::vector<VNode*>::size_type i = 1; i < mChilds.size(); i++) {
@@ -148,8 +143,7 @@ struct vop_intersection : public VSdfOperator {
 
 		res.vdist += dspm - mRounding;
 		//res.vdist *= sfct;
-		if (mPreserveMtl) { res.mtl = mtl; res.vmtl = vmtl; }
-		else { res.vmtl = vmat; }
+		if (mPreserveMtl) { res.mtl = mtl; res.vmtl = vmtl; } else { res.vmtl = vmat; }
 	};
 };
 
@@ -167,7 +161,6 @@ struct vop_subtraction : public VSdfOperator {
 		mBlendFactor = try_strtod(entry->try_get("blend"), mBlendFactor);
 		mPreserveMtl = try_strtob(entry->try_get("preserve"), mPreserveMtl);
 	}
-
 
 	inline const char* Type() { return "vop_subtraction"; }
 
@@ -192,8 +185,7 @@ struct vop_subtraction : public VSdfOperator {
 				if (-vre.dist > res.dist) { res = vre; res.dist = -vre.dist; }
 				if (-vre.vdist > vdist) { vdist = -vre.vdist; vmat = vre.vmtl; vsur = vre.vsur; }
 			}
-		}
-		else {
+		} else {
 			auto sdist = res.dist;
 			auto vsdist = res.vdist;
 			for (std::vector<VNode*>::size_type i = 1; i < mChilds.size(); i++) {
@@ -217,8 +209,7 @@ struct vop_subtraction : public VSdfOperator {
 
 		res.vdist += dspm - mRounding;
 		//res.vdist *= sfct;
-		if (mPreserveMtl) { res.mtl = mtl; res.vmtl = vmtl; }
-		else { res.vmtl = vmat; }
+		if (mPreserveMtl) { res.mtl = mtl; res.vmtl = vmtl; } else { res.vmtl = vmat; }
 	};
 };
 
@@ -257,8 +248,7 @@ struct vop_twist : public VSdfOperator {
 			vec3d  q = vec3d{ mres.x, mres.y, ep.x };
 			q = ygl::transform_point(mFrame, q);
 			mChilds[0]->eval(q, res);
-		}
-		else if (mAxis == Y) {
+		} else if (mAxis == Y) {
 			double c = std::cos(mAmount * ep.y);
 			double s = std::sin(mAmount * ep.y);
 			mat2d  m = mat2d{ { c, -s }, { s, c } };
@@ -266,8 +256,7 @@ struct vop_twist : public VSdfOperator {
 			vec3d  q = vec3d{ mres.x, mres.y, ep.y };
 			q = ygl::transform_point(mFrame, q);
 			mChilds[0]->eval(q, res);
-		}
-		else if (mAxis == Z) {
+		} else if (mAxis == Z) {
 			double c = std::cos(mAmount * ep.z);
 			double s = std::sin(mAmount * ep.z);
 			mat2d  m = mat2d{ { c, -s }, { s, c } };
@@ -310,7 +299,6 @@ struct vop_repeat : public VSdfOperator {
 		if (mChilds.empty()) { return; }
 		vec3d ep = transform_point_inverse(mFrame, p);
 		//eval_ep(ep);
-
 
 		auto hs = (0.5 * mCells);
 		auto mep = gl_mod(ep + hs, mCells) - hs;
@@ -362,8 +350,6 @@ struct vop_invert : public VSdfOperator {
 	}
 };
 
-
-
 struct vop_onion : public VSdfOperator {
 	double mThickness = 0.2;
 	bool mPreserveVolume = true;
@@ -387,12 +373,10 @@ struct vop_onion : public VSdfOperator {
 
 		mChilds[0]->eval(p, res);
 
-
 		if (mPreserveVolume) {
 			res.dist = abs(res.dist + mThickness) - mThickness;
 			res.vdist = abs(res.vdist + mThickness) - mThickness;
-		}
-		else {
+		} else {
 			res.dist = abs(res.dist) - mThickness;
 			res.vdist = abs(res.vdist) - mThickness;
 		}
@@ -437,7 +421,6 @@ struct vop_cut : public VSdfOperator {
 		auto dist = res.dist;
 		auto vdist = res.vdist;
 		if (mBlendFactor < thrd) {
-
 			if (mAxis.x != 0) {
 				double f = mAxis.x * epe.x;
 				dist = std::max(dist, f);
@@ -453,8 +436,7 @@ struct vop_cut : public VSdfOperator {
 				dist = std::max(dist, f);
 				vdist = std::max(vdist, f);
 			}
-		}
-		else {
+		} else {
 			if (mAxis.x != 0) {
 				double f = mAxis.x * epe.x;
 				dist = smax(dist, f, mBlendFactor);
@@ -484,8 +466,6 @@ struct vop_cut : public VSdfOperator {
 		//res.vdist *= sfct;
 	}
 };
-
-
 
 struct vop_extrude : public VSdfOperator {
 	double mH = 1.0;
@@ -545,7 +525,5 @@ struct vop_revolve : public VSdfOperator{
 	}
 };
 */
-
-
 
 #endif

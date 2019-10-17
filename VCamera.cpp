@@ -20,7 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VScene.hpp"
 
 namespace vnx {
-
 	void VCamera::Relate(const VMappedEntry* entry) {
 		mYfov = radians(try_strtof(entry->try_get("yfov"), mYfov));
 		mOrigin = try_strToVec_d(entry->try_get("origin"), mOrigin);
@@ -52,7 +51,6 @@ namespace vnx {
 		mRasterToCamera = inverse(mCameraToRaster);
 		mRasterToWorld = inverse(mWorldToRaster);
 
-
 		mForward = normalize(mTarget - mOrigin);
 
 		mImagePlaneDist = (mResolution.y * 0.5) / std::tan(mYfov * 0.5);
@@ -65,11 +63,6 @@ namespace vnx {
 			if (hit.isFound()) mFocus = length(focus_ray.o - hit.wor_pos);
 			else mFocus = focus_ray.tmax;
 			std::cout << "**Autofocus --> Focal Length : " << mFocus << " | hit at {" << hit.wor_pos << "}\n";
-		}
-		else std::cout << "**Focal Length : " << mFocus << "\n";
+		} else std::cout << "**Focal Length : " << mFocus << "\n";
 	}
-
-
-
 };
-

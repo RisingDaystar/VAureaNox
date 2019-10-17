@@ -25,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace vnx;
 
 namespace vscndef {
-
 	void init_pathtracing_scene(vnx::VScene& scn) {
 		scn.mID = "pathtracing";
 		scn.camera.mYfov = 45.0;
@@ -35,7 +34,6 @@ namespace vscndef {
 		scn.camera.mFocus = length(scn.camera.mTarget - scn.camera.mOrigin);
 		scn.camera.mAutoFocus = true;
 		scn.camera.mAperture = 0.0;
-
 
 		auto emissive = scn.add_material("emissive");
 		emissive->e_temp = 6500;
@@ -60,7 +58,6 @@ namespace vscndef {
 		};
 		diffuse_mat->mutator = mtor;
 
-
 		auto diffuse2 = scn.add_material("diffuse2");
 		diffuse2->kr = vec3d{ 1.0f,0.3f,0.3f };
 
@@ -81,7 +78,6 @@ namespace vscndef {
 		mirror->kr = vec3d{ 1.0f,1.0f,1.0f };
 
 		auto dispersive_material = scn.add_material("dispersive_material", get_material_archetype("water"));
-
 
 		auto room = new vop_invert("room", new vvo_sd_box("box", diffuse_mat, 60.0f));
 		//auto room  = new vvo_sd_box("room",glass,60.0f);
@@ -121,11 +117,9 @@ namespace vscndef {
 			   //const double fd = f*1;
 			   //return (sin(f*p.x)*sin(f*p.y)*sin(f*p.z))/fd; //18= 1/20 + 1/20 + 1/20 ///limiti della funzione sin (e cos...)
 
-
 			   return (cos(sin(p.x)*p.x*cos(p.x*0.1))*sin(p.x)*
 			   abs(cos(5*sin(p.y)*p.y*cos(p.y*0.1))*sin(p.y))*
 			   cos(sin(p.z)*p.z*cos(p.z*0.1))*sin(p.z));
-
 		   };*/
 		   //scn.set_displacement("water",ftor);
 		scn.set_translation("water", { -11,0,0 });
@@ -146,9 +140,7 @@ namespace vscndef {
 
 		scn.set_translation("light", { 5.0,10.0,-10.0 });
 		scn.set_translation("light2", { 2.0,1.5f,5.0 });
-
 	}
-
 }
 
 #endif
