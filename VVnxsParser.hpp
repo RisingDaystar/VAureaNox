@@ -17,10 +17,10 @@ namespace vnx{
 
 
         void parse(VScene& scn,const std::string& scn_id);
-        void eval(const std::string& line,int lid,std::string& cur_id);
+        void eval(const std::string& line,uint lid,std::string& cur_id);
         void link(VScene& scn,const std::string& id,std::string enforceType = "");
 
-        inline void ExceptionAtLine(const std::string& msg,int lid,bool fatal = true){
+        inline void ExceptionAtLine(const std::string& msg,uint lid,bool fatal = true){
             throw VVNException(fatal,msg+" | line : "+std::to_string(lid));
         }
 

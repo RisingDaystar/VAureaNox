@@ -43,7 +43,7 @@ namespace vnx{
 
         mCameraToClip = ygl::perspective_mat(mYfov,mAspect,0.1);
         mCameraToRaster = mClipToRaster*mCameraToClip;
-        mCameraToWorld = frame_to_mat(lookat_frame(mOrigin,mTarget,mUp,true));
+        mCameraToWorld = glLookAtMat(mOrigin,mTarget,mUp,true);//frame_to_mat(lookat_frame(mOrigin,mTarget,mUp,true));
 
         mWorldToCamera = inverse(mCameraToWorld);
         mWorldToRaster = mCameraToRaster*mWorldToCamera;

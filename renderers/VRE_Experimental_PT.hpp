@@ -80,11 +80,22 @@ namespace vnx {
             vec3d normal;
             VRay wi = {};
             VRay wo = {};
+            vec3d radiance = zero3d;
             vec3d weight = one3d;
             VVertexType type = SURFACE;
 
+            bool delta = false;
+
+            inline bool isDelta() const{return delta;}
+
             double vc = 0.0;
             double vcm = 0.0;
+        };
+
+        struct VOccRes{
+            VResult hit;
+            VMaterial mtl;
+            vec3d normal;
         };
 
 		struct VSdfPoll{
@@ -111,6 +122,7 @@ namespace vnx {
         VDebugPrimary i_debug_primary = DBG_NONE;
 
         bool b_no_scatter = false;
+
         bool b_gather_eye_direct = true;
         bool b_gather_eye_indirect = true;
         bool b_gather_eye_vc = true;
@@ -252,7 +264,7 @@ namespace vnx {
         inline bool useEyetracing() const{return i_rendering_mode==EYETRACING;}
         inline bool useLighttracing() const{return i_rendering_mode==LIGHTTRACING;}
 
-        inline double lightChoosePdf(const VScene& scn){return scn.emissive_hints.size()==0 ? 0.0 : 1.0 / scn.emissive_hints.size();}
+        inline double lightChoosePdf(const VScene& scn){return scn.mEmissiveHints.size()==0 ? 0.0 : 1.0 / scn.mEmissiveHints.size();}
 
 
 
@@ -439,6 +451,8 @@ namespace vnx {
             VResult emr = scn.sample_emissive(rng,idl);
             if(!emr.isFound()) return false;
 
+            lvert.weight = one3d;
+
             if(emr.vdist<0.0){
                 InitRay(rng,lvert.wo);
                 emr.getVMaterial(mtl);
@@ -458,7 +472,7 @@ namespace vnx {
                     lvert.wi = -lvert.wo;
                     lvert.hit = emr;
                     lvert.type = EMITTER;
-                    lvert.weight = (one3d*EvalLe(lvert.wo,mtl.e_power,mtl.e_temp))*adot(lvert.normal,dir)/((lpdf)); //TODO
+                    lvert.radiance = (one3d*EvalLe(lvert.wo,mtl.e_power,mtl.e_temp))*adot(lvert.normal,dir)/((lpdf)); //TODO
 
                     if(useBidirectional()){
                         lvert.vcm = lightChoosePdf(scn) / lpdf;
@@ -481,7 +495,7 @@ namespace vnx {
                         lvert.wi = -lvert.wo;
                         lvert.hit = hit;
                         lvert.type = EMITTER;
-                        lvert.weight = (one3d*EvalLe(lvert.wo,mtl.e_power,mtl.e_temp))*adot(lvert.normal,dir)/((lpdf)); //TODO
+                        lvert.radiance = (one3d*EvalLe(lvert.wo,mtl.e_power,mtl.e_temp))*adot(lvert.normal,dir)/((lpdf)); //TODO
 
                         if(useBidirectional()){
                             lvert.vcm = lightChoosePdf(scn) / lpdf;
@@ -512,7 +526,7 @@ namespace vnx {
                 lvert.wi = -lvert.wo;
                 lvert.hit = emr;
                 lvert.type = EMITTER;
-                lvert.weight = (one3d*EvalLe(lvert.wo,mtl.e_power,mtl.e_temp))*adot(lvert.normal,dir) /((lpdf)); //TODO
+                lvert.radiance = (one3d*EvalLe(lvert.wo,mtl.e_power,mtl.e_temp))*adot(lvert.normal,dir) /((lpdf)); //TODO
 
                 if(useBidirectional()){
                     lvert.vcm = lightChoosePdf(scn) / lpdf;
@@ -838,11 +852,11 @@ namespace vnx {
         }
         ///
 
-        inline vec3d EvalOcclusion_ToCamera(const VScene& scn,const VResult& hit,const VCamera& camera,const vec3d& wPoint,VRay& to_cam,bool& intersected){
+        inline vec3d EvalOcclusion_ToCamera(const VScene& scn,const VResult& hit,const VCamera& camera,const vec3d& wPoint,VRay& to_cam,bool& intersected,VOccRes& res){
             vec3d tr_w = one3d;
-            VMaterial occ_mtl;
-            VResult occ_hit;
-            vec3d occ_normal;
+            VMaterial& occ_mtl = res.mtl;
+            VResult& occ_hit = res.hit;
+            vec3d& occ_normal = res.normal;
             intersected = false;
 
             auto max_dist = distance(hit.wor_pos,wPoint);
@@ -885,9 +899,17 @@ namespace vnx {
             return tr_w;
         }
 
-        inline vec3d EvalOcclusion_ToEmissive(const VScene& scn,const VResult& hit,VRay& to_light,VResult& occ_hit,VMaterial& occ_mtl,vec3d& occ_normal,bool& found){
+        inline vec3d EvalOcclusion_ToEmissive(const VScene& scn,const VResult& hit,VRay& to_light,bool& found,VOccRes& res){
             vec3d tr_w = one3d;
+            VMaterial& occ_mtl = res.mtl;
+            VResult& occ_hit = res.hit;
+            vec3d& occ_normal = res.normal;
+
+            occ_mtl = {};
+            occ_hit = {};
+            occ_normal = {};
             found = false;
+
             VSdfPoll poll = PollVolume(scn,to_light);
             while(max_element(tr_w)>0.0){
                 if(poll.is_stuck()) return zero3d;
@@ -913,17 +935,17 @@ namespace vnx {
             return tr_w;
         }
 
-        inline vec3d EvalOcclusion_ToVolVertex(const VScene& scn,const VResult& hit,const VResult& vhit,VRay to_vertex,bool& found){ //TODO
+        inline vec3d EvalOcclusion_ToVolVertex(const VScene& scn,const VResult& hit,const VResult& vhit,VRay to_vertex,bool& found,VOccRes& res){ //TODO
             vec3d tr_w = one3d;
             found = false;
             auto dist = distance(hit.wor_pos,vhit.wor_pos);
-            VResult occ_hit;
-            VMaterial occ_mtl;
-            vec3d occ_normal;
+            VMaterial& occ_mtl = res.mtl;
+            VResult& occ_hit = res.hit;
+            vec3d& occ_normal = res.normal;
 
             while(max_element(tr_w)>0.0){
                 VSdfPoll poll = PollVolume(scn,to_vertex);
-                auto occ_hit = scn.intersect(to_vertex,i_max_march_iterations);
+                occ_hit = scn.intersect(to_vertex,i_max_march_iterations);
                 if(!occ_hit.isFound()){ //VERTEX NOT OCCLUDED
                     found = true;
                     if(poll.is_in_transmissive() && poll.emat.sigma_t()>0.0){
@@ -960,17 +982,17 @@ namespace vnx {
             return tr_w;
         }
 
-        inline vec3d EvalOcclusion_ToSurfaceVertex(const VScene& scn,const VResult& hit,const VResult& vhit,VRay to_vertex,bool& found){ //TODO
+        inline vec3d EvalOcclusion_ToSurfaceVertex(const VScene& scn,const VResult& hit,const VResult& vhit,VRay to_vertex,bool& found,VOccRes& res){ //TODO
             vec3d tr_w = one3d;
             found = false;
             auto dist = distance(hit.wor_pos,vhit.wor_pos);
-            VResult occ_hit;
-            VMaterial occ_mtl;
-            vec3d occ_normal;
+            VMaterial& occ_mtl = res.mtl;
+            VResult& occ_hit = res.hit;
+            vec3d& occ_normal = res.normal;
 
             while(max_element(tr_w)>0.0){
                 VSdfPoll poll = PollVolume(scn,to_vertex);
-                auto occ_hit = scn.intersect(to_vertex,i_max_march_iterations);
+                occ_hit = scn.intersect(to_vertex,i_max_march_iterations);
                 if(!occ_hit.isFound()){return zero3d;}
                 if(poll.is_in_transmissive() && poll.emat.sigma_t()>0.0){
                     tr_w*=exp(-poll.emat.sigma_t_vec()*ygl::distance(to_vertex.o,occ_hit.wor_pos));
@@ -1004,7 +1026,12 @@ namespace vnx {
                                      VRng& rng,
                                         const VVertex& ep_vertex,
                                         const VRay& out,
-                                        const VVertex& lp_vertex){
+                                        VVertex lp_vertex,
+                                        const std::vector<VVertex>& light_path,
+                                        int ep_v_id,
+                                        int lp_v_id
+                                        ){
+            if(lp_vertex.isDelta()) return zero3d;
 
             const VResult& hit = ep_vertex.hit;
             const VMaterial& mtl = ep_vertex.mtl;
@@ -1035,10 +1062,12 @@ namespace vnx {
             double cosAtLp;
 
             if(lp_vertex.type == SURFACE){
-                if(isDeltaSample(EvalDirectSample(rng,lp_vertex.mtl,lp_vertex.normal,lp_vertex.wi,to_ep_vertex,lp_bsdf,&lp_pdfW,&lp_rev_pdfW))) return zero3d;
-                if(isTracingInvalid(lp_bsdf)) return zero3d;
-                if(isTracingInvalid(lp_pdfW)) return zero3d;
-                if(isTracingInvalid(lp_rev_pdfW)) return zero3d;
+                if(!lp_vertex.isDelta()){
+                    if(isDeltaSample(EvalDirectSample(rng,lp_vertex.mtl,lp_vertex.normal,lp_vertex.wi,to_ep_vertex,lp_bsdf,&lp_pdfW,&lp_rev_pdfW))) return zero3d;
+                    if(isTracingInvalid(lp_bsdf)) return zero3d;
+                    if(isTracingInvalid(lp_pdfW)) return zero3d;
+                    if(isTracingInvalid(lp_rev_pdfW)) return zero3d;
+                }
 
                 cosAtLp = dot(lp_vertex.normal,to_ep_vertex_dir);
             }else if(lp_vertex.type == EMITTER){
@@ -1053,8 +1082,9 @@ namespace vnx {
                 cosAtLp = 1.0;
             }
 
-            VResult occ_hit;
             vec3d tr_w = one3d;
+            VOccRes occ_res;
+
             if(ep_vertex.type==SURFACE){
                 if(isDeltaSample(EvalDirectSample(rng,ep_vertex.mtl,ep_vertex.normal,to_lp_vertex,out,ep_bsdf,&ep_pdfW,&ep_rev_pdfW))) return zero3d;
                 if(isTracingInvalid(ep_bsdf)) return zero3d;
@@ -1065,14 +1095,14 @@ namespace vnx {
                 //if(!russian_roulette(rng,ep_pdfW))return zero3d;
                 //if(!russian_roulette(rng,lp_pdfW))return zero3d;
 
-                VResult occ_hit;
+
                 if(lp_vertex.type!=VOLUME){
                     bool found = false;
-                    tr_w = EvalOcclusion_ToSurfaceVertex(scn,hit,lp_vertex.hit,to_lp_vertex,found);
+                    tr_w = EvalOcclusion_ToSurfaceVertex(scn,hit,lp_vertex.hit,to_lp_vertex,found,occ_res);
                     if(!found) return zero3d;
                 }else{ //TODO
                     bool found = false;
-                    tr_w = EvalOcclusion_ToVolVertex(scn,hit,lp_vertex.hit,to_lp_vertex,found);
+                    tr_w = EvalOcclusion_ToVolVertex(scn,hit,lp_vertex.hit,to_lp_vertex,found,occ_res);
                     if(!found) return zero3d;
                 }
             }else{
@@ -1086,28 +1116,32 @@ namespace vnx {
 
                 if(lp_vertex.type!=VOLUME){
                     bool found = false;
-                    tr_w = EvalOcclusion_ToSurfaceVertex(scn,hit,lp_vertex.hit,to_lp_vertex,found);
+                    tr_w = EvalOcclusion_ToSurfaceVertex(scn,hit,lp_vertex.hit,to_lp_vertex,found,occ_res);
                     if(!found) return zero3d;
                 }else{ //TODO
                     bool found = false;
-                    tr_w = EvalOcclusion_ToVolVertex(scn,hit,lp_vertex.hit,to_lp_vertex,found);
+                    tr_w = EvalOcclusion_ToVolVertex(scn,hit,lp_vertex.hit,to_lp_vertex,found,occ_res);
                     if(!found) return zero3d;
                 }
             }
 
+            double G;
+            double ep_pdfA;
+            double lp_pdfA;
 
+            double w_ep;
+            double w_lp;
 
+            //REGULAR CONNECTION
             auto dsqr = dist*dist;
-            auto G = cosAtLp * cosAtEp / dsqr;
+            G = cosAtLp * cosAtEp / dsqr;
+            ep_pdfA = PdfWtoA(ep_pdfW,dist,cosAtLp);
+            lp_pdfA = PdfWtoA(lp_pdfW,dist,cosAtEp);
+
+            w_lp = ep_pdfA * (lp_vertex.vcm+lp_vertex.vc*lp_rev_pdfW);
+            w_ep = lp_pdfA * (ep_vertex.vcm+ep_vertex.vc*ep_rev_pdfW);
+
             if(G<0.0) return zero3d;
-
-
-            auto ep_pdfA = PdfWtoA(ep_pdfW,dist,cosAtLp);
-            auto lp_pdfA = PdfWtoA(lp_pdfW,dist,cosAtEp);
-
-
-            auto w_lp = ep_pdfA * (lp_vertex.vcm+lp_vertex.vc*lp_rev_pdfW);
-            auto w_ep = lp_pdfA * (ep_vertex.vcm+ep_vertex.vc*ep_rev_pdfW);
 
 
             auto mw = 1.0/(w_lp+1.0+w_ep);
@@ -1115,8 +1149,7 @@ namespace vnx {
 
             auto c = tr_w*(mw * G) * ep_bsdf * lp_bsdf*spectral_to_rgb(to_ep_vertex.wl);
 
-            return ep_vertex.weight*lp_vertex.weight*c;
-
+            return ep_vertex.weight*lp_vertex.weight*lp_vertex.radiance*c;
         }
 
 
@@ -1131,18 +1164,16 @@ namespace vnx {
             const VVertexType& vtype = vertex.type;
 
             auto dir = normalize(emissive.wor_pos-hit.wor_pos);
-            auto to_light = out.newOffsetted(hit.wor_pos,dir,(vtype==SURFACE) ? normal : dir,(vtype==SURFACE) ? hit.dist : out.tmin);//offsetted_ray(hit.wor_pos,out,dir,out.tmin,out.tmax,normal,(vtype==SURFACE) ? hit.dist : out.tmin);
+            VRay to_light = out.newOffsetted(hit.wor_pos,dir,(vtype==SURFACE) ? normal : dir,(vtype==SURFACE) ? hit.dist : out.tmin);//offsetted_ray(hit.wor_pos,out,dir,out.tmin,out.tmax,normal,(vtype==SURFACE) ? hit.dist : out.tmin);
 
-            VResult occ_hit;
-            VMaterial occ_mtl;
-            vec3d occ_normal;
+
             vec3d bsdf;
             double bsdf_pdfW;
             double bsdf_rev_pdfW;
 
 
             if(vtype==SURFACE){
-                if(isDeltaSample(EvalDirectSample(rng,mtl,normal,to_light,out,bsdf,&bsdf_pdfW,useBidirectional() ? &bsdf_rev_pdfW : nullptr))) zero3d;
+                if(isDeltaSample(EvalDirectSample(rng,mtl,normal,to_light,out,bsdf,&bsdf_pdfW,useBidirectional() ? &bsdf_rev_pdfW : nullptr))) return zero3d;
                 if(isTracingInvalid(bsdf)) return zero3d;
                 if(isTracingInvalid(bsdf_pdfW)) return zero3d;
             }else if(vtype==VOLUME){
@@ -1153,14 +1184,18 @@ namespace vnx {
                 return zero3d;
             }
 
+            VOccRes occ_res;
             bool found = false;
-            auto tr_w = EvalOcclusion_ToEmissive(scn,hit,to_light,occ_hit,occ_mtl,occ_normal,found);
-            if(!found) return zero3d;
+            auto tr_w = EvalOcclusion_ToEmissive(scn,hit,to_light,found,occ_res);
 
-            auto lc = EvalLe(to_light,occ_mtl.e_power,occ_mtl.e_temp);
+            if(!found){
+                return zero3d;
+            }
 
-            auto cosAtLight = adot(occ_normal,-to_light.d);
-            auto light_pdfW = PdfAtoW(1.0,distance(hit.wor_pos,occ_hit.wor_pos),cosAtLight);
+            auto lc = EvalLe(to_light,occ_res.mtl.e_power,occ_res.mtl.e_temp);
+
+            auto cosAtLight = adot(occ_res.normal,-to_light.d);
+            auto light_pdfW = PdfAtoW(1.0,distance(hit.wor_pos,occ_res.hit.wor_pos),cosAtLight);
             if(isTracingInvalid(light_pdfW)) return zero3d;
 
             light_pdfW*=lightChoosePdf(scn);
@@ -1215,21 +1250,22 @@ namespace vnx {
             if(!camera.RasterToPixel(rasterPoint,pixel_id))return;
             //
 
-
             VRay to_cam;
-            vec3d* px = nullptr;
             vec3d bsdf;
             double bsdf_rev_pdfW = 0.0;
-            VResult occ_hit;
-            VMaterial occ_mtl;
+
+            VOccRes occ_res;
             vec3d tr_w = one3d;
 
+            //vec3d* px = nullptr;
             bool intersected = false;
+
+            vec3d le = vertex.radiance;
 
             if(vtype==VOLUME){
                 to_cam = in.newOffsetted(hit.wor_pos,dir,dir,in.tmin);//offsetted_ray(hit.wor_pos,in,dir,in.tmin,in.tmax,dir,in.tmin);
                 VRay ray = to_cam;
-                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,cOrigin,ray,intersected);
+                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,cOrigin,ray,intersected,occ_res);
                 if(!intersected) return;
 
                 bsdf = one3d;
@@ -1245,12 +1281,13 @@ namespace vnx {
                         if(isTracingInvalid(bsdf_rev_pdfW)) bsdf_rev_pdfW = 0.0;
                     }
                 }else{
-                    bsdf = toVec<double,3>(EvalLe(in,mtl.e_power,mtl.e_temp));
+                    bsdf = one3d;
                     bsdf_rev_pdfW = 1.0;
+                    le = toVec<double,3>(EvalLe(in,mtl.e_power,mtl.e_temp));
                 }
 
                 VRay ray = to_cam;
-                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,cOrigin,ray,intersected);
+                tr_w = EvalOcclusion_ToCamera(scn,hit,camera,cOrigin,ray,intersected,occ_res);
                 if(!intersected) return;
             }
 
@@ -1267,7 +1304,7 @@ namespace vnx {
 
             const double camera_we = itsaf*invAperture / cosAtCam;
             const double geom_term = (cosToCam*cosAtCam)*invSqrDist;
-            vec3d rd = tr_w*vertex.weight*bsdf* camera_we * geom_term  / (double(camera.mNumPixels)*invAperture);
+            vec3d rd = tr_w*le*vertex.weight*bsdf* camera_we * geom_term  / (double(camera.mNumPixels)*invAperture);
 
             if(useBidirectional()){
                 const double lv_pdfA = itsaf*std::abs(cosToCam)*invSqrDist;
@@ -1364,6 +1401,7 @@ namespace vnx {
                 }
             }
 
+
             std::vector<VVertex> light_path;
             vec3d output = zero3d;
 
@@ -1387,6 +1425,7 @@ namespace vnx {
                     VRay& wo = vertex.wo;
                     VVertexType& type = vertex.type;
                     vec3d& normal = vertex.normal;
+                    bool& delta = vertex.delta;
                     auto cosOut = 1.0;
 
                     VSdfPoll poll = PollVolume(scn,vertex.wo);
@@ -1451,6 +1490,8 @@ namespace vnx {
 
                         wi = -wo;
 
+                        delta = mtl.is_delta();
+
                         //SURFACE VC && VCM ---->MIS completion
                         if(useBidirectional()){
                             vertex.vcm *= distance_squared(poll.eres.wor_pos,hit.wor_pos);
@@ -1464,12 +1505,11 @@ namespace vnx {
                             if(!useBidirectional() && b_gather_to_camera) ConnectToCamera(scn,rng,camera,vertex,wi);
                             break;
                         }
-                        if(!mtl.is_delta()){
-                            if(b_gather_to_camera) ConnectToCamera(scn,rng,camera,vertex,wi);
-                            if(useBidirectional()) {
-                                light_path.push_back(vertex);
-                            }
+                        if(!mtl.is_delta()){if(b_gather_to_camera) ConnectToCamera(scn,rng,camera,vertex,wi);}
+                        if(useBidirectional()) {
+                            if(!mtl.is_delta()) light_path.push_back(vertex);
                         }
+
                         if(b_no_scatter) break;
 
                         double rev_pdf = 0.0;
@@ -1528,6 +1568,7 @@ namespace vnx {
             VRay& wo = vertex.wo;
             double& vc = vertex.vc;
             double& vcm = vertex.vcm;
+            bool& delta = vertex.delta;
 
             auto cosOut = 1.0;
 
@@ -1571,8 +1612,8 @@ namespace vnx {
                                 if(!isTracingInvalid(li)) output+=li;
                             }
                             if(useBidirectional() && b_gather_eye_vc){
-                                for(auto vi=0;vi<light_path.size();vi++){
-                                    auto li = ConnectVertices(scn,rng,vertex,wo,light_path[vi]);
+                                for(int vi=light_path.size()-1;vi>=0;vi--){
+                                    auto li = ConnectVertices(scn,rng,vertex,wo,light_path[vi],light_path,b,vi);
                                     if(!isTracingInvalid(li)) output += li;
                                 }
                             }
@@ -1608,6 +1649,8 @@ namespace vnx {
                 mtl.eval_mutator( hit, normal, mtl);
                 wo = -wi;
 
+                delta = mtl.is_delta();
+
                 //SURFACE VC && VCM ---->MIS Completion
                 if(useBidirectional()){
                     vcm *= distance_squared(poll.eres.wor_pos,hit.wor_pos);
@@ -1626,7 +1669,7 @@ namespace vnx {
 
                     double mw;
                     if(useBidirectional()){
-                        auto cosAtLight = adot(normal,wo.d);
+                        //auto cosAtLight = adot(normal,wo.d);
                         auto light_pdfW = lightChoosePdf(scn);//<!>this is Area Probability...
                         const double emitted_pdfW = lightChoosePdf(scn) / (2.0*pid);
                         const double w_camera = light_pdfW * vertex.vcm + emitted_pdfW *vertex.vc;
@@ -1656,8 +1699,8 @@ namespace vnx {
                     }
                     //VertexConnect
                     if(b_gather_eye_vc && useBidirectional()){
-                        for(auto vi=0;vi<light_path.size();vi++){
-                            auto li = ConnectVertices(scn,rng,vertex,wo,light_path[vi]);
+                        for(int vi=light_path.size()-1;vi>=0;vi--){
+                            auto li = ConnectVertices(scn,rng,vertex,wo,light_path[vi],light_path,b,vi);
                             if(!isTracingInvalid(li)) output += li;
                         }
                     }
@@ -1700,15 +1743,14 @@ namespace vnx {
             return output*spectral_to_rgb(gathered_wl);
         }
 
-		void EvalImageRow(const VScene& scn, VRng& rng, int width, int height, int j) {
+		void EvalImageRow(const VScene& scn, VRng& rng, uint width, uint height, uint j) {
 		    auto& cam_ref = const_cast<VCamera&>(scn.camera);
 
-			for (int i = 0; i < width && !mStatus.bStopped; i++) {
-				vec3d color = zero3d;
+			for (uint i = 0; i < width && !mStatus.bStopped; i++) {
 
                 //JITTERED
-                const auto pxc = vec2i{i,j};
-                for (int s = 0; s < i_ray_samples; s++) {
+                const auto pxc = vec2i{int(i),int(j)};
+                for (uint s = 0; s < i_ray_samples; s++) {
                     VRay ray = scn.camera.RayCast(i,j,rng,!i_debug_primary ? (rng.next_vecd<2>()) : zero2d);
                     InitRay(rng,ray);
 

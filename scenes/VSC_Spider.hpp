@@ -299,9 +299,9 @@ namespace vscndef {
 	}
 
 	void init_spider_scene(VScene& scn) {
-		scn.id = "spider";
-        scn.camera.mYfov = radians(45.0);
-        scn.camera.mOrigin = {0,10.1,16.0};
+		scn.mID = "spider";
+        scn.camera.mYfov = 45.0;
+        scn.camera.mOrigin = {0,10.1,13.0};
         scn.camera.mTarget = {0,5.1,0.01};
         scn.camera.mUp = {0,1.0f,0};
         scn.camera.mAperture = 0.0;

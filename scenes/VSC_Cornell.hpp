@@ -28,14 +28,14 @@ using namespace vnx;
 namespace vscndef {
 
 	void init_cornell_scene(vnx::VScene& scn) {
-        scn.camera.mYfov = radians(45.0);
-        scn.camera.mOrigin = {0,0.0,14.0};
+        scn.camera.mYfov = 45.0;
+        scn.camera.mOrigin = {0,0.0,11.2};
         scn.camera.mTarget = {0,0,0.01};
         scn.camera.mUp = {0,1.0,0};
         scn.camera.mAperture = 0.0;
         scn.camera.mFocus = length(scn.camera.mTarget-scn.camera.mOrigin);
         scn.camera.mAutoFocus = true;
-		scn.id = "cornell";
+		scn.mID = "cornell";
 
 
 		auto material_emissive = scn.add_material("material_emissive");
@@ -143,16 +143,16 @@ namespace vscndef {
                 //new vvo_sd_box("fog",participating_mat,{100.0,100.0,100.0}),
                 //new vvo_sd_sphere("fog",participating_mat,10.0),
 
-
+				
                 new vvo_sd_sphere("ball_1",diff_white,1.5f),
                 new vvo_sd_sphere("ball_2",non_dispersive_glass,1.5),
                 new vvo_sd_sphere("ball_3",dispersive_material,1.5),
                 new vvo_sd_sphere("ball_4",dispersive_material,1.5),
+				
+
 
 
                 //new vvo_sd_sphere("ball_4",dispersive_material,1.5),
-
-
 
 
                 //new vvo_blended("btest",dispersive_material,new vvo_sd_sphere("bb1",dispersive_material,1.5),new vvo_sd_diamond("sb1",dispersive_material),0.5),
@@ -186,11 +186,15 @@ namespace vscndef {
 
 		});
 
-		scn.set_root(root);
+        scn.set_root(root);
+
 
         //VARIOUS INSIDE
 
         scn.set_translation("occluder",{0,3.0,0});
+
+        scn.set_translation("droplet",{0,-1.0,0});
+        scn.set_translation("ins_droplet",{0,-1.0,0});
 
         scn.set_translation("ball_1",{1.8,-1.5,-1.5});
         scn.set_translation("ball_2",{-1.8,-1.5,1.5});

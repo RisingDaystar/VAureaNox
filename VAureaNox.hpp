@@ -43,6 +43,8 @@ using namespace ygl;
 
 namespace vnx {
 
+	using uint = unsigned int;
+
     template< typename C > struct is_char : std::integral_constant<bool, std::is_same<C, char>::value> {};
     template< typename C > struct is_wchar : std::integral_constant<bool, std::is_same<C, char16_t>::value || std::is_same<C, char32_t>::value || std::is_same<C, wchar_t>::value> {};
 
@@ -159,19 +161,11 @@ namespace vnx {
     };
 
 	class VException : public std::exception{
-	    std::string wh;
 	    public:
-        VException(std::string msg) :wh(msg){}
-        const char* what() const noexcept{
-            return wh.c_str();
-        }
+        VException(const std::string& msg) :std::exception(msg.c_str()){}
 	};
 
     //RNG UTILS
-
-    ///TODO : change "int next_int(int ub)" to "uint32_t next_uint(uint32_t ub)"
-    ///USE (Unbiased) LEMIRE's Optimized (t-opt,m-opt) method from http://www.pcg-random.org/posts/bounded-rands.html
-    ///current modulo method is BIASED and SLOW (a lot)
 
     struct VRng_pcg32{
         uint64_t state = 0U;
@@ -1184,6 +1178,7 @@ namespace vnx {
 	    return std::abs(dot(v1,v2));
     }
 
+    /*
     //Not affected by Aspect Ratio
     template <typename T>
     constexpr inline mat<T, 4, 4> perspective_mat(T fov, T near, T far) {
@@ -1196,6 +1191,41 @@ namespace vnx {
             {0, 0, (near+far)*d, -1.0},
             {0, 0, 2.0*near*far*d, 0}
             };
+    }
+
+    template <typename T = double>
+    constexpr inline mat<T, 4, 4>  perspective_mat(T fov, T aspect, T near) {
+        fov *= pid/ 360.0;
+        const double f = (std::tan(fov) / 2.0);
+        return {
+            {1.0/(aspect*f), 0, 0, 0},
+            {0, 1.0/f, 0, 0},
+            {0, 0, -1.0, -1.0},
+            {0, 0, 2.0*near, 0}
+            };
+    }*/
+
+    template<typename T>
+    inline mat<T,4,4> glLookAtMat(const vec<T,3>& eye,const vec<T,3>& target,const vec<T,3>& up = {0,(T)1.0,0},bool inv_xz=true){
+        vec<T,3> forward = normalize(eye-target);
+        vec<T,3> left = cross(normalize(up),forward);
+        vec<T,3> c_up = cross(forward,left);
+        mat<T,4,4> lookat = identity_mat4d;
+
+        if (inv_xz) {
+            forward = -forward;
+            left = -left;
+        }
+
+        lookat.x = {left.x,c_up.x,forward.x,0};
+        lookat.y = {left.y,c_up.y,forward.y,0};
+        lookat.z = {left.z,c_up.z,forward.z,0};
+
+        lookat.w.x = eye.x;
+        lookat.w.y = eye.y;
+        lookat.w.z = eye.z;
+
+        return lookat;
     }
 
 
@@ -1413,13 +1443,13 @@ namespace vnx {
 		return {l*R,l*G,l*B};
 	}
 
-	constexpr double blackbody_planks_law_wl(double t,double c,double wl) {
+	inline double blackbody_planks_law_wl(double t,double c,double wl) {
 	    wl = wl*1e-9;
 	    auto wl5 = wl*wl*wl*wl*wl;
         return (2.0*KH*c*c) / (wl5*(std::exp((KH*c)/(wl*KB*t)) -1.0));
 	}
 
-	constexpr double blackbody_planks_law_wl_normalized(double t,double c,double wl) {
+	inline double blackbody_planks_law_wl_normalized(double t,double c,double wl) {
 	    auto le = blackbody_planks_law_wl(t,c,wl);
 	    double lmax = KWD / t * 1e9; //wien
 	    auto lem = blackbody_planks_law_wl(t,c,lmax);
@@ -1694,7 +1724,7 @@ namespace vnx {
         return dot(n,w)< 0.0 ? -n : n;
     }
 
-	constexpr VRay offsetted_ray(const vec3d& o,VRay rr, const vec3d& d, const double tmin, const double tmax, const vec3d& offalong, const double dist, double fmult = 2.0) {
+	inline VRay offsetted_ray(const vec3d& o,VRay rr, const vec3d& d, const double tmin, const double tmax, const vec3d& offalong, const double dist, double fmult = 2.0) {
 		rr.o = o + (offalong*(fmult * std::max(tmin, std::abs(dist))));
 		rr.d = d;
 		rr.tmin = tmin;
@@ -1917,7 +1947,6 @@ namespace vnx {
 		double dist = maxd;
 		double vdist = maxd;
 
-		//vec3f norm = zero3f; //still unused
 		vec3d wor_pos = zero3d;
 		vec3d loc_pos = zero3d;
 
@@ -1955,7 +1984,7 @@ namespace vnx {
     };
 
 	struct VNode {
-		std::string id = "";
+		std::string mID = "";
 		frame3d mFrame = identity_frame3d;
 		vec3d mTranslation = zero3d;
 		vec4d mRotation = identity_quat4d;
@@ -1965,7 +1994,7 @@ namespace vnx {
 		displ_ftor mDisplacement = nullptr;
 
 
-		VNode(std::string idv): id(idv) ,
+		VNode(std::string idv): mID(idv) ,
 		mFrame(identity_frame3d),
 		mTranslation(zero3d),
 		mRotation(identity_quat4d),
@@ -2025,7 +2054,7 @@ namespace vnx {
 			auto chs = get_childs();
 			if (chs.empty()) { return nullptr; }
 			for (auto& child : chs) {
-				if (child->id == n) { return child; }
+				if (child->mID == n) { return child; }
 				auto res = child->select(n);
 				if (res != nullptr) { return res; }
 			}
@@ -2038,7 +2067,7 @@ namespace vnx {
 			if (chs.empty()) { return {}; }
 
 			for (auto& child : chs) {
-				if (child->id == n) { results.push_back(child); }
+				if (child->mID == n) { results.push_back(child); }
 				auto res = child->select_all(n);
 				if (!res.empty()) {
 					for (auto chr : res) {
@@ -2057,8 +2086,8 @@ namespace vnx {
 
 		~VSdf() {};
 
-		VSdf(std::string idv):VNode(idv),mMaterial(nullptr){}
-		VSdf(std::string idv,VMaterial* mtl) :VNode(idv),mMaterial(mtl){}
+		VSdf(const std::string& idv):VNode(idv),mMaterial(nullptr){}
+		VSdf(const std::string& idv,VMaterial* mtl) :VNode(idv),mMaterial(mtl){}
 
 		std::vector<VNode*> get_childs() {
 			auto child = std::vector<VNode*>();
@@ -2079,11 +2108,11 @@ namespace vnx {
 				if(child)delete child;
 			}
 		}
-		VSdfOperator(std::string idv) :VNode(idv){
+		VSdfOperator(const std::string& idv) :VNode(idv){
 			mChilds = std::vector<VNode*>();
 			mChilds.resize(0);
 		}
-		VSdfOperator(std::string idv,std::vector<VNode*> chs) :VNode(idv){
+		VSdfOperator(const std::string& idv,std::vector<VNode*> chs) :VNode(idv){
 			add_childs(chs);
 		}
 

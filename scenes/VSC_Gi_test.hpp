@@ -28,11 +28,11 @@ using namespace vnx;
 namespace vscndef {
 
 	void init_gi_test_scene(vnx::VScene& scn) {
-        scn.camera.mYfov = radians(45.0);
+        scn.camera.mYfov = 45.0;
         scn.camera.mOrigin = {0,5,20.0};
         scn.camera.mTarget = {0,0,0};
         scn.camera.mUp = {0,1.0,0};
-		scn.id = "gi_test";
+		scn.mID = "gi_test";
 
         auto emissive = scn.add_material("emissive");
         emissive->e_temp = 6500; //orig : 15

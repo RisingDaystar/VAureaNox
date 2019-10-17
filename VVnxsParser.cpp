@@ -29,7 +29,7 @@ namespace vnx{
             throw VException(str);
         }
 
-        int lid=0;
+        uint lid=0;
         std::string cur_id = "";
         while (std::getline(in, line)) {
             lid++;
@@ -52,7 +52,7 @@ namespace vnx{
             if(mMappings.find("#_CAMERA")==mMappings.end()){throw VException("Camera is undefined");}
             scn.camera.Relate(&mMappings["#_CAMERA"]);
             scn.root = static_cast<VNode*>(mMappings[root_id].ptr);
-            scn.id = mMappings["#_SCENE"].try_get("id");
+            scn.mID = mMappings["#_SCENE"].try_get("id");
 
         }catch(const VException& ex){
             std::string str = "Vnxs Loader -> Linker Exception -> ";
@@ -61,7 +61,7 @@ namespace vnx{
         }
     }
 
-    void VVnxsParser::eval(const std::string& line,int lid,std::string& cur_id){
+    void VVnxsParser::eval(const std::string& line,uint lid,std::string& cur_id){
 
         std::string arg_name = "";
         std::string arg_value = "";
@@ -215,8 +215,8 @@ namespace vnx{
         //TODO VBsdf
         if(type=="vmaterial"){
             auto mid = entry->try_get("id");
-            scn.materials[mid] = VMaterial();
-            scn.materials[mid].Relate(entry);
+            scn.mMaterials[mid] = VMaterial();
+            scn.mMaterials[mid].Relate(entry);
         }else if(stricmp(type,std::string("vop_union")) ||
                  stricmp(type,std::string("vop_intersection")) ||
                  stricmp(type,std::string("vop_subtraction")) ||
@@ -248,7 +248,7 @@ namespace vnx{
             if(!e) throw VException("Invalid Operator initialization\""+type+"\""); //NON NECESSARIO
 
             e->Relate(entry);
-            scn.nodes.push_back(e);
+            scn.mNodes.push_back(e);
         }else{ //VOLUMI
             auto mtl_id = entry->try_get("material");
             VMaterial* mtl = nullptr;
@@ -293,7 +293,7 @@ namespace vnx{
             if(!e) throw VException("Invalid Entity initialization\""+type+"\"");
 
             e->Relate(entry);
-            scn.nodes.push_back(e);
+            scn.mNodes.push_back(e);
         }
     }
 }

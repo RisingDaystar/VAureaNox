@@ -31,7 +31,7 @@ namespace vnx{
             throw VFCException(str);
         }
 
-        int lid=0;
+        uint lid=0;
         std::string cur_section = "";
         while (std::getline(in, line)) {
             lid++;
@@ -45,7 +45,7 @@ namespace vnx{
         in.close();
     }
 
-    void VFileConfigs::eval(const std::string& line,int lid,std::string& cur_section){
+    void VFileConfigs::eval(const std::string& line,uint lid,std::string& cur_section){
         std::string value = "";
         std::string name = "";
         int state = 0;

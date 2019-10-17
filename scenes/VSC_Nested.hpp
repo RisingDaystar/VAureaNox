@@ -27,11 +27,11 @@ using namespace vnx;
 namespace vscndef {
 
 	void init_nested_scene(vnx::VScene& scn) {
-        scn.camera.mYfov = radians(45.0);
+        scn.camera.mYfov = 45.0;
         scn.camera.mOrigin = {0,10,15.0f};
         scn.camera.mTarget = {0,0,0};
         scn.camera.mUp = {0,1.0f,0};
-		scn.id = "nested";
+		scn.mID = "nested";
 
 		auto emissive = scn.add_material("emissive");
 		emissive->e_temp = 4000;

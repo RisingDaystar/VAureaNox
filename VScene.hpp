@@ -24,21 +24,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace vnx{
 	struct VScene {
-		std::string id = "";
-		std::vector<std::vector<VResult>> emissive_hints;
-		std::map<std::string, VMaterial> materials;
-		std::vector<VNode*> nodes;
+		std::string mID = "";
+		std::vector<std::vector<VResult>> mEmissiveHints;
+		std::map<std::string, VMaterial> mMaterials;
+		std::vector<VNode*> mNodes;
 
 		VScene():VScene(""){}
 
-		VScene(std::string idv):id(idv){}
+		VScene(std::string idv):mID(idv){}
         typedef VResult (VScene::*st_algo_ftor)(const VRay&,int,int*,int*) const;
         typedef vec3d (VScene::*normals_algo_ftor)(const VResult& er,double eps) const;
         typedef vec3i (VScene::*eh_precalc_algo_ftor)(VRng& rng, std::map<std::string, std::vector<VResult>>& emap,VNode* ptr,int n_em_e,int n_max_iters,double tmin,double tmax,double neps,bool verbose,frame3d parent_frame);
 
-		st_algo_ftor intersect_algo = &intersect_naive;
-		normals_algo_ftor normals_algo = &eval_normals_tht;
-		eh_precalc_algo_ftor eh_precalc_algo = &precalc_emissive_hints_full;
+		st_algo_ftor intersect_algo = &VScene::intersect_naive;
+		normals_algo_ftor normals_algo = &VScene::eval_normals_tht;
+		eh_precalc_algo_ftor eh_precalc_algo = &VScene::precalc_emissive_hints_full;
 
 		VNode* root = nullptr;
 		VCamera camera;
@@ -82,7 +82,7 @@ namespace vnx{
 
         inline VNode* select(const std::string& idv) {
             if (root == nullptr) { return nullptr; }
-            if (root->id == idv) { return root; }
+            if (root->mID == idv) { return root; }
             return root->select(idv);
         }
 
@@ -288,16 +288,16 @@ namespace vnx{
 
         inline VResult sample_emissive(VRng& rng,uint32_t& idl) const{
             idl = 0;
-            if(emissive_hints.empty()) return VResult();
-            idl = rng.next_uint(emissive_hints.size());
-            const std::vector<VResult>* ep = &emissive_hints[idl];
+            if(mEmissiveHints.empty()) return VResult();
+            idl = rng.next_uint(mEmissiveHints.size());
+            const std::vector<VResult>* ep = &mEmissiveHints[idl];
             if(ep->empty()) return VResult();
             return (*ep)[rng.next_uint(ep->size())];
         }
 
         inline VResult sample_emissive_in_light(VRng& rng,uint32_t idl) const{
-            if(emissive_hints.empty()) return VResult();
-            const std::vector<VResult>* ep = &emissive_hints[idl];
+            if(mEmissiveHints.empty()) return VResult();
+            const std::vector<VResult>* ep = &mEmissiveHints[idl];
             if(ep->empty()) return VResult();
             return (*ep)[rng.next_uint(ep->size())];
         }

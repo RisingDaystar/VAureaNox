@@ -22,20 +22,20 @@ namespace vnx{
 
     void VScene::shut() {
         if (root) delete root;
-        materials.clear();
+        mMaterials.clear();
     }
 
     VMaterial* VScene::add_material(std::string id) {
-        if (materials.find(id) == materials.end()) {
-            materials[id] = VMaterial();
+        if (mMaterials.find(id) == mMaterials.end()) {
+            mMaterials[id] = VMaterial();
         }
-        return &materials[id];
+        return &mMaterials[id];
     }
     VMaterial* VScene::add_material(std::string id,VMaterial mtl) {
-        if (materials.find(id) == materials.end()) {
-            materials[id] = mtl;
+        if (mMaterials.find(id) == mMaterials.end()) {
+            mMaterials[id] = mtl;
         }
-        return &materials[id];
+        return &mMaterials[id];
     }
 
     bool VScene::set_translation(const std::string& idv, const vec3d& amount) {
@@ -124,7 +124,7 @@ namespace vnx{
         auto fr = calculate_frame(ptr,parent_frame);
 
         if(!ptr->isOperator()){
-            if(verbose)std::cout<<"::Testing Volume "<<ptr->id;
+            if(verbose)std::cout<<"::Testing Volume "<<ptr->mID;
             VResult vre;
             eval(transform_point(fr, zero3d),vre);
 
@@ -159,12 +159,12 @@ namespace vnx{
                 };
 
                     if(vre_vmaterial.is_emissive() && vre.vsur){
-                        std::vector<VResult>* epoints = &emap[vre.vsur->id];
+                        std::vector<VResult>* epoints = &emap[vre.vsur->mID];
                         vre._found = true;
                         epoints->push_back(vre); stats.x++;
                         //if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
                     }else if(vre_material.is_emissive() && vre.sur){
-                        std::vector<VResult>* epoints = &emap[vre.sur->id];
+                        std::vector<VResult>* epoints = &emap[vre.sur->mID];
                         vre._found = true;
                         epoints->push_back(vre); stats.x++;
                         //if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
@@ -253,12 +253,12 @@ namespace vnx{
                                 //if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
                             }else */
                             if(er_vmaterial.is_emissive() && vre.vsur){
-                                std::vector<VResult>* epoints = &emap[vre.vsur->id];
+                                std::vector<VResult>* epoints = &emap[vre.vsur->mID];
                                 vre._found = true;
                                 epoints->push_back(vre); stats.x++;
                                 //if(verbose) std::cout<<"EM ( light: "<<vre.vsur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
                             }else if(er_material.is_emissive() && vre.sur){
-                                std::vector<VResult>* epoints = &emap[vre.sur->id];
+                                std::vector<VResult>* epoints = &emap[vre.sur->mID];
                                 vre._found = true;
                                 epoints->push_back(vre); stats.x++;
                                 //if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
@@ -270,7 +270,7 @@ namespace vnx{
             if(!stats.x){stats.y=0;stats.z=0;} //if no emissive found, ignore other stats
             if(verbose)std::cout<<"->Found: "<<stats.x<<"/("<<stats.y<<"/"<<stats.z<<")\n";
         }else{
-            if(verbose)std::cout<<"::Parsing Operator "<<ptr->id<<"\n";
+            if(verbose)std::cout<<"::Parsing Operator "<<ptr->mID<<"\n";
         }
 
         ignore:
@@ -292,7 +292,7 @@ namespace vnx{
         auto fr = calculate_frame(ptr,parent_frame);
 
         if(!ptr->isOperator()){
-            if(verbose)std::cout<<"::Testing Volume "<<ptr->id;
+            if(verbose)std::cout<<"::Testing Volume "<<ptr->mID;
             VResult vre;
             eval(transform_point(fr, zero3d),vre);
 
@@ -313,7 +313,7 @@ namespace vnx{
                 };
 
                 if(vre_vmaterial.is_emissive() || vre_material.is_emissive()){
-                    std::vector<VResult>* epoints = &emap[vre.sur->id];
+                    std::vector<VResult>* epoints = &emap[vre.sur->mID];
                     vre._found = true;
                     epoints->push_back(vre); stats.x++;
                         //if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
@@ -388,7 +388,7 @@ namespace vnx{
                                 if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
                             }else */
                             if(er_vmaterial.is_emissive()){
-                                std::vector<VResult>* epoints = &emap[vre.vsur->id];
+                                std::vector<VResult>* epoints = &emap[vre.vsur->mID];
                                 vre._found = true;
                                 epoints->push_back(vre); stats.x++;
                                 //if(verbose) std::cout<<"EM ( light: "<<vre.vsur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
@@ -400,7 +400,7 @@ namespace vnx{
             if(!stats.x){stats.y=0;stats.z=0;} //if no emissive found, ignore other stats
             if(verbose)std::cout<<"->Found: "<<stats.x<<"/("<<stats.y<<"/"<<stats.z<<")\n";
         }else{
-            if(verbose)std::cout<<"::Parsing Operator "<<ptr->id<<"\n";
+            if(verbose)std::cout<<"::Parsing Operator "<<ptr->mID<<"\n";
         }
         auto chs = ptr->get_childs();
         if (chs.empty()) { return stats; }
@@ -416,7 +416,7 @@ namespace vnx{
         std::map<std::string, std::vector<VResult>> tmpMap;
         vec3i stats = precalc_emissive_hints(rng, tmpMap, root, i_em_evals, i_max_march_iterations, f_ray_tmin, f_ray_tmax, f_normal_eps, verbose, identity_frame3d);
         for (auto ceh : tmpMap) {
-            emissive_hints.push_back(ceh.second);
+            mEmissiveHints.push_back(ceh.second);
         }
         return stats;
     }

@@ -26,7 +26,7 @@ namespace vnx{
     struct VFileConfigs{
 
         struct VFCException : public VException{
-            VFCException(std::string msg):VException(msg),bFatal(true){}
+            VFCException(const std::string& msg):VException(msg),bFatal(true){}
             VFCException(bool fatal,std::string msg):VException(msg),bFatal(fatal){}
             bool bFatal = true;
         };
@@ -39,7 +39,7 @@ namespace vnx{
         }
 
         void parse();
-        void eval(const std::string& line,int lid,std::string& cur_section);
+        void eval(const std::string& line,uint lid,std::string& cur_section);
 
         inline const std::map<std::string,std::string>* getSection(const std::string& s) const{
             auto ms = mMappings.find(s);
@@ -47,7 +47,7 @@ namespace vnx{
             return &ms->second;
         }
 
-        inline void ExceptionAtLine(const std::string& msg,int lid,bool fatal = true){
+        inline void ExceptionAtLine(const std::string& msg,uint lid,bool fatal = true){
             throw VFCException(fatal,msg+" | line : "+std::to_string(lid));
         }
 

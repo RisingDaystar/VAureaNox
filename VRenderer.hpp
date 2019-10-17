@@ -34,7 +34,7 @@ namespace vnx{
 		virtual void PostInit(VScene& scn) = 0;
 		virtual std::string Type() const = 0;
 		virtual std::string ImgAffix(const VScene& scn) const {return std::string("");};
-		virtual void EvalImageRow(const VScene& scn, VRng& rng, int width,int height, int j) = 0;
+		virtual void EvalImageRow(const VScene& scn, VRng& rng, uint width, uint height, uint j) = 0;
 	};
 };
 

@@ -23,8 +23,8 @@ using namespace vnx;
 
 struct vop_union : public VSdfOperator {
 	double mBlendFactor = 0.0;
-	vop_union(std::string idv, double bfactor, std::vector<VNode*> chs) : VSdfOperator(idv, chs), mBlendFactor(bfactor){}
-	vop_union(std::string idv, std::vector<VNode*> chs) : VSdfOperator(idv, chs), mBlendFactor(0.0) {}
+	vop_union(const std::string& idv, double bfactor, std::vector<VNode*> chs) : VSdfOperator(idv, chs), mBlendFactor(bfactor){}
+	vop_union(const std::string& idv, std::vector<VNode*> chs) : VSdfOperator(idv, chs), mBlendFactor(0.0) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -88,10 +88,10 @@ struct vop_intersection : public VSdfOperator {
 	double mBlendFactor = 0.0;
 	bool mPreserveMtl = false;
 
-	vop_intersection(std::string idv, double bfactor, bool pMtl, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(pMtl) {}
-	vop_intersection(std::string idv, double bfactor, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(false) {}
-	vop_intersection(std::string idv, bool pMtl, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(pMtl) {}
-	vop_intersection(std::string idv, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(false) {}
+	vop_intersection(const std::string& idv, double bfactor, bool pMtl, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(pMtl) {}
+	vop_intersection(const std::string& idv, double bfactor, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(false) {}
+	vop_intersection(const std::string& idv, bool pMtl, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(pMtl) {}
+	vop_intersection(const std::string& idv, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(false) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -157,10 +157,10 @@ struct vop_subtraction : public VSdfOperator {
 	double mBlendFactor = 0.0;
 	bool mPreserveMtl = false;
 
-	vop_subtraction(std::string idv, double bfactor, bool pMtl, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(pMtl) {}
-	vop_subtraction(std::string idv, double bfactor, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(false) {}
-	vop_subtraction(std::string idv, bool pMtl, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(pMtl) {}
-	vop_subtraction(std::string idv, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(false) {}
+	vop_subtraction(const std::string& idv, double bfactor, bool pMtl, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(pMtl) {}
+	vop_subtraction(const std::string& idv, double bfactor, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(bfactor), mPreserveMtl(false) {}
+	vop_subtraction(const std::string& idv, bool pMtl, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(pMtl) {}
+	vop_subtraction(const std::string& idv, std::vector<VNode*> chs) : VSdfOperator(idv,chs), mBlendFactor(0.0), mPreserveMtl(false) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -226,10 +226,10 @@ struct vop_twist : public VSdfOperator {
 	VAxis mAxis = X;
 	double mAmount = 1.0;
 
-	vop_twist(std::string idv, VNode* chs) : VSdfOperator(idv, { chs }), mAxis(X), mAmount(1.0) {}
-	vop_twist(std::string idv, double am, VNode* chs) : VSdfOperator(idv, { chs }), mAxis(X), mAmount(am) {}
-	vop_twist(std::string idv, VAxis ax, VNode* chs) : VSdfOperator(idv, { chs }), mAxis(ax), mAmount(1.0) {}
-	vop_twist(std::string idv, VAxis ax, double am, VNode* chs) : VSdfOperator(idv, { chs }), mAxis(ax), mAmount(am) {}
+	vop_twist(const std::string& idv, VNode* chs) : VSdfOperator(idv, { chs }), mAxis(X), mAmount(1.0) {}
+	vop_twist(const std::string& idv, double am, VNode* chs) : VSdfOperator(idv, { chs }), mAxis(X), mAmount(am) {}
+	vop_twist(const std::string& idv, VAxis ax, VNode* chs) : VSdfOperator(idv, { chs }), mAxis(ax), mAmount(1.0) {}
+	vop_twist(const std::string& idv, VAxis ax, double am, VNode* chs) : VSdfOperator(idv, { chs }), mAxis(ax), mAmount(am) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -248,7 +248,7 @@ struct vop_twist : public VSdfOperator {
 
         //ep = transform_point(_frame, ep);
 
-		VResult vre;
+		//VResult vre;
 		if (mAxis == X) {
 			double c = std::cos(mAmount*ep.x);
 			double s = std::sin(mAmount*ep.x);
@@ -292,9 +292,9 @@ struct vop_repeat : public VSdfOperator {
     vec3d mCells = one3d;
     ygl::vec<bool,3> mAxis = {true,true,true};
 
-	vop_repeat(std::string idv, VNode* chs) : VSdfOperator(idv, { chs }), mCells(one3d),mAxis({true,true,true}) {}
-	vop_repeat(std::string idv,const vec3d& cells, VNode* chs) : VSdfOperator(idv, { chs }), mCells(cells),mAxis({true,true,true}) {}
-	vop_repeat(std::string idv,const vec3d& cells,const vec<bool,3>& axis, VNode* chs) : VSdfOperator(idv, { chs }), mCells(cells),mAxis(axis) {}
+	vop_repeat(const std::string& idv, VNode* chs) : VSdfOperator(idv, { chs }), mCells(one3d),mAxis({true,true,true}) {}
+	vop_repeat(const std::string& idv,const vec3d& cells, VNode* chs) : VSdfOperator(idv, { chs }), mCells(cells),mAxis({true,true,true}) {}
+	vop_repeat(const std::string& idv,const vec3d& cells,const vec<bool,3>& axis, VNode* chs) : VSdfOperator(idv, { chs }), mCells(cells),mAxis(axis) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -332,7 +332,7 @@ struct vop_repeat : public VSdfOperator {
 };
 
 struct vop_invert : public VSdfOperator {
-	vop_invert(std::string idv, VNode* chs) : VSdfOperator(idv, { chs }){}
+	vop_invert(const std::string& idv, VNode* chs) : VSdfOperator(idv, { chs }){}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -366,9 +366,9 @@ struct vop_onion : public VSdfOperator {
     double mThickness = 0.2;
     bool mPreserveVolume = true;
 
-	vop_onion(std::string idv, VNode* chs) : VSdfOperator(idv, { chs }), mThickness(0.2),mPreserveVolume(true) {}
-	vop_onion(std::string idv, double thickness, VNode* chs) : VSdfOperator(idv, { chs }), mThickness(thickness),mPreserveVolume(true){}
-	vop_onion(std::string idv, double thickness,bool preserve, VNode* chs) : VSdfOperator(idv, { chs }), mThickness(thickness),mPreserveVolume(preserve){}
+	vop_onion(const std::string& idv, VNode* chs) : VSdfOperator(idv, { chs }), mThickness(0.2),mPreserveVolume(true) {}
+	vop_onion(const std::string& idv, double thickness, VNode* chs) : VSdfOperator(idv, { chs }), mThickness(thickness),mPreserveVolume(true){}
+	vop_onion(const std::string& idv, double thickness,bool preserve, VNode* chs) : VSdfOperator(idv, { chs }), mThickness(thickness),mPreserveVolume(preserve){}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -411,8 +411,8 @@ struct vop_cut : public VSdfOperator {
     vec3d mOffset = zero3d;
     double mBlendFactor = 0.0;
 
-	vop_cut(std::string idv, VNode* chs) : VSdfOperator(idv, { chs }),mAxis({0,1,0}),mOffset(zero3d),mBlendFactor(0.0) {}
-	vop_cut(std::string idv,const vec3i& axis,const vec3d& offset,double bfactor, VNode* chs) : VSdfOperator(idv, { chs }),mAxis(axis),mOffset(offset),mBlendFactor(bfactor) {}
+	vop_cut(const std::string& idv, VNode* chs) : VSdfOperator(idv, { chs }),mAxis({0,1,0}),mOffset(zero3d),mBlendFactor(0.0) {}
+	vop_cut(const std::string& idv,const vec3i& axis,const vec3d& offset,double bfactor, VNode* chs) : VSdfOperator(idv, { chs }),mAxis(axis),mOffset(offset),mBlendFactor(bfactor) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -486,7 +486,7 @@ struct vop_cut : public VSdfOperator {
 struct vop_extrude : public VSdfOperator{
     double mH = 1.0;
 
-    vop_extrude(std::string idv, VNode* chs,double h) : VSdfOperator(idv, { chs }),mH(h) {}
+    vop_extrude(const std::string& idv, VNode* chs,double h) : VSdfOperator(idv, { chs }),mH(h) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);

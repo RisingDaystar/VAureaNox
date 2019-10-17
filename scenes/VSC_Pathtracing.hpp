@@ -27,9 +27,9 @@ using namespace vnx;
 namespace vscndef {
 
 	void init_pathtracing_scene(vnx::VScene& scn) {
-		scn.id = "pathtracing";
-        scn.camera.mYfov = radians(45.0);
-        scn.camera.mOrigin = {0,1.8,10.0};
+		scn.mID = "pathtracing";
+        scn.camera.mYfov = 45.0;
+        scn.camera.mOrigin = {0,0.8,8.0};
         scn.camera.mTarget = {0,0,0.01};
         scn.camera.mUp = {0,1.0,0};
         scn.camera.mFocus = length(scn.camera.mTarget-scn.camera.mOrigin);

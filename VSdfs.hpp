@@ -123,8 +123,8 @@ using namespace vnx;
 struct vvo_sdf2d_cross : public VSdf {
     vec2d mB = one2d;
     double mR = 1.0;
-	vvo_sdf2d_cross(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mB(one2d),mR(1.0){}
-	vvo_sdf2d_cross(std::string ids, VMaterial* mtl,const vec2d& b,double r): VSdf(ids,mtl),mB(b),mR(r){}
+	vvo_sdf2d_cross(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mB(one2d),mR(1.0){}
+	vvo_sdf2d_cross(const std::string& ids, VMaterial* mtl,const vec2d& b,double r): VSdf(ids,mtl),mB(b),mR(r){}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -146,10 +146,10 @@ struct vvo_blended : public VSdf {
     VNode* mSdf_2 = nullptr;
     double mAFactor = 0.5;
 
-    vvo_blended(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mAFactor(0.5){}
-    vvo_blended(std::string ids, VMaterial* mtl,VNode* s1,VNode* s2): VSdf(ids,mtl),mSdf_1(s1),mSdf_2(s2),mAFactor(0.5){
+    vvo_blended(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mAFactor(0.5){}
+    vvo_blended(const std::string& ids, VMaterial* mtl,VNode* s1,VNode* s2): VSdf(ids,mtl),mSdf_1(s1),mSdf_2(s2),mAFactor(0.5){
     }
-    vvo_blended(std::string ids, VMaterial* mtl,VNode* s1,VNode* s2,double A): VSdf(ids,mtl),mSdf_1(s1),mSdf_2(s2),mAFactor(A){
+    vvo_blended(const std::string& ids, VMaterial* mtl,VNode* s1,VNode* s2,double A): VSdf(ids,mtl),mSdf_1(s1),mSdf_2(s2),mAFactor(A){
     }
 
 	inline void DoRelate(const VMappedEntry* entry){
@@ -182,7 +182,7 @@ struct vvo_blended : public VSdf {
 
 struct vvo_shadered : public VSdf {
 	std::function<float(const vec3d& p, vec3d& ep, const VNode* tref) > mShader = nullptr;
-	vvo_shadered(std::string ids, VMaterial* mtl, std::function<float(const vec3d& p, vec3d& ep, const VNode* tref) > ftor): VSdf(ids,mtl),mShader(ftor) { }
+	vvo_shadered(const std::string& ids, VMaterial* mtl, std::function<float(const vec3d& p, vec3d& ep, const VNode* tref) > ftor): VSdf(ids,mtl),mShader(ftor) { }
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -206,8 +206,8 @@ struct vvo_shadered : public VSdf {
 
 struct vvo_sd_torus : public VSdf {
     vec2d mRadii = one2d;
-	vvo_sd_torus(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mRadii(one2d){}
-	vvo_sd_torus(std::string ids, VMaterial* mtl,const vec2d& radii): VSdf(ids,mtl),mRadii(radii){}
+	vvo_sd_torus(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mRadii(one2d){}
+	vvo_sd_torus(const std::string& ids, VMaterial* mtl,const vec2d& radii): VSdf(ids,mtl),mRadii(radii){}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -225,8 +225,8 @@ struct vvo_sd_torus : public VSdf {
 
 struct vvo_sd_plane : public VSdf {
     double mOffset = 1.0;
-	vvo_sd_plane(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mOffset(1.0){}
-	vvo_sd_plane(std::string ids, VMaterial* mtl,double offset): VSdf(ids,mtl),mOffset(offset){}
+	vvo_sd_plane(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mOffset(1.0){}
+	vvo_sd_plane(const std::string& ids, VMaterial* mtl,double offset): VSdf(ids,mtl),mOffset(offset){}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -242,8 +242,8 @@ struct vvo_sd_plane : public VSdf {
 };
 struct vvo_sd_sphere : public VSdf {
 	double mRadius = 1.0;
-	vvo_sd_sphere(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mRadius(1.0) {}
-	vvo_sd_sphere(std::string ids, VMaterial* mtl, double radius): VSdf(ids,mtl),mRadius(radius) {}
+	vvo_sd_sphere(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mRadius(1.0) {}
+	vvo_sd_sphere(const std::string& ids, VMaterial* mtl, double radius): VSdf(ids,mtl),mRadius(radius) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -260,9 +260,9 @@ struct vvo_sd_sphere : public VSdf {
 };
 struct vvo_sd_box : public VSdf {
 	vec3d mDims = one3d;
-	vvo_sd_box(std::string ids, VMaterial* mtl): VSdf(ids,mtl) {}
-	vvo_sd_box(std::string ids, VMaterial* mtl, vec3d dims): VSdf(ids,mtl),mDims(dims) {}
-	vvo_sd_box(std::string ids, VMaterial* mtl, double dims): VSdf(ids,mtl),mDims(vec3d{dims,dims,dims}) {}
+	vvo_sd_box(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl) {}
+	vvo_sd_box(const std::string& ids, VMaterial* mtl, vec3d dims): VSdf(ids,mtl),mDims(dims) {}
+	vvo_sd_box(const std::string& ids, VMaterial* mtl, double dims): VSdf(ids,mtl),mDims(vec3d{dims,dims,dims}) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -279,8 +279,8 @@ struct vvo_sd_box : public VSdf {
 };
 struct vvo_sd_ellipsoid : public VSdf {
 	vec3d mSizes = one3d;
-	vvo_sd_ellipsoid(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mSizes(one3d) {}
-	vvo_sd_ellipsoid(std::string ids, VMaterial* mtl, vec3d sizes): VSdf(ids,mtl),mSizes(sizes) {}
+	vvo_sd_ellipsoid(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mSizes(one3d) {}
+	vvo_sd_ellipsoid(const std::string& ids, VMaterial* mtl, vec3d sizes): VSdf(ids,mtl),mSizes(sizes) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -297,8 +297,8 @@ struct vvo_sd_ellipsoid : public VSdf {
 };
 struct vvo_sd_cylinder : public VSdf {
 	vec2d mDims = one2d;
-	vvo_sd_cylinder(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mDims(one2d) {}
-	vvo_sd_cylinder(std::string ids, VMaterial* mtl, vec2d dims): VSdf(ids,mtl),mDims(dims) {}
+	vvo_sd_cylinder(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mDims(one2d) {}
+	vvo_sd_cylinder(const std::string& ids, VMaterial* mtl, vec2d dims): VSdf(ids,mtl),mDims(dims) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -317,8 +317,8 @@ struct vvo_sd_capsule : public VSdf {
 	double mBaseRadius = 1.0;
 	vec3d mA = one3d;
 	vec3d mB = one3d;
-	vvo_sd_capsule(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mBaseRadius(1.0),mA(one3d),mB(one3d) {}
-	vvo_sd_capsule(std::string ids, VMaterial* mtl, double baseRadius, vec3d a, vec3d b): VSdf(ids,mtl),mBaseRadius(baseRadius),mA(a),mB(b) {}
+	vvo_sd_capsule(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mBaseRadius(1.0),mA(one3d),mB(one3d) {}
+	vvo_sd_capsule(const std::string& ids, VMaterial* mtl, double baseRadius, vec3d a, vec3d b): VSdf(ids,mtl),mBaseRadius(baseRadius),mA(a),mB(b) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -334,8 +334,8 @@ struct vvo_sd_capsule : public VSdf {
 };
 struct vvo_sd_hex_prism : public VSdf {
 	vec2d mDims = one2d;
-	vvo_sd_hex_prism(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mDims(one2d) {}
-	vvo_sd_hex_prism(std::string ids, VMaterial* mtl, vec2d dims): VSdf(ids,mtl),mDims(dims) {}
+	vvo_sd_hex_prism(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mDims(one2d) {}
+	vvo_sd_hex_prism(const std::string& ids, VMaterial* mtl, vec2d dims): VSdf(ids,mtl),mDims(dims) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
 	    VNode::DoRelate(entry);
@@ -352,8 +352,8 @@ struct vvo_sd_hex_prism : public VSdf {
 };
 struct vvo_sd_tri_prism : public VSdf {
 	vec2d mDims = one2d;
-	vvo_sd_tri_prism(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mDims(one2d) {}
-	vvo_sd_tri_prism(std::string ids, VMaterial* mtl, vec2d dims): VSdf(ids,mtl),mDims(dims) {}
+	vvo_sd_tri_prism(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mDims(one2d) {}
+	vvo_sd_tri_prism(const std::string& ids, VMaterial* mtl, vec2d dims): VSdf(ids,mtl),mDims(dims) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);
@@ -370,8 +370,8 @@ struct vvo_sd_tri_prism : public VSdf {
 };
 struct vvo_sd_capped_cone : public VSdf {
 	vec3d mDims = one3d;
-	vvo_sd_capped_cone(std::string ids, VMaterial* mtl): VSdf(ids,mtl),mDims(one3d) { }
-	vvo_sd_capped_cone(std::string ids, VMaterial* mtl, vec3d dims): VSdf(ids,mtl),mDims(dims) {}
+	vvo_sd_capped_cone(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl),mDims(one3d) { }
+	vvo_sd_capped_cone(const std::string& ids, VMaterial* mtl, vec3d dims): VSdf(ids,mtl),mDims(dims) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
 	    VNode::DoRelate(entry);
@@ -429,7 +429,7 @@ struct vvo_sd_pyramid4 : public VSdf {
 
 struct vvo_sd_diamond : public VSdf {
 
-	vvo_sd_diamond(std::string ids, VMaterial* mtl): VSdf(ids,mtl) {}
+	vvo_sd_diamond(const std::string& ids, VMaterial* mtl): VSdf(ids,mtl) {}
 
 	inline void DoRelate(const VMappedEntry* entry){
         VNode::DoRelate(entry);

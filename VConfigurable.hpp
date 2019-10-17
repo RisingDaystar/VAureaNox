@@ -29,15 +29,6 @@ namespace vnx{
         const VFileConfigs& mConfigsRef;
         std::string mSection;
 
-        /*
-        std::map<std::string, std::string> mParams;
-        std::string mFilename;
-
-        void print();
-        void parse();
-        void eval(const std::string& line,int lid,std::map<std::string, std::string>& params);
-        */
-
         inline std::string TryGet(const std::string& k, std::string dVal) const {
             return mConfigsRef.TryGet(mSection,k,dVal);
         }
@@ -51,7 +42,7 @@ namespace vnx{
             return mConfigsRef.TryGet(mSection,k,dVal);
         }
 
-       inline std::string TryGet(const std::string& s,const std::string& k, std::string dVal) const {
+        inline std::string TryGet(const std::string& s,const std::string& k, std::string dVal) const {
             return mConfigsRef.TryGet(s,k,dVal);
         }
         inline double TryGet(const std::string& s,const std::string& k, double dVal) const {

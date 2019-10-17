@@ -27,7 +27,7 @@ namespace vnx{
 	    std::vector<VFilm> mFilms;
 
 	    inline void CreateFilms(unsigned int num){
-            for(auto i=0;i<num;i++) mFilms.push_back(VFilm(vec2i{mResolution.x,mResolution.y}));
+            for(auto i=0;i<num;i++) mFilms.push_back(VFilm(vec2i{int(mResolution.x),int(mResolution.y)}));
 	    }
 
 	    inline void SetFilmScale(unsigned int id,double sc){
@@ -46,7 +46,7 @@ namespace vnx{
         }
 
         inline VImg<double> ToImg() const{
-            VImg<double> img(vec2i{mResolution.x,mResolution.y});
+            VImg<double> img(vec2i{int(mResolution.x),int(mResolution.y)});
             for(auto i=0;i<mFilms.size();i++){
                 for(auto pxx=0;pxx<mFilms[i].mResolution.x && pxx<mResolution.x;pxx++){
                     for(auto pxy=0;pxy<mFilms[i].mResolution.y && pxy<mResolution.y;pxy++){
