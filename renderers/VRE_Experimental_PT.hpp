@@ -33,7 +33,8 @@ namespace vnx {
 			DBG_EYELIGHT,
 			DBG_ITERATIONS,
 			DBG_OVERSTEPS,
-			DBG_NORMALS
+			DBG_NORMALS,
+			DBG_EMH
 		};
 
 		enum VRenderingMode {
@@ -152,6 +153,7 @@ namespace vnx {
 			if (stricmp(match->second, std::string("iterations"))) return DBG_ITERATIONS;
 			if (stricmp(match->second, std::string("oversteps"))) return DBG_OVERSTEPS;
 			if (stricmp(match->second, std::string("normals"))) return DBG_NORMALS;
+			if (stricmp(match->second, std::string("emhints"))) return DBG_EMH;
 			return dVal;
 		}
 
@@ -1692,7 +1694,26 @@ namespace vnx {
 		void EvalImageRow(const VScene& scn, VRng& rng, uint width, uint height, uint j) {
 			auto& cam_ref = const_cast<VCamera&>(scn.camera);
 
-			for (uint i = 0; i < width && !mStatus.bStopped; i++) {
+			if (i_debug_primary == DBG_EMH) { //UNNECESSARY CALCS, should be a one-shot render //TODO : DECOUPLE IMAGE LOGIC FROM RENDERING LOGIC
+				if (scn.mEmissiveHints.empty()) return;
+				for (auto& ehg : scn.mEmissiveHints) {
+					if (ehg.empty()) return;
+					for (auto& eh : ehg) {
+						mStatus.mRaysEvaled++;
+						vec2i px;
+						auto inRaster = cam_ref.WorldToPixel(eh.wor_pos, px);
+						if (inRaster) {
+							cam_ref.Splat(0, px, one3d);
+						} else {
+							mStatus.mRaysLost++;
+						}
+					}
+				}
+				return;
+			}
+
+			// && !mStatus.bStopped
+			for (uint i = 0; i < width; i++) {
 				//JITTERED
 				const auto pxc = vec2i{ int(i),int(j) };
 				for (uint s = 0; s < i_ray_samples; s++) {

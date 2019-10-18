@@ -46,7 +46,7 @@ namespace vscndef {
 		diffuse_exp->kr = { 0.6,0.0f,0.0 };
 		diffuse_exp->rs = 0.15;
 		auto mtor_e = [](const VResult& hit, const vec3d& n, VMaterial& mat) {
-			if (dot(hit.wor_pos, hit.loc_pos) > 0) { mat.kr = { 0.1,0.1,0.1 };/*mat.e_temp = 6000.0;mat.e_power = 1000;*/ }
+			if (dot(hit.wor_pos, hit.loc_pos) > 0) { mat.e_temp = 6000.0;mat.e_power = 1000; }
 		};
 		diffuse_exp->mutator = mtor_e;
 

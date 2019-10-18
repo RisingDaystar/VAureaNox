@@ -116,9 +116,110 @@ namespace vnx {
 		return true;
 	}
 
+	//TODO FIXME: wrong results for displaced & distance domain operators modified SDFS
+	vec3i VScene::precalc_emissive_hints_warp(VRng& rng, std::map<std::string, std::vector<VResult>>& emap, VNode* ptr, int n_em_e, int n_max_iters, double tmin, double tmax, double neps, bool verbose, frame3d parent_frame) {
+		if (!ptr) { return zero3i; }
+		vec3i stats = zero3i;
+
+		auto fr = calculate_frame(ptr, parent_frame);
+
+		if (!ptr->isOperator()) {
+			if (verbose)std::cout << "::Testing Volume " << ptr->mID;
+			VResult fvre;
+			ptr->eval(transform_point(fr, zero3d), fvre);
+
+			//OPTIMIZATION , if assigned material is not emissive and does not have a mutator , ignore.
+			//WARNING, might need a check towards casted ptr, better than having to rely on isOperator();
+			{
+				const auto sdf_ptr = static_cast<VSdf*>(ptr);
+				if (!sdf_ptr || !sdf_ptr->mMaterial ||
+					(!sdf_ptr->mMaterial->is_emissive() && !sdf_ptr->mMaterial->mutator)) {
+					if (verbose)std::cout << " ->Ignored\n";
+					goto ignore;
+				}
+			}
+
+			VResult vre = fvre;
+			VRay ray;
+
+			//ANALYZE INTO LOCAL SDF SPACE
+			for (uint i = 0; i < n_em_e; i++) {
+				const auto step = std::max(1, n_em_e / 5);
+				if (verbose && i % step == 0) std::cout << ".";
+
+				if (!vre.isFound()) {
+					auto dir = sample_sphere_direction<double>(rng.next_vecd<2>());
+					ray = offsetted_ray(fvre.wor_pos, {}, dir, tmin, tmax, dir, tmin);
+					vre = intersect_node(ptr, ray, n_max_iters);
+					stats.y++;
+					if (!vre.isFound()) continue;
+				} else if (rng.next_double() > 0.95) {
+					auto dir = sample_sphere_direction<double>(rng.next_vecd<2>());
+					ray = offsetted_ray(fvre.wor_pos, {}, dir, tmin, tmax, dir, tmin);
+					vre = intersect_node(ptr, ray, n_max_iters);
+					stats.z++;
+					if (!vre.isFound()) continue;
+				}
+				auto norm = eval_normals(vre, neps);
+
+				VMaterial vmtl;
+				vre.getVMaterial(vmtl);
+				vmtl.eval_mutator(vre, norm, vmtl);
+
+				VMaterial mtl;
+				vre.getMaterial(mtl);
+				mtl.eval_mutator(vre, norm, mtl);
+
+				if (true) { // TEST
+					//WARPS INTO SCENE WORLD SDF SPACE
+					VResult w_vre = eval(vre.wor_pos);
+					auto w_norm = eval_normals(w_vre, neps);
+
+					VMaterial w_vmtl;
+					w_vre.getVMaterial(w_vmtl);
+					w_vmtl.eval_mutator(w_vre, w_norm, w_vmtl);
+
+					VMaterial w_mtl;
+					w_vre.getMaterial(w_mtl);
+					w_mtl.eval_mutator(w_vre, w_norm, w_mtl);
+
+					if (w_vre.vsur && w_vmtl.is_emissive()) {
+						w_vre._found = true;
+						emap[w_vre.vsur->mID].push_back(w_vre);
+						stats.x++;
+					} else if (w_vre.sur && w_mtl.is_emissive()) {
+						w_vre._found = true;
+						emap[w_vre.sur->mID].push_back(w_vre);
+						stats.x++;
+					}
+				}//
+
+				auto fp = ygl::make_frame_fromz(zero3d, -norm);
+				auto offalong = -norm;
+				auto dir = ygl::transform_direction(fp, sample_hemisphere_direction<double>(rng.next_vecd<2>()));
+				ray = offsetted_ray(vre.wor_pos, {}, dir, tmin, tmax, offalong, vre.dist);
+				vre = intersect_node(ptr, ray, n_max_iters);
+			}
+			if (!stats.x) { stats.y = 0; stats.z = 0; } //if no emissive found, ignore other stats
+			if (verbose)std::cout << "->Found: " << stats.x << "/(" << stats.y << "/" << stats.z << ")\n";
+		} else {
+			if (verbose)std::cout << "::Parsing Operator " << ptr->mID << "\n";
+		}
+
+	ignore:
+
+		auto chs = ptr->get_childs();
+		if (chs.empty()) { return stats; }
+		for (auto node : chs) {
+			stats += precalc_emissive_hints(rng, emap, node, n_em_e, n_max_iters, tmin, tmax, neps, verbose, fr);
+		}
+
+		return stats;
+	}
+
 	vec3i VScene::precalc_emissive_hints_full(VRng& rng, std::map<std::string, std::vector<VResult>>& emap, VNode* ptr, int n_em_e, int n_max_iters, double tmin, double tmax, double neps, bool verbose, frame3d parent_frame) {
-		if (!ptr) { return { 0,0,0 }; }
-		vec3i stats = { 0,0,0 };
+		if (!ptr) { return zero3i; }
+		vec3i stats = zero3i;
 
 		auto fr = calculate_frame(ptr, parent_frame);
 
@@ -133,7 +234,7 @@ namespace vnx {
 				const auto sdf_ptr = static_cast<VSdf*>(ptr);
 				if (!sdf_ptr || !sdf_ptr->mMaterial ||
 					(!sdf_ptr->mMaterial->is_emissive() && !sdf_ptr->mMaterial->mutator)) {
-					std::cout << " ->Ignored\n";
+					if (verbose)std::cout << " ->Ignored\n";
 					goto ignore;
 				}
 			}
@@ -142,7 +243,6 @@ namespace vnx {
 			//homogeneously emissive, because of procedural mutated materials)
 
 			if (vre.sur && vre.mtl) { //allows for starting outside
-				vre._found = true;
 				vec3d norm = eval_normals(vre, neps);
 
 				VMaterial vre_material;
@@ -160,38 +260,34 @@ namespace vnx {
 					std::vector<VResult>* epoints = &emap[vre.vsur->mID];
 					vre._found = true;
 					epoints->push_back(vre); stats.x++;
-					//if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
 				} else if (vre_material.is_emissive() && vre.sur) {
 					std::vector<VResult>* epoints = &emap[vre.sur->mID];
 					vre._found = true;
 					epoints->push_back(vre); stats.x++;
-					//if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
 				}
 
-				auto dir = sample_sphere_direction<double>(rng.next_vecd<2>());
-				auto ray = VRay{ vre.wor_pos,dir,tmin,tmax };
+				vre._found = false;
+
+				vec3d dir;
+				VRay ray;
 				VResult fvre = vre;
 				for (int i = 0; i < n_em_e; i++) {
 					const auto step = std::max(1, n_em_e / 10);
 					if (verbose && i % step == 0) std::cout << ".";
-					vre = intersect(ray, n_max_iters);
 
-					if (!vre.isFound() || !vre.isValid()) {
+					if (!vre.isFound()) {
 						dir = sample_sphere_direction<double>(rng.next_vecd<2>());
-						//auto rn_nor = ygl::get_random_vec3f(rng);
-						//vec3d rn_nor_off = {rn_nor.x,rn_nor.y,rn_nor.z};
 						ray = offsetted_ray(fvre.wor_pos, {}, dir, tmin, tmax, dir, tmin);
 						vre = intersect(ray, n_max_iters);
 						stats.y++;
-						if (!vre.isValid())continue;
+						if (!vre.isFound())continue;
 					} else if (rng.next_double() > 0.95) {
 						dir = sample_sphere_direction<double>(rng.next_vecd<2>());
-						//auto rn_nor = ygl::get_random_vec3f(rng);
-						//vec3d rn_nor_off = {rn_nor.x,rn_nor.y,rn_nor.z};
 						ray = offsetted_ray(fvre.wor_pos, {}, dir, tmin, tmax, dir, tmin);
 						vre = intersect(ray, n_max_iters);
 						//n_em_e++; //reduce math bias
 						stats.z++;
+						if (!vre.isFound())continue;
 					}
 
 					auto norm = eval_normals(vre, neps);
@@ -235,34 +331,21 @@ namespace vnx {
 							offalong = -norm;
 						}
 					}
-					//auto fp = dot(ray.d,norm) > 0.0 ? ygl::make_frame_fromz(zero3d, -norm) : ygl::make_frame_fromz(zero3d, norm); // TEST -norm && norm
 					if (!straight)dir = ygl::transform_direction(fp, sample_hemisphere_direction<double>(rng.next_vecd<2>()));
 					else dir = ray.d;
-					//if(ygl::get_random_float(rng)>0.5)dir = ygl::reflect(-ray.d,dir);
 					ray = offsetted_ray(vre.wor_pos, {}, dir, tmin, tmax, offalong, vre.dist); //TEST -norm && norm
 
-					//if(vre.dist<0.0f && vre.vdist<0.0f){
-					//AVOID EXTERNAL EM POINTS (vdist>0.0)
-						/*if (er_material.is_emissive()) {
-							std::vector<VResult>* epoints = &emap[vre.sur->id];
-							vre._found = true;
-							epoints->push_back(vre); stats.x++;
-							//if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
-						}else */
 					if (er_vmaterial.is_emissive() && vre.vsur) {
 						std::vector<VResult>* epoints = &emap[vre.vsur->mID];
 						vre._found = true;
 						epoints->push_back(vre); stats.x++;
-						//if(verbose) std::cout<<"EM ( light: "<<vre.vsur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
 					} else if (er_material.is_emissive() && vre.sur) {
 						std::vector<VResult>* epoints = &emap[vre.sur->mID];
 						vre._found = true;
 						epoints->push_back(vre); stats.x++;
-						//if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
 					}
-					//}
+					vre = intersect(ray, n_max_iters);
 				}
-				//}
 			}
 			if (!stats.x) { stats.y = 0; stats.z = 0; } //if no emissive found, ignore other stats
 			if (verbose)std::cout << "->Found: " << stats.x << "/(" << stats.y << "/" << stats.z << ")\n";
@@ -294,7 +377,6 @@ namespace vnx {
 			//N.B: Searchs only inside "emissive material declared" volumes
 
 			if (vre.vdist < 0.0 && vre.sur && vre.vsur) {
-				vre._found = true;
 				VMaterial vre_material;
 				vre.getMaterial(vre_material);
 				vec3d norm = eval_normals(vre, neps);
@@ -311,28 +393,29 @@ namespace vnx {
 					std::vector<VResult>* epoints = &emap[vre.sur->mID];
 					vre._found = true;
 					epoints->push_back(vre); stats.x++;
-					//if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
 
-					auto dir = sample_sphere_direction<double>(rng.next_vecd<2>());
-					auto ray = VRay{ vre.wor_pos,dir,tmin,tmax };
+					vre._found = false;
+					vec3d dir;
+					VRay ray;
 					VResult fvre = vre;
 					for (int i = 0; i < n_em_e; i++) {
 						const auto step = std::max(1, n_em_e / 10);
 						if (verbose && i % step == 0) std::cout << ".";
 						vre = intersect(ray, n_max_iters);
-						//if(vre.vdist>0.0) std::cout<<"OLO: "<<i<<"\n";
 
 						if (!vre.isFound()) {
 							dir = sample_sphere_direction<double>(rng.next_vecd<2>());
-							ray = offsetted_ray(fvre.wor_pos, {}, dir, tmin, tmax, zero3d, 0.0);
+							ray = offsetted_ray(fvre.wor_pos, {}, dir, tmin, tmax, dir, tmin);
 							vre = intersect(ray, n_max_iters);
 							stats.y++;
+							if (!vre.isFound())continue;
 						} else if (rng.next_double() > 0.95) {
 							dir = sample_sphere_direction<double>(rng.next_vecd<2>());
-							ray = offsetted_ray(fvre.wor_pos, {}, dir, tmin, tmax, zero3d, 0.0);
+							ray = offsetted_ray(fvre.wor_pos, {}, dir, tmin, tmax, dir, tmin);
 							vre = intersect(ray, n_max_iters);
-							n_em_e++; //reduce math bias
+							//n_em_e++; //reduce math bias
 							stats.z++;
+							if (!vre.isFound())continue;
 						}
 
 						auto norm = eval_normals(vre, neps);
@@ -366,27 +449,17 @@ namespace vnx {
 								offalong = -norm;
 							}
 						}
-						//auto fp = dot(ray.d,norm) > 0.0 ? ygl::make_frame_fromz(zero3d, -norm) : ygl::make_frame_fromz(zero3d, norm); // TEST -norm && norm
+
 						dir = ygl::transform_direction(fp, sample_hemisphere_direction<double>(rng.next_vecd<2>()));
 
-						//if(ygl::get_random_float(rng)>0.5)dir = ygl::reflect(-ray.d,dir);
 						ray = offsetted_ray(vre.wor_pos, {}, dir, tmin, tmax, offalong, vre.dist); //TEST -norm && norm
 
-						//if(vre.dist<0.0f && vre.vdist<0.0f){
-						//AVOID EXTERNAL EM POINTS (vdist>0.0)
-							/*if (er_material.is_emissive()) {
-								std::vector<VResult>* epoints = &emap[vre.sur->id];
-								vre._found = true;
-								epoints->push_back(vre); stats.x++;
-								if(verbose) std::cout<<"EM ( light: "<<vre.sur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
-							}else */
 						if (er_vmaterial.is_emissive()) {
 							std::vector<VResult>* epoints = &emap[vre.vsur->mID];
 							vre._found = true;
 							epoints->push_back(vre); stats.x++;
-							//if(verbose) std::cout<<"EM ( light: "<<vre.vsur->id<<" ) : {"<<vre.wor_pos.x<<","<<vre.wor_pos.y<<","<<vre.wor_pos.z<<"}\n";
 						}
-						//}
+						vre = intersect(ray, n_max_iters);
 					}
 				}
 			}

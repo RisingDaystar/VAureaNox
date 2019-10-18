@@ -1996,14 +1996,14 @@ namespace vnx {
 		virtual void add_childs(std::vector<VNode*> chs) = 0;
 
 		inline virtual const char* Type() = 0;
-		inline virtual bool isOperator() { return false; }
+		inline virtual bool isOperator() const { return false; }
 
-		inline double eval_displacement(const vec3d& p) {
+		inline double eval_displacement(const vec3d& p) const {
 			if (mDisplacement) return mDisplacement(p);
 			return 0.0;
 		}
 
-		inline vec3d eval_ep(const vec3d& p) {
+		inline vec3d eval_ep(const vec3d& p) const {
 			return transform_point_inverse(mFrame, p);// / scale;
 		}
 
@@ -2107,7 +2107,7 @@ namespace vnx {
 			}
 		}
 
-		inline bool isOperator() { return true; }
+		inline bool isOperator() const { return true; }
 	};
 
 	template<typename T>

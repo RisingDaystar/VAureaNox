@@ -234,6 +234,7 @@ int main() {
 
 		if (stricmp(i_eh_precalc_algo, std::string("full"))) scn.eh_precalc_algo = &VScene::precalc_emissive_hints_full;
 		else if (stricmp(i_eh_precalc_algo, std::string("strict"))) scn.eh_precalc_algo = &VScene::precalc_emissive_hints_strict;
+		else if (stricmp(i_eh_precalc_algo, std::string("warp"))) scn.eh_precalc_algo = &VScene::precalc_emissive_hints_warp;
 		else if (stricmp(i_eh_precalc_algo, std::string("none"))) scn.eh_precalc_algo = nullptr;
 		else scn.eh_precalc_algo = &VScene::precalc_emissive_hints_full;
 

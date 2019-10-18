@@ -32,7 +32,7 @@ namespace vnx {
 		VScene() :VScene("") {}
 
 		VScene(std::string idv) :mID(idv) {}
-		typedef VResult(VScene::* st_algo_ftor)(const VRay&, int, int*, int*) const;
+		typedef VResult(VScene::* st_algo_ftor)(VNode* node, const VRay&, int, int*, int*) const;
 		typedef vec3d(VScene::* normals_algo_ftor)(const VResult& er, double eps) const;
 		typedef vec3i(VScene::* eh_precalc_algo_ftor)(VRng& rng, std::map<std::string, std::vector<VResult>>& emap, VNode* ptr, int n_em_e, int n_max_iters, double tmin, double tmax, double neps, bool verbose, frame3d parent_frame);
 
@@ -92,7 +92,10 @@ namespace vnx {
 			return std::invoke(normals_algo, this, er, eps);
 		}
 		inline VResult intersect(const VRay& ray, int nm, int* iters = nullptr, int* overs = nullptr) const {
-			return std::invoke(intersect_algo, this, ray, nm, iters, overs);
+			return std::invoke(intersect_algo, this, root, ray, nm, iters, overs);
+		}
+		inline VResult intersect_node(VNode* node,const VRay& ray, int nm, int* iters = nullptr, int* overs = nullptr) const {
+			return std::invoke(intersect_algo, this, node, ray, nm, iters, overs);
 		}
 		inline vec3i precalc_emissive_hints(VRng& rng, std::map<std::string, std::vector<VResult>>& emap, VNode* ptr, int n_em_e, int n_max_iters, double tmin, double tmax, double neps, bool verbose, frame3d parent_frame) {
 			return std::invoke(eh_precalc_algo, this, rng, emap, ptr, n_em_e, n_max_iters, tmin, tmax, neps, verbose, parent_frame);
@@ -138,12 +141,12 @@ namespace vnx {
 		}
 
 		///original naive sphere tracing algorithm
-		inline VResult intersect_naive(const VRay& ray, int miters, int* iters = nullptr, int* overs = nullptr) const {
+		inline VResult intersect_naive(VNode* node, const VRay& ray, int miters, int* iters = nullptr, int* overs = nullptr) const {
 			double t = 0.0;
 			VResult vre;
 			int i = 0;
 			for (i = 0; i < miters; i++) {
-				eval(ray.o + (ray.d * t), vre);
+				node->eval(ray.o + (ray.d * t), vre);
 				auto d = std::abs(vre.dist);
 
 				if (d < ray.tmin) { vre._found = true; if (iters) { *iters = i; }if (overs) { *overs = 0; }return vre; }
@@ -169,7 +172,7 @@ namespace vnx {
 		///it simply cannot determine wether it is an "error" or a legit inside trace.
 		///TODO ,over rel & lipschitz fixer for "started inside" tracings
 
-		inline VResult intersect_rel(const VRay& ray, int miters, int* iters = nullptr, int* overs = nullptr) const {
+		inline VResult intersect_rel(VNode* node, const VRay& ray, int miters, int* iters = nullptr, int* overs = nullptr) const {
 			//const double hmaxf = maxd/2.0; ///consider using this to avoid over/underflows (depending on sign of the leading expression, it might happen, needs testing) .
 			constexpr double maxf_m1 = maxd - 1.0;
 			double t = 0.0;
@@ -180,7 +183,7 @@ namespace vnx {
 			int i = 0;
 			int no = 0;
 			for (; i < miters; i++) {
-				eval(ray.o + ray.d * t, vre);
+				node->eval(ray.o + ray.d * t, vre);
 				auto d = vre.dist;
 				auto absd = std::abs(d);
 
@@ -212,7 +215,7 @@ namespace vnx {
 			return vre;
 		}
 
-		inline VResult intersect_enh(const VRay& ray, int miters, int* iters = nullptr, int* overs = nullptr) const {
+		inline VResult intersect_enh(VNode* node, const VRay& ray, int miters, int* iters = nullptr, int* overs = nullptr) const {
 			constexpr double maxf_m1 = maxd - 1.0; //TODO : check all cases for over/underflows
 			double t = 0.0;
 			double pd = maxf_m1;
@@ -223,7 +226,7 @@ namespace vnx {
 			int i = 0;
 			int no = 0;
 			for (; i < miters; i++) {
-				eval(ray.o + ray.d * t, vre);
+				node->eval(ray.o + ray.d * t, vre);
 
 				if (i == 0) { s = nz_sign(vre.vdist); }
 				if (s < 0) { //started inside
@@ -294,6 +297,7 @@ namespace vnx {
 			return (*ep)[rng.next_uint(ep->size())];
 		}
 
+		vec3i precalc_emissive_hints_warp(VRng& rng, std::map<std::string, std::vector<VResult>>& emap, VNode* ptr, int n_em_e, int n_max_iters, double tmin, double tmax, double neps, bool verbose, frame3d parent_frame);
 		vec3i precalc_emissive_hints_full(VRng& rng, std::map<std::string, std::vector<VResult>>& emap, VNode* ptr, int n_em_e, int n_max_iters, double tmin, double tmax, double neps, bool verbose, frame3d parent_frame);
 		vec3i precalc_emissive_hints_strict(VRng& rng, std::map<std::string, std::vector<VResult>>& emap, VNode* ptr, int n_em_e, int n_max_iters, double tmin, double tmax, double neps, bool verbose, frame3d parent_frame);
 

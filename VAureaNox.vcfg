@@ -8,7 +8,7 @@
 
   i_st_algo : enhanced                ;naive / relaxed / enhanced
   i_normals_algo : tht                ;tht / cnt
-  i_eh_precalc_algo : full            ;full / strict / none
+  i_eh_precalc_algo : full            ;full / strict / warp / none
 
   e_save_format : hdr                ;hdr | ppm
   b_apply_tonemap : true
@@ -27,9 +27,9 @@
 </VAureaNox>
 
 <VRE_Experimental_PT>
-  i_ray_samples : 1                ; >0
+  i_ray_samples : 32                ; >0
   i_rendering_mode : bidirectional      ;eyetracing | lighttracing | bidirectional
-  i_debug_primary : 0               ;0(default) | eyelight | iterations | oversteps | normals
+  i_debug_primary : 0               ;0(default) | eyelight | iterations | oversteps | normals | emhints
 
   b_no_scatter : 0
   b_gather_eye_direct : 1
