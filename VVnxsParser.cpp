@@ -47,8 +47,8 @@ namespace vnx {
 			auto root_id = mMappings["#_ROOT"].try_get("id");
 			link(scn, root_id, "!vmaterial"); //alloco in maniera ricorsiva , se non è collegato alla root, non è necessario instanziarlo a meno che non sia un materiale.
 			if (mMappings.find("#_CAMERA") == mMappings.end()) { throw VException("Camera is undefined"); }
-			scn.camera.Relate(&mMappings["#_CAMERA"]);
-			scn.root = static_cast<VNode*>(mMappings[root_id].ptr);
+			scn.mCamera.Relate(&mMappings["#_CAMERA"]);
+			scn.mRoot = static_cast<VNode*>(mMappings[root_id].ptr);
 			scn.mID = mMappings["#_SCENE"].try_get("id");
 		} catch (const VException & ex) {
 			std::string str = "Vnxs Loader -> Linker Exception -> ";

@@ -286,13 +286,13 @@ namespace vscndef {
 
 	void init_spider_scene(VScene& scn) {
 		scn.mID = "spider";
-		scn.camera.mYfov = 45.0;
-		scn.camera.mOrigin = { 0,10.1,13.0 };
-		scn.camera.mTarget = { 0,5.1,0.01 };
-		scn.camera.mUp = { 0,1.0f,0 };
-		scn.camera.mAperture = 0.0;
-		scn.camera.mFocus = length(scn.camera.mTarget - scn.camera.mOrigin);
-		scn.camera.mAutoFocus = true;
+		scn.mCamera.mYfov = 45.0;
+		scn.mCamera.mOrigin = { 0,10.1,13.0 };
+		scn.mCamera.mTarget = { 0,5.1,0.01 };
+		scn.mCamera.mUp = { 0,1.0f,0 };
+		scn.mCamera.mAperture = 0.0;
+		scn.mCamera.mFocus = length(scn.mCamera.mTarget - scn.mCamera.mOrigin);
+		scn.mCamera.mAutoFocus = true;
 
 		auto grey_steel_material = scn.add_material("grey_steel_material");
 		grey_steel_material->type = conductor;
@@ -500,11 +500,11 @@ namespace vscndef {
 			}),
 			//),
 
-						new vop_union("base_plane_group",20.0f,{
-							base_plane,
-							base_plane_v,
-						}),
-						main_light,
+				new vop_union("base_plane_group",20.0f,{
+					base_plane,
+					base_plane_v,
+				}),
+				main_light,
 			});
 		scn.set_root(root_union);
 

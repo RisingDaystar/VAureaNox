@@ -26,10 +26,10 @@ using namespace vnx;
 
 namespace vscndef {
 	void init_gi_test_scene(vnx::VScene& scn) {
-		scn.camera.mYfov = 45.0;
-		scn.camera.mOrigin = { 0,5,20.0 };
-		scn.camera.mTarget = { 0,0,0 };
-		scn.camera.mUp = { 0,1.0,0 };
+		scn.mCamera.mYfov = 45.0;
+		scn.mCamera.mOrigin = { 0,5,20.0 };
+		scn.mCamera.mTarget = { 0,0,0 };
+		scn.mCamera.mUp = { 0,1.0,0 };
 		scn.mID = "gi_test";
 
 		auto emissive = scn.add_material("emissive");
@@ -46,7 +46,7 @@ namespace vscndef {
 		diffuse_exp->kr = { 0.6,0.0f,0.0 };
 		diffuse_exp->rs = 0.15;
 		auto mtor_e = [](const VResult& hit, const vec3d& n, VMaterial& mat) {
-			if (dot(hit.wor_pos, hit.loc_pos) > 0) { mat.e_temp = 6000.0;mat.e_power = 1000; }
+			if (dot(hit.wor_pos, hit.loc_pos) > 0) { mat.e_temp = 6000.0; mat.e_power = 1000; }
 		};
 		diffuse_exp->mutator = mtor_e;
 
@@ -87,7 +87,7 @@ namespace vscndef {
 			})
 			);
 
-		scn.root = new vop_union("root", 1.0, {
+		scn.mRoot = new vop_union("root", 1.0, {
 			//new vop_union("pv_blend",20.5,{
 				new vop_union("p_b_blend",0.0,{ //0.8f
 					new vop_subtraction("plane_sub",0.5,{

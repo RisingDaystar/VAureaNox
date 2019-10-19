@@ -40,10 +40,10 @@ namespace vnx {
 		normals_algo_ftor normals_algo = &VScene::eval_normals_tht;
 		eh_precalc_algo_ftor eh_precalc_algo = &VScene::precalc_emissive_hints_full;
 
-		VNode* root = nullptr;
-		VCamera camera;
+		VNode* mRoot = nullptr;
+		VCamera mCamera;
 
-		void shut();
+		void Shut();
 
 		VMaterial* add_material(std::string id);
 		VMaterial* add_material(std::string id, VMaterial mtl);
@@ -65,24 +65,24 @@ namespace vnx {
 
 		bool set_rounding(const std::string& idv, double r);
 
-		bool set_displacement(const std::string idv, displ_ftor ftor);
+		bool set_displacement(const std::string& idv, displ_ftor ftor);
 
 		inline VResult eval(const vec3d& p) const {
 			VResult res;
-			if (root != nullptr) { root->eval(p, res); res.wor_pos = p; if (res.vdist > 0.0) { res.vmtl = nullptr; res.vsur = nullptr; } } //ensure wor_pos is set to world coord
+			if (mRoot != nullptr) { mRoot->eval(p, res); res.wor_pos = p; if (res.vdist > 0.0) { res.vmtl = nullptr; res.vsur = nullptr; } } //ensure wor_pos is set to world coord
 			return res;
 		}
 		inline void eval(const vec3d& p, VResult& res) const {
-			if (root != nullptr) { root->eval(p, res); res.wor_pos = p; if (res.vdist > 0.0) { res.vmtl = nullptr; res.vsur = nullptr; } } // ensure wor_pos is set to world coord
+			if (mRoot != nullptr) { mRoot->eval(p, res); res.wor_pos = p; if (res.vdist > 0.0) { res.vmtl = nullptr; res.vsur = nullptr; } } // ensure wor_pos is set to world coord
 		}
 
-		inline VNode* set_root(VNode* n) { root = n; return root; }
-		inline VNode* get_root() { return root; }
+		inline VNode* set_root(VNode* n) { mRoot = n; return mRoot; }
+		inline VNode* get_root() { return mRoot; }
 
 		inline VNode* select(const std::string& idv) {
-			if (root == nullptr) { return nullptr; }
-			if (root->mID == idv) { return root; }
-			return root->select(idv);
+			if (mRoot == nullptr) { return nullptr; }
+			if (mRoot->mID == idv) { return mRoot; }
+			return mRoot->select(idv);
 		}
 
 		inline vec3d eval_normals(const VResult& er, double eps) const {
@@ -92,9 +92,9 @@ namespace vnx {
 			return std::invoke(normals_algo, this, er, eps);
 		}
 		inline VResult intersect(const VRay& ray, int nm, int* iters = nullptr, int* overs = nullptr) const {
-			return std::invoke(intersect_algo, this, root, ray, nm, iters, overs);
+			return std::invoke(intersect_algo, this, mRoot, ray, nm, iters, overs);
 		}
-		inline VResult intersect_node(VNode* node,const VRay& ray, int nm, int* iters = nullptr, int* overs = nullptr) const {
+		inline VResult intersect_node(VNode* node, const VRay& ray, int nm, int* iters = nullptr, int* overs = nullptr) const {
 			return std::invoke(intersect_algo, this, node, ray, nm, iters, overs);
 		}
 		inline vec3i precalc_emissive_hints(VRng& rng, std::map<std::string, std::vector<VResult>>& emap, VNode* ptr, int n_em_e, int n_max_iters, double tmin, double tmax, double neps, bool verbose, frame3d parent_frame) {
@@ -108,13 +108,13 @@ namespace vnx {
 			constexpr vec3d nv4 = { 1.0, 1.0, 1.0 };
 			const auto p = vre.wor_pos;
 			VResult res;
-			root->eval(p + nv1 * eps, res);
+			mRoot->eval(p + nv1 * eps, res);
 			auto n = nv1 * res.dist;
-			root->eval(p + nv2 * eps, res);
+			mRoot->eval(p + nv2 * eps, res);
 			n += nv2 * res.dist;
-			root->eval(p + nv3 * eps, res);
+			mRoot->eval(p + nv3 * eps, res);
 			n += nv3 * res.dist;
-			root->eval(p + nv4 * eps, res);
+			mRoot->eval(p + nv4 * eps, res);
 			n += nv4 * res.dist;
 			return n;
 		}
@@ -124,17 +124,17 @@ namespace vnx {
 			VResult res;
 
 			vec3d norm = zero3d;
-			root->eval(p + vec3d{ eps,0,0 }, res);
+			mRoot->eval(p + vec3d{ eps,0,0 }, res);
 			norm.x = res.dist;
-			root->eval(p - vec3d{ eps,0,0 }, res);
+			mRoot->eval(p - vec3d{ eps,0,0 }, res);
 			norm.x -= res.dist;
-			root->eval(p + vec3d{ 0,eps,0 }, res);
+			mRoot->eval(p + vec3d{ 0,eps,0 }, res);
 			norm.y = res.dist;
-			root->eval(p - vec3d{ 0,eps,0 }, res);
+			mRoot->eval(p - vec3d{ 0,eps,0 }, res);
 			norm.y -= res.dist;
-			root->eval(p + vec3d{ 0,0,eps }, res);
+			mRoot->eval(p + vec3d{ 0,0,eps }, res);
 			norm.z = res.dist;
-			root->eval(p - vec3d{ 0,0,eps }, res);
+			mRoot->eval(p - vec3d{ 0,0,eps }, res);
 			norm.z -= res.dist;
 
 			return norm;

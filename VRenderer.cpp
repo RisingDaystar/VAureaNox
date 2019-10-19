@@ -17,7 +17,31 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "VRenderer.hpp"
+#include "VScene.hpp"
 
 namespace vnx {
-	//TODO
+	void VRenderer::_cpu_task(uint id, const VScene& scn, VRenderer* renderer, std::mutex& mtx, VRng& rng, std::atomic<uint>& lrow, std::atomic<uint>& rowCounter) {
+		const uint width = scn.mCamera.mResolution.x;
+		const uint height = scn.mCamera.mResolution.y;
+
+		while (!renderer->mStatus.bStopped) {
+			//sincronizzazione per evitare data race...insignificante overhead
+			mtx.lock();
+			uint j = lrow;
+			lrow++;
+			if (j >= height) {
+				mtx.unlock(); break;
+			}
+			mtx.unlock();
+
+			renderer->EvalImageRow(scn, rng, width, height, j);
+
+			mtx.lock();
+			std::cout << "Current Row:" << j << " -> Total:{" << (++rowCounter) << " / " << height << "} -> Worker:{" << id << "}\n";
+			mtx.unlock();
+		}
+		mtx.lock();
+		std::cout << "\t#Worker " << id << " finished\n";
+		mtx.unlock();
+	}
 };

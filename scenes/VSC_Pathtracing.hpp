@@ -27,13 +27,13 @@ using namespace vnx;
 namespace vscndef {
 	void init_pathtracing_scene(vnx::VScene& scn) {
 		scn.mID = "pathtracing";
-		scn.camera.mYfov = 45.0;
-		scn.camera.mOrigin = { 0,0.8,8.0 };
-		scn.camera.mTarget = { 0,0,0.01 };
-		scn.camera.mUp = { 0,1.0,0 };
-		scn.camera.mFocus = length(scn.camera.mTarget - scn.camera.mOrigin);
-		scn.camera.mAutoFocus = true;
-		scn.camera.mAperture = 0.0;
+		scn.mCamera.mYfov = 45.0;
+		scn.mCamera.mOrigin = { 0,0.8,8.0 };
+		scn.mCamera.mTarget = { 0,0,0.01 };
+		scn.mCamera.mUp = { 0,1.0,0 };
+		scn.mCamera.mFocus = length(scn.mCamera.mTarget - scn.mCamera.mOrigin);
+		scn.mCamera.mAutoFocus = true;
+		scn.mCamera.mAperture = 0.0;
 
 		auto emissive = scn.add_material("emissive");
 		emissive->e_temp = 6500;

@@ -30,6 +30,7 @@ namespace vnx {
 		mAutoFocus = try_strtob(entry->try_get("autofocus"), mAutoFocus);
 	}
 
+
 	void VCamera::Setup(const vec2f& resolution) {
 		mResolution = resolution;
 		mAspect = double(mResolution.x) / double(mResolution.y);

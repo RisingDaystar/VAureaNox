@@ -50,7 +50,8 @@ namespace vnx {
 				for (auto pxx = 0; pxx < mFilms[i].mResolution.x && pxx < mResolution.x; pxx++) {
 					for (auto pxy = 0; pxy < mFilms[i].mResolution.y && pxy < mResolution.y; pxy++) {
 						auto& film = mFilms[i];
-						if (film.mScaleOnSplat) { img.at(pxx, pxy) += film.at(pxx, pxy).wr; } else { img.at(pxx, pxy) += film.at(pxx, pxy).wr * film.mScale; }
+						if (film.mScaleOnSplat) { img.at(pxx, pxy) += film.at(pxx, pxy).wr; } 
+						else { img.at(pxx, pxy) += film.at(pxx, pxy).wr * film.mScale; }
 					}
 				}
 			}
@@ -89,6 +90,7 @@ namespace vnx {
 		void Relate(const VMappedEntry* entry);
 
 		void Setup(const vec2f& resolution);
+
 		void EvalAutoFocus(const VScene& scn, double tmin, double tmax, int nm);
 
 		inline bool RasterToPixel(const vec3d& raster, vec2i& pid) const {

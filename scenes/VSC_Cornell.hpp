@@ -27,13 +27,13 @@ using namespace vnx;
 
 namespace vscndef {
 	void init_cornell_scene(vnx::VScene& scn) {
-		scn.camera.mYfov = 45.0;
-		scn.camera.mOrigin = { 0,0.0,11.2 };
-		scn.camera.mTarget = { 0,0,0.01 };
-		scn.camera.mUp = { 0,1.0,0 };
-		scn.camera.mAperture = 0.0;
-		scn.camera.mFocus = length(scn.camera.mTarget - scn.camera.mOrigin);
-		scn.camera.mAutoFocus = true;
+		scn.mCamera.mYfov = 45.0;
+		scn.mCamera.mOrigin = { 0,0.0,11.2 };
+		scn.mCamera.mTarget = { 0,0,0.01 };
+		scn.mCamera.mUp = { 0,1.0,0 };
+		scn.mCamera.mAperture = 0.0;
+		scn.mCamera.mFocus = length(scn.mCamera.mTarget - scn.mCamera.mOrigin);
+		scn.mCamera.mAutoFocus = true;
 		scn.mID = "cornell";
 
 		auto material_emissive = scn.add_material("material_emissive");

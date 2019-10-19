@@ -1328,6 +1328,13 @@ namespace vnx {
 		return os;
 	}
 
+	template<typename T, int N>
+	inline std::ostream& operator<<(std::ostream& os, const frame<T, N>& s) {
+		if constexpr (N == 2) os << '{' << s.x << ',' << s.o <<'}';
+		else if constexpr (N == 3) os << '{' << s.x << ',' << s.y << ',' << s.z << ',' << s.o << '}';
+		return os;
+	}
+
 	template<typename T>
 	inline constexpr T fsipow(T x, unsigned int e) {
 		if (e == 0)return 1.0;

@@ -19,9 +19,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VScene.hpp"
 
 namespace vnx {
-	void VScene::shut() {
-		if (root) delete root;
+	void VScene::Shut() {
+		if (mRoot) delete mRoot;
 		mMaterials.clear();
+		for (auto& emhg : mEmissiveHints) {
+			emhg.clear();
+		}
+		mEmissiveHints.clear();
 	}
 
 	VMaterial* VScene::add_material(std::string id) {
@@ -109,7 +113,7 @@ namespace vnx {
 		return true;
 	}
 
-	bool VScene::set_displacement(const std::string idv, displ_ftor ftor) {
+	bool VScene::set_displacement(const std::string& idv, displ_ftor ftor) {
 		auto node = select(idv);
 		if (!node) { return false; }
 		node->set_displacement(ftor);
@@ -478,9 +482,9 @@ namespace vnx {
 	}
 
 	vec3i VScene::populate_emissive_hints(int i_em_evals, int i_max_march_iterations, double f_ray_tmin, double f_ray_tmax, double f_normal_eps, bool verbose) {
-		auto rng = VRng(get_time());//ygl::make_rng(ygl::get_time());
+		auto rng = VRng(get_time());
 		std::map<std::string, std::vector<VResult>> tmpMap;
-		vec3i stats = precalc_emissive_hints(rng, tmpMap, root, i_em_evals, i_max_march_iterations, f_ray_tmin, f_ray_tmax, f_normal_eps, verbose, identity_frame3d);
+		vec3i stats = precalc_emissive_hints(rng, tmpMap, mRoot, i_em_evals, i_max_march_iterations, f_ray_tmin, f_ray_tmax, f_normal_eps, verbose, identity_frame3d);
 		for (auto ceh : tmpMap) {
 			mEmissiveHints.push_back(ceh.second);
 		}

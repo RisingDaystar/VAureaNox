@@ -86,8 +86,11 @@ namespace vnx {
 	}
 
 	void shut(VScene& scn, VRenderer* renderer) {
-		scn.shut();
-		if (renderer != nullptr) { delete renderer; renderer = nullptr; }
+		scn.Shut();
+		if (renderer != nullptr) { 
+			delete renderer; 
+			renderer = nullptr; 
+		}
 	}
 
 	void init(VScene& scn, VRenderer** renderer, const VFileConfigs& config) {
@@ -114,32 +117,7 @@ namespace vnx {
 
 		if (*renderer == nullptr) { throw VException("Invalid Renderer."); }
 		(*renderer)->Init(scn);
-		std::cout << "**Loaded Renderer : \"" << (*renderer)->Type() << "\"\n";
-	}
-
-	void task(uint id, const VScene& scn, VRenderer* renderer, std::mutex& mtx, VRng& rng, std::atomic<uint>& lrow, std::atomic<uint>& rowCounter) {
-		const uint width = scn.camera.mResolution.x;
-		const uint height = scn.camera.mResolution.y;
-
-		while (!renderer->mStatus.bStopped) {
-			//sincronizzazione per evitare data race...insignificante overhead
-			mtx.lock();
-			uint j = lrow;
-			lrow++;
-			if (j >= height) {
-				mtx.unlock(); break;
-			}
-			mtx.unlock();
-
-			renderer->EvalImageRow(scn, rng, width, height, j);
-
-			mtx.lock();
-			std::cout << "Current Row:" << j << " -> Total:{" << (++rowCounter) << " / " << height << "} -> Worker:{" << id << "}\n";
-			mtx.unlock();
-		}
-		mtx.lock();
-		std::cout << "\t#Worker " << id << " finished\n";
-		mtx.unlock();
+		std::cout << "**Loaded Renderer : \"" << (*renderer)->Identifier() << "\"\n";
 	}
 
 	//Utilizza "conio.h" , non standard, disattivabile in compilazione.
@@ -156,9 +134,9 @@ namespace vnx {
 				if (!renderer->mStatus.bPauseMode)mtx.unlock();
 			} else if (k == '1') { //PREVIEW
 				if (!renderer->mStatus.bPauseMode)mtx.lock();
-				auto fname = "VAureaNox_" + scn.mID + "_" + std::to_string(int(scn.camera.mResolution.x)) + "x" + std::to_string(int(scn.camera.mResolution.y)) + ("_" + renderer->Type()) + renderer->ImgAffix(scn) + "_PREVIEW";
+				auto fname = "VAureaNox_" + scn.mID + "_" + std::to_string(int(scn.mCamera.mResolution.x)) + "x" + std::to_string(int(scn.mCamera.mResolution.y)) + ("_" + renderer->Identifier()) + renderer->ImgAffix(scn) + "_PREVIEW";
 				std::cout << "\n*Saving Preview image \"" << fname << "\" ";
-				if (vnx::save_image(fname, scn.camera.ToImg(), e_save_format, b_apply_tonemap)) std::cout << "OK\n\n";
+				if (vnx::save_image(fname, scn.mCamera.ToImg(), e_save_format, b_apply_tonemap)) std::cout << "OK\n\n";
 				else std::cout << "FAIL\n\n";
 				if (!renderer->mStatus.bPauseMode)mtx.unlock();
 			} else if (k == '2') { //DEBUG
@@ -243,10 +221,10 @@ int main() {
 
 		std::cout << "\n**Preparing scene...\n";
 		std::cout << "**Transforming nodes coordinates...\n";
-		apply_transforms(scn.root, identity_frame3d);
+		apply_transforms(scn.mRoot, identity_frame3d);
 		std::cout << "**Setting up camera...\n";
-		scn.camera.Setup(vec2f{ float(img_w),float(img_h) });
-		scn.camera.EvalAutoFocus(scn, f_ray_tmin, f_ray_tmax, i_max_march_iterations);
+		scn.mCamera.Setup(vec2f{ float(img_w),float(img_h) });
+		scn.mCamera.EvalAutoFocus(scn, f_ray_tmin, f_ray_tmax, i_max_march_iterations);
 
 		if (scn.eh_precalc_algo != nullptr) {
 			std::cout << "\n**Calculating emissive hints...\n";
@@ -286,33 +264,10 @@ int main() {
 	}
 	std::cout << "\n<----    Rendering Log    ---->\n\n";
 
-	std::chrono::time_point<std::chrono::steady_clock> t_start;
-	if (nThreads > 1) {
-		VRng rng[nThreads];
-		const auto tt = get_time();
-		for (uint n = 0; n < nThreads; n++) {
-			rng[n].seed(tt, tt, n + n, n + n + 1); //pcg32x2
-			//rng[n].seed(tt,n+1); //pcg32 | splitmix
-			//rng[n].seed(tt); //xoroshiro
-			//rng[n].long_jump(); //xoroshiro
-		}
-
-		std::vector<std::thread*> worker(nThreads);
-		t_start = std::chrono::steady_clock::now();
-
-		for (uint i = 0; i < nThreads; i++) {
-			worker[i] = new std::thread(task, i, std::ref(scn), renderer, std::ref(mtx), std::ref(rng[i]), std::ref(lastRow), std::ref(rowCounter));
-		}
-		for (uint i = 0; i < nThreads; i++) { if (worker[i] && worker[i]->joinable()) { worker[i]->join(); } }
-		for (uint i = 0; i < nThreads; i++) { if (worker[i]) { delete worker[i]; } worker[i] = nullptr; }
-		worker.clear();
-	} else {
-		VRng rng(get_time());
-		t_start = std::chrono::steady_clock::now();
-		task(0, scn, renderer, mtx, rng, lastRow, rowCounter);
-	}
+	std::chrono::time_point<std::chrono::steady_clock> t_start = std::chrono::steady_clock::now();
+	renderer->Process(scn);
 	renderer->mStatus.bFinished = true;
-	auto t_end = std::chrono::steady_clock::now();
+	std::chrono::time_point<std::chrono::steady_clock> t_end = std::chrono::steady_clock::now();
 
 	if (monitor) {
 		if (monitor->joinable()) monitor->join();
@@ -329,11 +284,11 @@ int main() {
 	else std::cout << "\n*Rendering stopped after : ";
 	print_hhmmss(seconds);
 
-	auto fname = "VAureaNox_" + scn.mID + "_" + std::to_string(int(scn.camera.mResolution.x)) + "x" + std::to_string(int(scn.camera.mResolution.y)) + ("_" + renderer->Type()) + renderer->ImgAffix(scn);
+	auto fname = "VAureaNox_" + scn.mID + "_" + std::to_string(int(scn.mCamera.mResolution.x)) + "x" + std::to_string(int(scn.mCamera.mResolution.y)) + ("_" + renderer->Identifier()) + renderer->ImgAffix(scn);
 	if (renderer->mStatus.bStopped) fname += "_UNCOMPLETED";
 
 	std::cout << "\n*Saving image \"" << fname << "\" ";
-	auto img = scn.camera.ToImg();
+	auto img = scn.mCamera.ToImg();
 	if (vnx::save_image(fname, img, e_save_format, b_apply_tonemap)) std::cout << "OK\n";
 	else {
 		std::cout << "FAIL\n";

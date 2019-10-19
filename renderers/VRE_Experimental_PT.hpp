@@ -127,7 +127,7 @@ namespace vnx {
 		bool b_gather_to_camera = true;
 
 		VRE_Experimental_PT(const VFileConfigs& cfgs, std::string section) : VRenderer(cfgs, section) {}
-		std::string Type() const { return "ExperimentalPT"; }
+		std::string Identifier() const { return "ExperimentalPT"; }
 
 		using VRenderer::TryGet; //permette di vedere gli altri overload
 		inline VRenderingMode TryGet(const std::string& k, VRenderingMode dVal) const {
@@ -176,6 +176,8 @@ namespace vnx {
 			b_gather_to_camera = TryGet("b_gather_to_camera", b_gather_to_camera);
 
 			i_debug_primary = TryGet("i_debug_primary", i_debug_primary);
+
+			if (i_debug_primary == DBG_EMH) mOneShotRender = true;
 		};
 
 		void PostInit(VScene& scn) {
@@ -184,13 +186,13 @@ namespace vnx {
 			else if (useBidirectional()) std::cout << "**Using Bidirectional\n";
 			std::cout << "**Using " << i_ray_samples << " Spp\n\n";
 
-			scn.camera.CreateFilms(useBidirectional() ? 2 : 1);
+			scn.mCamera.CreateFilms(useBidirectional() ? 2 : 1);
 
-			scn.camera.SetFilmScale(0, 1.0 / double(i_ray_samples));
-			scn.camera.SetFilmScaleOnSplat(0, true);
+			scn.mCamera.SetFilmScale(0, 1.0 / double(i_ray_samples));
+			scn.mCamera.SetFilmScaleOnSplat(0, true);
 			if (useBidirectional()) {
-				scn.camera.SetFilmScale(1, 1.0 / double(i_ray_samples));
-				scn.camera.SetFilmScaleOnSplat(1, true);
+				scn.mCamera.SetFilmScale(1, 1.0 / double(i_ray_samples));
+				scn.mCamera.SetFilmScaleOnSplat(1, true);
 			}
 		}
 
@@ -412,7 +414,7 @@ namespace vnx {
 		}
 
 		inline void InitEyeRay(const VScene& scn, VRng& rng, VRay& ray, int i, int j) {
-			ray = scn.camera.RayCast(i, j, rng, !i_debug_primary ? rng.next_vecd<2>() : zero2d);
+			ray = scn.mCamera.RayCast(i, j, rng, !i_debug_primary ? rng.next_vecd<2>() : zero2d);
 			InitRay(rng, ray);
 		}
 
@@ -1691,15 +1693,17 @@ namespace vnx {
 			return output * spectral_to_rgb(gathered_wl);
 		}
 
-		void EvalImageRow(const VScene& scn, VRng& rng, uint width, uint height, uint j) {
-			auto& cam_ref = const_cast<VCamera&>(scn.camera);
-
-			if (i_debug_primary == DBG_EMH) { //UNNECESSARY CALCS, should be a one-shot render //TODO : DECOUPLE IMAGE LOGIC FROM RENDERING LOGIC
+		void EvalImage_OS(const VScene& scn, VRng& rng) {
+			auto& cam_ref = const_cast<VCamera&>(scn.mCamera);
+			if (i_debug_primary == DBG_EMH) {
 				if (scn.mEmissiveHints.empty()) return;
 				for (auto& ehg : scn.mEmissiveHints) {
 					if (ehg.empty()) return;
 					for (auto& eh : ehg) {
 						mStatus.mRaysEvaled++;
+						auto dir = normalize(cam_ref.mOrigin - eh.wor_pos);
+						const double cosAtCam = dot(cam_ref.mForward, -dir);
+						if (cosAtCam <= 0.0) return;
 						vec2i px;
 						auto inRaster = cam_ref.WorldToPixel(eh.wor_pos, px);
 						if (inRaster) {
@@ -1709,15 +1713,17 @@ namespace vnx {
 						}
 					}
 				}
-				return;
 			}
+		}
 
+		void EvalImageRow(const VScene& scn, VRng& rng, uint width, uint height, uint j) {
+			auto& cam_ref = const_cast<VCamera&>(scn.mCamera);
 			// && !mStatus.bStopped
 			for (uint i = 0; i < width; i++) {
 				//JITTERED
 				const auto pxc = vec2i{ int(i),int(j) };
 				for (uint s = 0; s < i_ray_samples; s++) {
-					VRay ray = scn.camera.RayCast(i, j, rng, !i_debug_primary ? (rng.next_vecd<2>()) : zero2d);
+					VRay ray = scn.mCamera.RayCast(i, j, rng, !i_debug_primary ? (rng.next_vecd<2>()) : zero2d);
 					InitRay(rng, ray);
 
 					cam_ref.Splat(0, pxc, Radiance(scn, rng, cam_ref, ray));
