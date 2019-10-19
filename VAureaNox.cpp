@@ -87,9 +87,9 @@ namespace vnx {
 
 	void shut(VScene& scn, VRenderer* renderer) {
 		scn.Shut();
-		if (renderer != nullptr) { 
-			delete renderer; 
-			renderer = nullptr; 
+		if (renderer != nullptr) {
+			delete renderer;
+			renderer = nullptr;
 		}
 	}
 
@@ -121,33 +121,33 @@ namespace vnx {
 	}
 
 	//Utilizza "conio.h" , non standard, disattivabile in compilazione.
-	void monitor_task(std::mutex& mtx, const VScene& scn, VRenderer* renderer, const std::string& e_save_format, bool b_apply_tonemap) {
+	void monitor_task(const VScene& scn, VRenderer* renderer, const std::string& e_save_format, bool b_apply_tonemap) {
 #ifdef MONITOR_THREAD_SUPPORT
 		while (!renderer->mStatus.bStopped && !renderer->mStatus.bFinished) {
 			if (!_kbhit()) { std::this_thread::sleep_for(std::chrono::milliseconds(1000)); continue; } //1s sleep, per evitare massiccio overhead
 			auto k = _getch();
 
 			if (k == 27) { //EXIT
-				if (!renderer->mStatus.bPauseMode)mtx.lock();
+				if (!renderer->mStatus.bPauseMode)renderer->get_mutex().lock();
 				std::cout << "\n***Termination Requested***\n\n";
 				renderer->mStatus.bStopped = true;
-				if (!renderer->mStatus.bPauseMode)mtx.unlock();
+				if (!renderer->mStatus.bPauseMode)renderer->get_mutex().unlock();
 			} else if (k == '1') { //PREVIEW
-				if (!renderer->mStatus.bPauseMode)mtx.lock();
+				if (!renderer->mStatus.bPauseMode)renderer->get_mutex().lock();
 				auto fname = "VAureaNox_" + scn.mID + "_" + std::to_string(int(scn.mCamera.mResolution.x)) + "x" + std::to_string(int(scn.mCamera.mResolution.y)) + ("_" + renderer->Identifier()) + renderer->ImgAffix(scn) + "_PREVIEW";
 				std::cout << "\n*Saving Preview image \"" << fname << "\" ";
 				if (vnx::save_image(fname, scn.mCamera.ToImg(), e_save_format, b_apply_tonemap)) std::cout << "OK\n\n";
 				else std::cout << "FAIL\n\n";
-				if (!renderer->mStatus.bPauseMode)mtx.unlock();
+				if (!renderer->mStatus.bPauseMode)renderer->get_mutex().unlock();
 			} else if (k == '2') { //DEBUG
-				if (!renderer->mStatus.bPauseMode)mtx.lock();
+				if (!renderer->mStatus.bPauseMode)renderer->get_mutex().lock();
 				renderer->mStatus.bDebugMode = !renderer->mStatus.bDebugMode;
 				if (renderer->mStatus.bDebugMode) std::cout << "\n*Debug flag set\n\n";
 				else std::cout << "\n*Debug flag unset\n\n";
-				if (!renderer->mStatus.bPauseMode)mtx.unlock();
+				if (!renderer->mStatus.bPauseMode)renderer->get_mutex().unlock();
 			} else if (k == '3') { //PAUSE
 				renderer->mStatus.bPauseMode = !renderer->mStatus.bPauseMode;
-				if (renderer->mStatus.bPauseMode) { std::cout << "\n*Rendering Paused\n\n"; mtx.lock(); } else { std::cout << "\n*Rendering Resumed\n\n"; mtx.unlock(); }
+				if (renderer->mStatus.bPauseMode) { std::cout << "\n*Rendering Paused\n\n"; renderer->get_mutex().lock(); } else { std::cout << "\n*Rendering Resumed\n\n"; renderer->get_mutex().unlock(); }
 			}
 		}
 #endif
@@ -155,12 +155,6 @@ namespace vnx {
 };
 
 int main() {
-	std::mutex mtx;
-	std::atomic<uint> lastRow;
-	lastRow.store(0);
-	std::atomic<uint> rowCounter;
-	rowCounter.store(0);
-
 	VFileConfigs config("VAureaNox.vcfg");
 
 	VScene scn;
@@ -259,7 +253,7 @@ int main() {
 
 	std::cout << "**Rendering \"" << scn.mID << "\" using \"" << nThreads << "\" threads\n";
 	if (b_start_monitor) {
-		monitor = new std::thread(monitor_task, std::ref(mtx), std::ref(scn), renderer, e_save_format, b_apply_tonemap);
+		monitor = new std::thread(monitor_task, std::ref(scn), renderer, e_save_format, b_apply_tonemap);
 		std::cout << "**Monitor Thread started\n";
 	}
 	std::cout << "\n<----    Rendering Log    ---->\n\n";

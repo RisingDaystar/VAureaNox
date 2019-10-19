@@ -37,7 +37,9 @@ namespace vnx {
 
 		static void _cpu_task(uint id, const VScene& scn, VRenderer* renderer, std::mutex& mtx, VRng& rng, std::atomic<uint>& lrow, std::atomic<uint>& rowCounter);
 
-		void Process(const VScene& scn) {
+		inline std::mutex& get_mutex() { return mMutex; }
+
+		inline void Process(const VScene& scn) {
 			if (mOneShotRender) {
 				mRngs.push_back(VRng());
 				const auto tt = get_time();

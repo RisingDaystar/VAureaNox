@@ -1330,7 +1330,7 @@ namespace vnx {
 
 	template<typename T, int N>
 	inline std::ostream& operator<<(std::ostream& os, const frame<T, N>& s) {
-		if constexpr (N == 2) os << '{' << s.x << ',' << s.o <<'}';
+		if constexpr (N == 2) os << '{' << s.x << ',' << s.o << '}';
 		else if constexpr (N == 3) os << '{' << s.x << ',' << s.y << ',' << s.z << ',' << s.o << '}';
 		return os;
 	}
