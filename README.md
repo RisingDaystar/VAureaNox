@@ -140,18 +140,29 @@ Work is in progress on finding a way to apply the improved behaviour also in thi
 
 <p align="center">
   4096 spp , Spheres filled Cornell box , with rough specularly patterned rear wall
+  <br />
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/bdpt_4096spp_spheres2.png">
 </p>
 
 <p align="center">
   512 spp , Cornell box with distorted sdf (with mutator and twist)
+  <br />
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/Bdpt_512spp_complex.png">
 </p>
 
 <p align="center">
   512 spp , Cornell box with diamond
+  <br />
   <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/Bdpt_512spp_diamond.png">
 </p>
+
+<p align="center">
+  1024 spp , Distortion / Displacement operators &amp; mtl mutators affecting this scene, complex emissive sdf + simple sphere light high above
+  <br />
+  <img width="648" src="https://github.com/RisingDaystar/VAureaNox/blob/master/Images/VAureaNox_gi_test_648x480_ExperimentalPT_bidirectional_spp1024.png">
+</p>
+
+
 
 
 <p align="center">
